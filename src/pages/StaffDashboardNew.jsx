@@ -9,6 +9,7 @@ import { supabase } from '../services/supabase'
 import Navbar from '../components/Navbar'
 import AttendanceCheckbox from '../components/AttendanceCheckbox'
 import InteractiveTimetable from '../components/InteractiveTimetable'
+import Toast from '../components/Toast'
 import { generatePeriodAttendanceReport } from '../utils/pdfGenerator'
 
 const StaffDashboardNew = () => {
@@ -29,6 +30,7 @@ const StaffDashboardNew = () => {
   const [selectedSession, setSelectedSession] = useState('')
   const [attendanceDate, setAttendanceDate] = useState(new Date().toISOString().split('T')[0])
   const [attendanceMap, setAttendanceMap] = useState({})
+  const [toast, setToast] = useState(null)
   
   const [selectedClassForTimetable, setSelectedClassForTimetable] = useState('')
   const [timetableDate, setTimetableDate] = useState(new Date().toISOString().split('T')[0])
@@ -43,7 +45,7 @@ const StaffDashboardNew = () => {
 
   const handleMarkMyAttendance = async () => {
     if (myAttendancePeriods.length === 0) {
-      alert('Please select at least one period')
+      setToast({ message: 'Please select at least one period', type: 'info' })
       return
     }
     
@@ -64,14 +66,14 @@ const StaffDashboardNew = () => {
       
       if (error) throw error
       
-      alert(`Attendance marked successfully for periods: ${periodString}`)
+      setToast({ message: `Attendance marked successfully for periods: ${periodString}`, type: 'success' })
       setMyAttendancePeriods([])
       
       // Refresh attendance records
       window.location.reload()
     } catch (err) {
       console.error('Error marking attendance:', err)
-      alert(`Error marking attendance: ${err.message}`)
+      setToast({ message: `Error marking attendance: ${err.message}`, type: 'error' })
     }
   }
 
@@ -84,7 +86,7 @@ const StaffDashboardNew = () => {
 
   const handleSubmitAttendance = async () => {
     if (!selectedClass || !selectedSession) {
-      alert('Please select class and session')
+      setToast({ message: 'Please select class and session', type: 'info' })
       return
     }
 
@@ -99,7 +101,7 @@ const StaffDashboardNew = () => {
     }))
 
     if (records.length === 0) {
-      alert('Please mark attendance for at least one student')
+      setToast({ message: 'Please mark attendance for at least one student', type: 'info' })
       return
     }
 
@@ -124,16 +126,16 @@ const StaffDashboardNew = () => {
     }
 
     if (result.success) {
-      alert('Attendance marked successfully!')
+      setToast({ message: 'Attendance marked successfully!', type: 'success' })
       setAttendanceMap({})
     } else {
-      alert('Error: ' + result.error)
+      setToast({ message: 'Error: ' + result.error, type: 'error' })
     }
   }
 
   const handleDownloadReport = async () => {
     if (!selectedClass) {
-      alert('Please select a class')
+      setToast({ message: 'Please select a class', type: 'info' })
       return
     }
     
@@ -159,14 +161,14 @@ const StaffDashboardNew = () => {
       if (error) throw error
       
       if (!periodData || periodData.length === 0) {
-        alert('No attendance records for this class')
+        setToast({ message: 'No attendance records for this class', type: 'info' })
         return
       }
       
       await generatePeriodAttendanceReport(periodData, supabase)
     } catch (err) {
       console.error('Error fetching attendance:', err)
-      alert('Error fetching attendance records')
+      setToast({ message: 'Error fetching attendance records', type: 'error' })
     }
   }
 
@@ -373,6 +375,15 @@ const StaffDashboardNew = () => {
           </div>
         </div>
       </div>
+      
+      {/* Toast Notification */}
+      {toast && (
+        <Toast 
+          message={toast.message} 
+          type={toast.type} 
+          onClose={() => setToast(null)} 
+        />
+      )}
     </div>
   )
 }
