@@ -20,22 +20,31 @@ export const useDepartments = () => {
         .eq('id', user?.id)
         .single()
       
-      let query = supabase
+      console.log('User Profile:', profile) // DEBUG
+      console.log('Department ID:', profile?.department_id) // DEBUG
+      
+      // Fetch ALL departments first
+      const { data: allDepts, error: deptError } = await supabase
         .from('departments')
         .select('*')
-      
-      // Filter by department
-      if (profile?.department_id) {
-        // Admin and staff see only their department
-        query = query.eq('id', profile.department_id)
-      } else if (profile?.role === 'admin') {
-        // Fallback: If no department assigned, filter by created_by
-        query = query.or(`created_by.eq.${user?.id},created_by.is.null`)
-      }
-      
-      const { data: depts, error: deptError } = await query.order('name', { ascending: true })
+        .order('name', { ascending: true })
 
       if (deptError) throw deptError
+
+      console.log('All Departments:', allDepts) // DEBUG
+
+      // Filter departments based on user's department_id
+      let filteredDepts = allDepts
+      
+      if (profile?.department_id) {
+        // Filter to show only user's department
+        filteredDepts = allDepts.filter(dept => dept.id === profile.department_id)
+        console.log('Filtered to user department:', filteredDepts) // DEBUG
+      } else {
+        console.warn('No department_id found for user! Showing all departments.') // DEBUG
+        // If no department assigned, show empty array (don't show all departments)
+        filteredDepts = []
+      }
 
       // Fetch student counts for each department
       const { data: studentCounts, error: countError } = await supabase
@@ -51,11 +60,12 @@ export const useDepartments = () => {
       })
 
       // Add student count to each department
-      const departmentsWithCounts = depts.map(dept => ({
+      const departmentsWithCounts = filteredDepts.map(dept => ({
         ...dept,
         student_count: counts[dept.id] || 0
       }))
 
+      console.log('Final Departments:', departmentsWithCounts) // DEBUG
       setDepartments(departmentsWithCounts || [])
     } catch (err) {
       setError(err.message)
