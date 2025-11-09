@@ -3,6 +3,7 @@ import { AuthProvider, useAuth } from './context/AuthContext'
 import LandingPage from './pages/LandingPage'
 import Login from './pages/Login'
 import Signup from './pages/Signup'
+import AuthCallback from './pages/AuthCallback'
 import ModernAdminDashboard from './pages/ModernAdminDashboard'
 import AdminDashboardNew from './pages/AdminDashboardNew'
 import StaffDashboardNew from './pages/StaffDashboardNew'
@@ -49,6 +50,7 @@ function AppRoutes() {
       <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<Login />} />
       <Route path="/signup" element={<Signup />} />
+      <Route path="/auth/callback" element={<AuthCallback />} />
       <Route
         path="/admin"
         element={

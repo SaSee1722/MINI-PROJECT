@@ -35,7 +35,7 @@ const Signup = () => {
 
     try {
       // Get the production URL or fallback to current origin
-      const redirectUrl = window.location.origin + '/login'
+      const redirectUrl = window.location.origin + '/auth/callback'
       
       // Create auth user with metadata
       const { data: authData, error: signUpError } = await supabase.auth.signUp({
