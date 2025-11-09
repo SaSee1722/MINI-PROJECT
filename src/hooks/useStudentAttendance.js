@@ -11,19 +11,26 @@ export const useStudentAttendance = () => {
   const fetchAttendance = async () => {
     try {
       setLoading(true)
+      
+      // Get current user
+      const { data: { user: currentUser } } = await supabase.auth.getUser()
+      
+      // Fetch attendance with user filtering through students
       const { data, error } = await supabase
         .from('student_attendance')
         .select(`
           *,
-          students (
+          students!inner (
             id, 
             roll_number, 
             name,
+            created_by,
             departments (id, name, code)
           ),
           classes (id, name),
           sessions (id, name, start_time, end_time)
         `)
+        .or(`students.created_by.eq.${currentUser?.id},students.created_by.is.null`)
         .order('date', { ascending: false })
 
       if (error) throw error

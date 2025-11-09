@@ -53,21 +53,37 @@ const AnimatedHeroText = ({ words, staticText }) => {
 }
 
 // Interactive Attendance Trend Chart Component
-const AttendanceTrendChart = () => {
+const AttendanceTrendChart = ({ attendanceData, totalStudents }) => {
   const [hoveredPoint, setHoveredPoint] = useState(null)
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 })
   const chartRef = useRef(null)
   
-  // Sample data for the last 7 days (replace with real data)
-  const chartData = [
-    { day: 'Mon', attendance: 85, date: 'Nov 4' },
-    { day: 'Tue', attendance: 92, date: 'Nov 5' },
-    { day: 'Wed', attendance: 88, date: 'Nov 6' },
-    { day: 'Thu', attendance: 95, date: 'Nov 7' },
-    { day: 'Fri', attendance: 90, date: 'Nov 8' },
-    { day: 'Sat', attendance: 97, date: 'Nov 9' },
-    { day: 'Sun', attendance: 98, date: 'Nov 10' }
-  ]
+  // Calculate attendance for last 7 days from real data
+  const getLast7Days = () => {
+    const days = []
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+    
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date()
+      date.setDate(date.getDate() - i)
+      const dateStr = date.toISOString().split('T')[0]
+      
+      // Calculate attendance percentage for this day
+      const dayAttendance = attendanceData.filter(a => a.date === dateStr)
+      const presentCount = dayAttendance.filter(a => a.status === 'present').length
+      const attendancePercent = totalStudents > 0 ? Math.round((presentCount / totalStudents) * 100) : 0
+      
+      days.push({
+        day: dayNames[date.getDay()],
+        attendance: attendancePercent,
+        date: `${monthNames[date.getMonth()]} ${date.getDate()}`
+      })
+    }
+    return days
+  }
+  
+  const chartData = getLast7Days()
   
   // Calculate positions for data points
   const maxAttendance = 100
@@ -235,10 +251,14 @@ const AdminDashboardNew = () => {
   // Fetch period attendance count
   const fetchPeriodAttendanceCount = async () => {
     try {
+      // Get current user
+      const { data: { user: currentUser } } = await supabase.auth.getUser()
+      
       const { count, error } = await supabase
         .from('period_attendance')
-        .select('*', { count: 'exact', head: true })
+        .select('*, classes!inner(created_by)', { count: 'exact', head: true })
         .eq('is_marked', true)
+        .or(`classes.created_by.eq.${currentUser?.id},classes.created_by.is.null`)
       
       if (error) {
         console.error('Error fetching count:', error)
@@ -627,7 +647,10 @@ const AdminDashboardNew = () => {
                 {/* Charts Section */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   {/* Attendance Trend Chart */}
-                  <AttendanceTrendChart />
+                  <AttendanceTrendChart 
+                    attendanceData={studentAttendance} 
+                    totalStudents={students.filter(s => s.status === 'active').length} 
+                  />
 
                   {/* Status Breakdown Pie Chart */}
                   <div className="bg-gray-900 border border-white/20 rounded-xl p-6">
@@ -1468,6 +1491,10 @@ const AdminDashboardNew = () => {
                     <button onClick={async () => {
                       try {
                         console.log('Fetching period attendance data...')
+                        
+                        // Get current user
+                        const { data: { user: currentUser } } = await supabase.auth.getUser()
+                        
                         const { data, error } = await supabase
                           .from('period_attendance')
                           .select(`
@@ -1477,11 +1504,13 @@ const AdminDashboardNew = () => {
                               subject_name,
                               faculty_name
                             ),
-                            classes (
-                              name
+                            classes!inner (
+                              name,
+                              created_by
                             )
                           `)
                           .eq('is_marked', true)
+                          .or(`classes.created_by.eq.${currentUser?.id},classes.created_by.is.null`)
                           .order('date', { ascending: false })
                         
                         if (error) {
