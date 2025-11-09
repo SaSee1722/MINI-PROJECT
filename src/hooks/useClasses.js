@@ -9,6 +9,10 @@ export const useClasses = () => {
   const fetchClasses = async () => {
     try {
       setLoading(true)
+      
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser()
+      
       const { data, error } = await supabase
         .from('classes')
         .select(`
@@ -16,6 +20,7 @@ export const useClasses = () => {
           departments (id, name, code),
           users (id, name, email)
         `)
+        .or(`created_by.eq.${user?.id},created_by.is.null`)
         .order('name', { ascending: true })
 
       if (error) throw error
@@ -34,11 +39,15 @@ export const useClasses = () => {
 
   const addClass = async (name, departmentId) => {
     try {
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser()
+      
       const { data, error} = await supabase
         .from('classes')
         .insert([{ 
           name, 
-          department_id: departmentId
+          department_id: departmentId,
+          created_by: user?.id
         }])
         .select()
 

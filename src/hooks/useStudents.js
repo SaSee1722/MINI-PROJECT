@@ -9,6 +9,10 @@ export const useStudents = () => {
   const fetchStudents = async () => {
     try {
       setLoading(true)
+      
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser()
+      
       const { data, error } = await supabase
         .from('students')
         .select(`
@@ -16,6 +20,7 @@ export const useStudents = () => {
           departments (id, name, code),
           classes (id, name)
         `)
+        .or(`created_by.eq.${user?.id},created_by.is.null`)
         .order('name', { ascending: true })
 
       if (error) throw error
@@ -34,9 +39,15 @@ export const useStudents = () => {
 
   const addStudent = async (studentData) => {
     try {
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser()
+      
       const { data, error } = await supabase
         .from('students')
-        .insert([studentData])
+        .insert([{
+          ...studentData,
+          created_by: user?.id
+        }])
         .select()
 
       if (error) throw error

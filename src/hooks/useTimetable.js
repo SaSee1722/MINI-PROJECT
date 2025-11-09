@@ -30,10 +30,14 @@ export const useTimetable = (classId = null) => {
         return
       }
 
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser()
+
       const { data, error } = await supabase
         .from('timetable')
         .select('*')
         .eq('class_id', selectedClassId)
+        .or(`created_by.eq.${user?.id},created_by.is.null`)
         .order('day_of_week', { ascending: true })
         .order('period_number', { ascending: true })
 
@@ -59,9 +63,15 @@ export const useTimetable = (classId = null) => {
 
   const addTimetableEntry = async (entry) => {
     try {
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser()
+      
       const { data, error } = await supabase
         .from('timetable')
-        .insert([entry])
+        .insert([{
+          ...entry,
+          created_by: user?.id
+        }])
         .select()
 
       if (error) throw error

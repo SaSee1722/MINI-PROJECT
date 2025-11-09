@@ -34,11 +34,15 @@ const Signup = () => {
     setLoading(true)
 
     try {
+      // Get the production URL or fallback to current origin
+      const redirectUrl = window.location.origin + '/login'
+      
       // Create auth user with metadata
       const { data: authData, error: signUpError } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
         options: {
+          emailRedirectTo: redirectUrl,
           data: {
             name: formData.name,
             role: formData.role

@@ -9,9 +9,14 @@ export const useSessions = () => {
   const fetchSessions = async () => {
     try {
       setLoading(true)
+      
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser()
+      
       const { data, error } = await supabase
         .from('sessions')
         .select('*')
+        .or(`created_by.eq.${user?.id},created_by.is.null`)
         .order('start_time', { ascending: true })
 
       if (error) throw error
@@ -30,9 +35,17 @@ export const useSessions = () => {
 
   const addSession = async (name, startTime, endTime) => {
     try {
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser()
+      
       const { data, error } = await supabase
         .from('sessions')
-        .insert([{ name, start_time: startTime, end_time: endTime }])
+        .insert([{ 
+          name, 
+          start_time: startTime, 
+          end_time: endTime,
+          created_by: user?.id
+        }])
         .select()
 
       if (error) throw error

@@ -10,10 +10,14 @@ export const useDepartments = () => {
     try {
       setLoading(true)
       
-      // Fetch departments with student count
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser()
+      
+      // Fetch departments with student count (filtered by created_by)
       const { data: depts, error: deptError } = await supabase
         .from('departments')
         .select('*')
+        .or(`created_by.eq.${user?.id},created_by.is.null`)
         .order('name', { ascending: true })
 
       if (deptError) throw deptError
@@ -52,9 +56,17 @@ export const useDepartments = () => {
 
   const addDepartment = async (name, code, description) => {
     try {
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser()
+      
       const { data, error } = await supabase
         .from('departments')
-        .insert([{ name, code, description }])
+        .insert([{ 
+          name, 
+          code, 
+          description,
+          created_by: user?.id 
+        }])
         .select()
 
       if (error) throw error
