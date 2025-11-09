@@ -13,12 +13,27 @@ export const useDepartments = () => {
       // Get current user
       const { data: { user } } = await supabase.auth.getUser()
       
-      // Fetch departments with student count (filtered by created_by)
-      const { data: depts, error: deptError } = await supabase
+      // Get user profile to check department
+      const { data: profile } = await supabase
+        .from('users')
+        .select('role, department_id')
+        .eq('id', user?.id)
+        .single()
+      
+      let query = supabase
         .from('departments')
         .select('*')
-        .or(`created_by.eq.${user?.id},created_by.is.null`)
-        .order('name', { ascending: true })
+      
+      // Filter by department
+      if (profile?.department_id) {
+        // Admin and staff see only their department
+        query = query.eq('id', profile.department_id)
+      } else if (profile?.role === 'admin') {
+        // Fallback: If no department assigned, filter by created_by
+        query = query.or(`created_by.eq.${user?.id},created_by.is.null`)
+      }
+      
+      const { data: depts, error: deptError } = await query.order('name', { ascending: true })
 
       if (deptError) throw deptError
 

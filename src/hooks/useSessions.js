@@ -13,10 +13,10 @@ export const useSessions = () => {
       // Get current user
       const { data: { user } } = await supabase.auth.getUser()
       
-      // Get user profile to check role
+      // Get user profile to check role and department
       const { data: profile } = await supabase
         .from('users')
-        .select('role')
+        .select('role, department_id')
         .eq('id', user?.id)
         .single()
       
@@ -24,12 +24,12 @@ export const useSessions = () => {
         .from('sessions')
         .select('*')
       
-      // If admin, filter by created_by
-      // If staff, show all sessions
+      // Sessions are global (not department-specific)
+      // But filter by created_by for admin
       if (profile?.role === 'admin') {
         query = query.or(`created_by.eq.${user?.id},created_by.is.null`)
       }
-      // Staff sees all sessions (no filter)
+      // Staff sees all sessions (sessions are time periods, not department-specific)
       
       const { data, error } = await query.order('start_time', { ascending: true })
 

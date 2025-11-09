@@ -13,10 +13,10 @@ export const useStudents = () => {
       // Get current user
       const { data: { user } } = await supabase.auth.getUser()
       
-      // Get user profile to check role
+      // Get user profile to check role and department
       const { data: profile } = await supabase
         .from('users')
-        .select('role')
+        .select('role, department_id')
         .eq('id', user?.id)
         .single()
       
@@ -28,12 +28,15 @@ export const useStudents = () => {
           classes (id, name)
         `)
       
-      // If admin, filter by created_by
-      // If staff, show all students (they can mark attendance for any student)
-      if (profile?.role === 'admin') {
+      // Filter by department
+      if (profile?.department_id) {
+        // Both admin and staff see only their department's students
+        query = query.eq('department_id', profile.department_id)
+      } else if (profile?.role === 'admin') {
+        // Fallback: If no department assigned, filter by created_by
         query = query.or(`created_by.eq.${user?.id},created_by.is.null`)
       }
-      // Staff sees all students (no filter)
+      // If no department and not admin, show all (backward compatibility)
       
       const { data, error } = await query.order('name', { ascending: true })
 

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../services/supabase'
@@ -9,12 +9,32 @@ const Signup = () => {
     email: '',
     password: '',
     confirmPassword: '',
-    role: 'staff'
+    role: 'staff',
+    departmentId: ''
   })
+  const [departments, setDepartments] = useState([])
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
   const { signUp } = useAuth()
+
+  // Fetch departments on component mount
+  useEffect(() => {
+    const fetchDepartments = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('departments')
+          .select('id, name, code')
+          .order('name', { ascending: true })
+        
+        if (error) throw error
+        setDepartments(data || [])
+      } catch (err) {
+        console.error('Error fetching departments:', err)
+      }
+    }
+    fetchDepartments()
+  }, [])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -28,6 +48,11 @@ const Signup = () => {
 
     if (formData.password.length < 6) {
       setError('Password must be at least 6 characters')
+      return
+    }
+
+    if (!formData.departmentId) {
+      setError('Please select a department')
       return
     }
 
@@ -45,7 +70,8 @@ const Signup = () => {
           emailRedirectTo: redirectUrl,
           data: {
             name: formData.name,
-            role: formData.role
+            role: formData.role,
+            department_id: formData.departmentId
           }
         }
       })
@@ -72,7 +98,8 @@ const Signup = () => {
           .from('users')
           .update({ 
             role: formData.role,
-            name: formData.name 
+            name: formData.name,
+            department_id: formData.departmentId
           })
           .eq('email', formData.email)
 
@@ -173,8 +200,34 @@ const Signup = () => {
                 className="w-full px-5 py-4 bg-black border-2 border-white/30 text-white rounded-xl focus:border-white outline-none transition-all duration-300"
               >
                 <option value="staff">Staff</option>
-                <option value="admin">Admin</option>
+                <option value="admin">Admin (Dean)</option>
               </select>
+            </div>
+
+            <div>
+              <label htmlFor="departmentId" className="block text-sm font-bold text-white mb-2 uppercase tracking-wide">
+                Department
+              </label>
+              <select
+                id="departmentId"
+                name="departmentId"
+                value={formData.departmentId}
+                onChange={handleChange}
+                required
+                className="w-full px-5 py-4 bg-black border-2 border-white/30 text-white rounded-xl focus:border-white outline-none transition-all duration-300"
+              >
+                <option value="">Select Department</option>
+                {departments.map(dept => (
+                  <option key={dept.id} value={dept.id}>
+                    {dept.name} ({dept.code})
+                  </option>
+                ))}
+              </select>
+              <p className="mt-2 text-xs text-gray-400">
+                {formData.role === 'admin' 
+                  ? 'As Dean, you will manage this department' 
+                  : 'You will only see classes from this department'}
+              </p>
             </div>
 
             <div>
