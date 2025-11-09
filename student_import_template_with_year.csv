@@ -1,0 +1,6 @@
+roll_number,name,email,phone,department,class,date_of_birth,year,semester,admission_year
+CS001,John Doe,john@example.com,1234567890,Computer Science,CS-2024-A,2000-01-15,1,1,2024
+CS002,Jane Smith,jane@example.com,0987654321,Computer Science,CS-2024-A,2000-03-20,1,1,2024
+CS003,Bob Johnson,bob@example.com,1122334455,Computer Science,CS-2024-B,1999-12-10,2,3,2023
+CS004,Alice Williams,alice@example.com,2233445566,Computer Science,CS-2023-A,2001-05-22,2,4,2023
+CS005,Charlie Brown,charlie@example.com,3344556677,Electronics,EC-2024-A,2000-08-30,3,5,2022
