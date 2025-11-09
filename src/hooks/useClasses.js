@@ -13,15 +13,29 @@ export const useClasses = () => {
       // Get current user
       const { data: { user } } = await supabase.auth.getUser()
       
-      const { data, error } = await supabase
+      // Get user profile to check role
+      const { data: profile } = await supabase
+        .from('users')
+        .select('role')
+        .eq('id', user?.id)
+        .single()
+      
+      let query = supabase
         .from('classes')
         .select(`
           *,
           departments (id, name, code),
           users (id, name, email)
         `)
-        .or(`created_by.eq.${user?.id},created_by.is.null`)
-        .order('name', { ascending: true })
+      
+      // If admin, filter by created_by
+      // If staff, show all classes (they can mark attendance for any class)
+      if (profile?.role === 'admin') {
+        query = query.or(`created_by.eq.${user?.id},created_by.is.null`)
+      }
+      // Staff sees all classes (no filter)
+      
+      const { data, error } = await query.order('name', { ascending: true })
 
       if (error) throw error
       setClasses(data || [])

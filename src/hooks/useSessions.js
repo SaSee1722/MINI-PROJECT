@@ -13,11 +13,25 @@ export const useSessions = () => {
       // Get current user
       const { data: { user } } = await supabase.auth.getUser()
       
-      const { data, error } = await supabase
+      // Get user profile to check role
+      const { data: profile } = await supabase
+        .from('users')
+        .select('role')
+        .eq('id', user?.id)
+        .single()
+      
+      let query = supabase
         .from('sessions')
         .select('*')
-        .or(`created_by.eq.${user?.id},created_by.is.null`)
-        .order('start_time', { ascending: true })
+      
+      // If admin, filter by created_by
+      // If staff, show all sessions
+      if (profile?.role === 'admin') {
+        query = query.or(`created_by.eq.${user?.id},created_by.is.null`)
+      }
+      // Staff sees all sessions (no filter)
+      
+      const { data, error } = await query.order('start_time', { ascending: true })
 
       if (error) throw error
       setSessions(data || [])
