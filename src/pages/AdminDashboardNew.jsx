@@ -13,6 +13,7 @@ import BulkStudentImport from '../components/BulkStudentImport'
 import TimetableImageUpload from '../components/TimetableImageUpload'
 import InteractiveTimetable from '../components/InteractiveTimetable'
 import DepartmentOverview from '../components/DepartmentOverview'
+import Toast from '../components/Toast'
 import { generateAttendanceReport, generatePeriodAttendanceReport } from '../utils/pdfGenerator'
 
 // Animated Hero Text Component (inspired by Dario.io)
@@ -219,15 +220,38 @@ const AttendanceTrendChart = ({ attendanceData, totalStudents }) => {
       
       {/* Trend indicator - moved below chart */}
       <div className="mt-4 pt-4 border-t border-white/10">
-        <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
-          <div className="flex items-center gap-1 text-green-500">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-            </svg>
-            <span className="text-sm font-bold">+5.2%</span>
-          </div>
-          <span className="text-sm text-gray-400 whitespace-nowrap">from last week</span>
-        </div>
+        {(() => {
+          // Calculate trend: compare last 3 days avg vs previous 4 days avg
+          const recentDays = chartData.slice(-3)
+          const previousDays = chartData.slice(0, 4)
+          
+          const recentAvg = recentDays.reduce((sum, d) => sum + d.attendance, 0) / recentDays.length
+          const previousAvg = previousDays.reduce((sum, d) => sum + d.attendance, 0) / previousDays.length
+          
+          const trendPercent = previousAvg > 0 
+            ? ((recentAvg - previousAvg) / previousAvg * 100).toFixed(1)
+            : 0
+          
+          const isPositive = trendPercent >= 0
+          
+          return (
+            <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
+              <div className={`flex items-center gap-1 ${isPositive ? 'text-green-500' : 'text-red-500'}`}>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  {isPositive ? (
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                  ) : (
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" />
+                  )}
+                </svg>
+                <span className="text-sm font-bold">
+                  {isPositive ? '+' : ''}{trendPercent}%
+                </span>
+              </div>
+              <span className="text-sm text-gray-400 whitespace-nowrap">from last week</span>
+            </div>
+          )
+        })()}
       </div>
     </div>
   )
@@ -247,6 +271,7 @@ const AdminDashboardNew = () => {
   const [showForm, setShowForm] = useState({ dept: false, class: false, session: false, student: false, intern: false, suspended: false, timetable: false })
   const [periodAttendanceCount, setPeriodAttendanceCount] = useState(0)
   const [studentSearchQuery, setStudentSearchQuery] = useState('')
+  const [toast, setToast] = useState(null)
 
   // Fetch period attendance count
   const fetchPeriodAttendanceCount = async () => {
@@ -391,9 +416,9 @@ const AdminDashboardNew = () => {
                 type === 'timetable' ? { classId: '', dayOfWeek: '1', periodNumber: '1', subjectCode: '', subjectName: '', facultyName: '', facultyCode: '', isLab: false } :
                 { rollNumber: '', name: '', email: '', phone: '', departmentId: '', classId: '', dateOfBirth: '' }
       })
-      alert(`${type.charAt(0).toUpperCase() + type.slice(1)} added successfully!`)
+      setToast({ message: `${type.charAt(0).toUpperCase() + type.slice(1)} added successfully!`, type: 'success' })
     } else {
-      alert('Error: ' + result.error)
+      setToast({ message: 'Error: ' + result.error, type: 'error' })
     }
   }
 
@@ -409,7 +434,7 @@ const AdminDashboardNew = () => {
   // Generate Short Report
   const generateShortReport = async () => {
     if (!shortReportDept) {
-      alert('Please select a department')
+      setToast({ message: 'Please select a department', type: 'info' })
       return
     }
 
@@ -489,7 +514,7 @@ const AdminDashboardNew = () => {
       setShortReportData(reportData)
     } catch (error) {
       console.error('Error generating report:', error)
-      alert('Error generating report')
+      setToast({ message: 'Error generating report', type: 'error' })
     } finally {
       setLoadingReport(false)
     }
@@ -959,7 +984,7 @@ const AdminDashboardNew = () => {
                           ).join('\n')}\n\nReported by: Dean, ${shortReportData.department?.code}`
                           
                           navigator.clipboard.writeText(reportText)
-                          alert('Report copied to clipboard!')
+                          setToast({ message: 'Report copied to clipboard!', type: 'success' })
                         }}
                         className="px-6 py-3 bg-white text-black rounded-lg hover:bg-gray-200 transition-all duration-300 font-semibold uppercase tracking-wide"
                       >
@@ -1521,14 +1546,14 @@ const AdminDashboardNew = () => {
                         console.log('Fetched data:', data)
                         
                         if (!data || data.length === 0) {
-                          alert('No attendance records found')
+                          setToast({ message: 'No attendance records found', type: 'info' })
                           return
                         }
                         
                         await generatePeriodAttendanceReport(data, supabase)
                       } catch (err) {
                         console.error('Error details:', err)
-                        alert(`Error fetching attendance records: ${err.message}`)
+                        setToast({ message: `Error fetching attendance records: ${err.message}`, type: 'error' })
                       }
                     }} className="w-full px-6 py-3 bg-white text-black rounded-lg hover:bg-gray-200 transition-all duration-300 font-semibold uppercase tracking-wide">
                       Download Student Report PDF
@@ -1544,7 +1569,13 @@ const AdminDashboardNew = () => {
                       <div className="text-sm text-gray-400 mb-1">Total Staff Records</div>
                       <div className="text-3xl font-bold text-white">{staffAttendance.length}</div>
                     </div>
-                    <button onClick={() => staffAttendance.length > 0 ? generateAttendanceReport(staffAttendance, 'staff') : alert('No records')} className="w-full px-6 py-3 bg-white text-black rounded-lg hover:bg-gray-200 transition-all duration-300 font-semibold uppercase tracking-wide">
+                    <button onClick={() => {
+                      if (staffAttendance.length > 0) {
+                        generateAttendanceReport(staffAttendance, 'staff')
+                      } else {
+                        setToast({ message: 'No staff attendance records found', type: 'info' })
+                      }
+                    }} className="w-full px-6 py-3 bg-white text-black rounded-lg hover:bg-gray-200 transition-all duration-300 font-semibold uppercase tracking-wide">
                       Download Staff Report PDF
                     </button>
                   </div>
@@ -1554,6 +1585,15 @@ const AdminDashboardNew = () => {
           </div>
         </div>
       </div>
+      
+      {/* Toast Notification */}
+      {toast && (
+        <Toast 
+          message={toast.message} 
+          type={toast.type} 
+          onClose={() => setToast(null)} 
+        />
+      )}
     </div>
   )
 }
