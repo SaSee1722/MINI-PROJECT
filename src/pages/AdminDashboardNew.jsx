@@ -523,7 +523,6 @@ const AdminDashboardNew = () => {
   const tabs = [
     { id: 'overview', name: 'Overview' },
     { id: 'shortreport', name: 'Short Report' },
-    { id: 'departments', name: 'Departments' },
     { id: 'classes', name: 'Classes' },
     { id: 'timetable', name: 'Timetable' },
     { id: 'students', name: 'Students' },
@@ -574,7 +573,7 @@ const AdminDashboardNew = () => {
                 </div>
 
                 {/* Statistics Cards */}
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6">
                   {/* Total Students */}
                   <div className="group bg-gradient-to-br from-gray-900 to-gray-800 border border-white/20 rounded-xl p-3 sm:p-6 hover:border-green-500/50 hover:shadow-lg hover:shadow-green-500/20 transition-all duration-500 hover:scale-105 cursor-pointer">
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">
@@ -586,20 +585,6 @@ const AdminDashboardNew = () => {
                       </div>
                     </div>
                     <h3 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent group-hover:from-green-400 group-hover:to-emerald-400 transition-all duration-300 mb-1">{students.filter(s => s.status === 'active').length}</h3>
-                    <p className="text-xs sm:text-sm text-gray-500">Active</p>
-                  </div>
-
-                  {/* Total Departments */}
-                  <div className="group bg-gradient-to-br from-gray-900 to-gray-800 border border-white/20 rounded-xl p-3 sm:p-6 hover:border-blue-500/50 hover:shadow-lg hover:shadow-blue-500/20 transition-all duration-500 hover:scale-105 cursor-pointer">
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">
-                      <p className="text-gray-400 text-xs sm:text-sm font-semibold uppercase tracking-wide">Departments</p>
-                      <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-blue-500/20 to-cyan-500/20 group-hover:from-blue-500/30 group-hover:to-cyan-500/30 rounded-lg flex items-center justify-center transition-all duration-300">
-                        <svg className="w-4 h-4 sm:w-5 sm:h-5 text-white group-hover:text-blue-400 transition-colors duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                        </svg>
-                      </div>
-                    </div>
-                    <h3 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent group-hover:from-blue-400 group-hover:to-cyan-400 transition-all duration-300 mb-1">{departments.length}</h3>
                     <p className="text-xs sm:text-sm text-gray-500">Active</p>
                   </div>
 
@@ -844,18 +829,6 @@ const AdminDashboardNew = () => {
                   </div>
                 </div>
 
-                {/* Department Overview Link */}
-                <div className="bg-gray-900 border border-white/20 rounded-xl p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="text-lg font-bold text-white mb-1">Department Overview</h3>
-                      <p className="text-sm text-gray-400">View detailed attendance breakdown by department and class</p>
-                    </div>
-                    <button onClick={() => setActiveTab('departments')} className="px-4 py-2 bg-white text-black rounded-lg hover:bg-gray-200 transition-all duration-300 font-semibold text-sm uppercase tracking-wide">
-                      View Details
-                    </button>
-                  </div>
-                </div>
               </div>
             )}
 
