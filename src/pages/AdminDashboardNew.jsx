@@ -1070,12 +1070,11 @@ const AdminDashboardNew = () => {
                       <select 
                         value={forms.class.departmentId} 
                         onChange={(e) => setForms({ ...forms, class: { ...forms.class, departmentId: e.target.value }})} 
-                        className="px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-blue-600 opacity-75 cursor-not-allowed" 
-                        disabled
+                        className="px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-blue-600" 
                         required
                       >
                         <option value="">Select Department</option>
-                        {departments.map((dept) => (<option key={dept.id} value={dept.id}>{dept.name} (Your Department)</option>))}
+                        {departments.map((dept) => (<option key={dept.id} value={dept.id}>{dept.name}</option>))}
                       </select>
                     </div>
                     <div className="mt-4 flex gap-2">
@@ -1381,9 +1380,9 @@ const AdminDashboardNew = () => {
                     <div className="grid md:grid-cols-2 gap-4">
                       <input type="text" placeholder="Roll Number" value={forms.student.rollNumber} onChange={(e) => setForms({ ...forms, student: { ...forms.student, rollNumber: e.target.value }})} className="px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-600" required />
                       <input type="text" placeholder="Name" value={forms.student.name} onChange={(e) => setForms({ ...forms, student: { ...forms.student, name: e.target.value }})} className="px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-600" required />
-                      <select value={forms.student.departmentId} onChange={(e) => setForms({ ...forms, student: { ...forms.student, departmentId: e.target.value }})} className="px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-blue-600 opacity-75 cursor-not-allowed" disabled required>
+                      <select value={forms.student.departmentId} onChange={(e) => setForms({ ...forms, student: { ...forms.student, departmentId: e.target.value }})} className="px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-blue-600" required>
                         <option value="">Select Department</option>
-                        {departments.map((dept) => (<option key={dept.id} value={dept.id}>{dept.name} (Your Department)</option>))}
+                        {departments.map((dept) => (<option key={dept.id} value={dept.id}>{dept.name}</option>))}
                       </select>
                       <select value={forms.student.classId} onChange={(e) => setForms({ ...forms, student: { ...forms.student, classId: e.target.value }})} className="px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-blue-600" required>
                         <option value="">Select Class</option>
@@ -1403,9 +1402,9 @@ const AdminDashboardNew = () => {
                     <div className="grid md:grid-cols-2 gap-4">
                       <input type="text" placeholder="Roll Number" value={forms.intern.rollNumber} onChange={(e) => setForms({ ...forms, intern: { ...forms.intern, rollNumber: e.target.value }})} className="px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-600" required />
                       <input type="text" placeholder="Name" value={forms.intern.name} onChange={(e) => setForms({ ...forms, intern: { ...forms.intern, name: e.target.value }})} className="px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-600" required />
-                      <select value={forms.intern.departmentId} onChange={(e) => setForms({ ...forms, intern: { ...forms.intern, departmentId: e.target.value }})} className="px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-blue-600 opacity-75 cursor-not-allowed" disabled required>
+                      <select value={forms.intern.departmentId} onChange={(e) => setForms({ ...forms, intern: { ...forms.intern, departmentId: e.target.value }})} className="px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-blue-600" required>
                         <option value="">Select Department</option>
-                        {departments.map((dept) => (<option key={dept.id} value={dept.id}>{dept.name} (Your Department)</option>))}
+                        {departments.map((dept) => (<option key={dept.id} value={dept.id}>{dept.name}</option>))}
                       </select>
                       <select value={forms.intern.classId} onChange={(e) => setForms({ ...forms, intern: { ...forms.intern, classId: e.target.value }})} className="px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-blue-600" required>
                         <option value="">Select Class</option>
@@ -1425,9 +1424,9 @@ const AdminDashboardNew = () => {
                     <div className="grid md:grid-cols-2 gap-4">
                       <input type="text" placeholder="Roll Number" value={forms.suspended.rollNumber} onChange={(e) => setForms({ ...forms, suspended: { ...forms.suspended, rollNumber: e.target.value }})} className="px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-600" required />
                       <input type="text" placeholder="Name" value={forms.suspended.name} onChange={(e) => setForms({ ...forms, suspended: { ...forms.suspended, name: e.target.value }})} className="px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-600" required />
-                      <select value={forms.suspended.departmentId} onChange={(e) => setForms({ ...forms, suspended: { ...forms.suspended, departmentId: e.target.value }})} className="px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-blue-600 opacity-75 cursor-not-allowed" disabled required>
+                      <select value={forms.suspended.departmentId} onChange={(e) => setForms({ ...forms, suspended: { ...forms.suspended, departmentId: e.target.value }})} className="px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-blue-600" required>
                         <option value="">Select Department</option>
-                        {departments.map((dept) => (<option key={dept.id} value={dept.id}>{dept.name} (Your Department)</option>))}
+                        {departments.map((dept) => (<option key={dept.id} value={dept.id}>{dept.name}</option>))}
                       </select>
                       <select value={forms.suspended.classId} onChange={(e) => setForms({ ...forms, suspended: { ...forms.suspended, classId: e.target.value }})} className="px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-blue-600" required>
                         <option value="">Select Class</option>
