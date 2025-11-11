@@ -433,9 +433,16 @@ const AdminDashboardNew = () => {
 
   // Auto-set department when user profile and departments are loaded
   useEffect(() => {
-    if (userProfile?.department_id && departments.length > 0 && !shortReportDept) {
-      setShortReportDept(userProfile.department_id)
-      // Also set default department for forms
+    if (userProfile?.department_id && departments.length > 0) {
+      console.log('Setting department:', userProfile.department_id)
+      console.log('Available departments:', departments)
+      
+      // Set short report department
+      if (!shortReportDept) {
+        setShortReportDept(userProfile.department_id)
+      }
+      
+      // Set default department for all forms
       setForms(prev => ({
         ...prev,
         class: { ...prev.class, departmentId: userProfile.department_id },
@@ -444,7 +451,7 @@ const AdminDashboardNew = () => {
         suspended: { ...prev.suspended, departmentId: userProfile.department_id }
       }))
     }
-  }, [userProfile, departments, shortReportDept])
+  }, [userProfile, departments])
 
   // Generate Short Report
   const generateShortReport = async () => {
