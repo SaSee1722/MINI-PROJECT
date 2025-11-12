@@ -9,16 +9,41 @@ export const useAttendance = () => {
   const fetchAttendance = async () => {
     try {
       setLoading(true)
-      const { data, error } = await supabase
+      
+      // Get current user and their role
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        setAttendance([])
+        setLoading(false)
+        return
+      }
+
+      // Get user profile to check role and department
+      const { data: profile } = await supabase
+        .from('users')
+        .select('role, department_id')
+        .eq('id', user.id)
+        .single()
+
+      let query = supabase
         .from('staff_attendance')
         .select(`
           *,
-          users (id, name, email),
+          users!inner (id, name, email, department_id),
           sessions (id, name, start_time, end_time)
         `)
         .order('date', { ascending: false })
 
+      // Filter by department for admin users
+      if (profile?.role === 'admin' && profile?.department_id) {
+        console.log('🔍 Admin filtering staff attendance by department:', profile.department_id)
+        query = query.eq('users.department_id', profile.department_id)
+      }
+
+      const { data, error } = await query
+
       if (error) throw error
+      console.log('✅ Staff attendance records fetched:', data?.length || 0)
       setAttendance(data || [])
     } catch (err) {
       setError(err.message)

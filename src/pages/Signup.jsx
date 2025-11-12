@@ -14,6 +14,7 @@ const Signup = () => {
   })
   const [departments, setDepartments] = useState([])
   const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
   const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
   const { signUp } = useAuth()
@@ -110,8 +111,12 @@ const Signup = () => {
         console.log('Update attempt failed (may be normal):', updateErr)
       }
 
-      alert('Account created successfully! You can now login.')
-      navigate('/login')
+      // Show success message and redirect after a short delay
+      setError('') // Clear any errors
+      setSuccess('✅ Account created successfully! Redirecting to login...')
+      setTimeout(() => {
+        navigate('/login')
+      }, 2000)
     } catch (err) {
       console.error('Signup error:', err)
       setError('Failed to create account. Please check your internet connection and try again.')
@@ -148,10 +153,18 @@ const Signup = () => {
         <div className="bg-gray-900 border-2 border-white/20 p-8 rounded-2xl hover:border-white/40 transition-all duration-300 shadow-2xl">
           <form onSubmit={handleSubmit} className="space-y-5">
             {error && (
-              <div className="bg-white/10 border-2 border-white text-white px-4 py-3 rounded-xl animate-scaleIn shadow-lg">
+              <div className="bg-red-500/20 border-2 border-red-500 text-white px-4 py-3 rounded-xl animate-scaleIn shadow-lg">
                 <div className="flex items-center gap-2">
-                  <span className="font-bold">ERROR:</span>
+                  <span className="font-bold">❌ ERROR:</span>
                   <span>{error}</span>
+                </div>
+              </div>
+            )}
+
+            {success && (
+              <div className="bg-green-500/20 border-2 border-green-500 text-white px-4 py-3 rounded-xl animate-scaleIn shadow-lg">
+                <div className="flex items-center gap-2">
+                  <span className="font-bold">{success}</span>
                 </div>
               </div>
             )}

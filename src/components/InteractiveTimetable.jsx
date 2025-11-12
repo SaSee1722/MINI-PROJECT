@@ -331,7 +331,7 @@ const InteractiveTimetable = ({ classId, selectedDate }) => {
                               </div>
                             )}
                           </div>
-                        ) : (
+                        ) : userProfile?.role === 'admin' ? (
                           <button
                             onClick={(e) => {
                               e.stopPropagation()
@@ -346,6 +346,10 @@ const InteractiveTimetable = ({ classId, selectedDate }) => {
                               <span className="text-xs font-medium">Add Period</span>
                             </div>
                           </button>
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-gray-300">
+                            <span className="text-xs">No Period</span>
+                          </div>
                         )}
                       </td>
                     )

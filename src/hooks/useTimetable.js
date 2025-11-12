@@ -30,14 +30,12 @@ export const useTimetable = (classId = null) => {
         return
       }
 
-      // Get current user
-      const { data: { user } } = await supabase.auth.getUser()
-
+      // Fetch all timetable entries for the class (no user filtering)
+      // Staff should see ALL periods, not just ones they created
       const { data, error } = await supabase
         .from('timetable')
         .select('*')
         .eq('class_id', selectedClassId)
-        .or(`created_by.eq.${user?.id},created_by.is.null`)
         .order('day_of_week', { ascending: true })
         .order('period_number', { ascending: true })
 

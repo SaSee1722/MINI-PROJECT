@@ -276,19 +276,27 @@ const AdminDashboardNew = () => {
   // Fetch period attendance count
   const fetchPeriodAttendanceCount = async () => {
     try {
-      // Get current user
-      const { data: { user: currentUser } } = await supabase.auth.getUser()
+      // Wait for userProfile to load
+      if (!userProfile?.department_id) {
+        console.log('⏳ Waiting for user profile to load...')
+        setPeriodAttendanceCount(0)
+        return
+      }
+      
+      console.log('📊 Fetching period attendance count for department:', userProfile.department_id)
       
       const { count, error } = await supabase
         .from('period_attendance')
-        .select('*, classes!inner(created_by)', { count: 'exact', head: true })
+        .select('*, classes!inner(department_id)', { count: 'exact', head: true })
         .eq('is_marked', true)
-        .or(`classes.created_by.eq.${currentUser?.id},classes.created_by.is.null`)
+        .eq('classes.department_id', userProfile.department_id)
       
       if (error) {
         console.error('Error fetching count:', error)
         throw error
       }
+      
+      console.log('✅ Period attendance count:', count)
       setPeriodAttendanceCount(count || 0)
     } catch (err) {
       console.error('Error fetching period attendance count:', err)
@@ -296,10 +304,12 @@ const AdminDashboardNew = () => {
     }
   }
 
-  // Fetch count on component mount
+  // Fetch count when userProfile loads
   useEffect(() => {
-    fetchPeriodAttendanceCount()
-  }, [])
+    if (userProfile?.department_id) {
+      fetchPeriodAttendanceCount()
+    }
+  }, [userProfile])
   
   const [forms, setForms] = useState({
     dept: { name: '', code: '', description: '' },
@@ -433,32 +443,59 @@ const AdminDashboardNew = () => {
 
   // Auto-set department when user profile and departments are loaded
   useEffect(() => {
-    if (userProfile?.department_id && departments.length > 0) {
-      console.log('Setting department:', userProfile.department_id)
-      console.log('Available departments:', departments)
-      
-      // Set short report department
-      if (!shortReportDept) {
-        setShortReportDept(userProfile.department_id)
-      }
-      
-      // Set default department for all forms
-      setForms(prev => ({
-        ...prev,
-        class: { ...prev.class, departmentId: userProfile.department_id },
-        student: { ...prev.student, departmentId: userProfile.department_id },
-        intern: { ...prev.intern, departmentId: userProfile.department_id },
-        suspended: { ...prev.suspended, departmentId: userProfile.department_id }
-      }))
+    console.log('🔍 Checking user profile:', userProfile)
+    console.log('📋 Departments loaded:', departments.length)
+    
+    if (!userProfile) {
+      console.warn('⚠️ User profile not loaded yet')
+      return
     }
+    
+    if (!userProfile.department_id) {
+      console.error('❌ CRITICAL: User has no department_id! Please run SQL to fix.')
+      console.error('📝 Run this SQL: UPDATE users SET department_id = (SELECT id FROM departments WHERE code = \'CSE\') WHERE email = \'' + userProfile.email + '\';')
+      setToast({ 
+        message: 'Your account is not assigned to a department. Please contact administrator.', 
+        type: 'error' 
+      })
+      return
+    }
+    
+    if (departments.length === 0) {
+      console.warn('⚠️ Departments not loaded yet')
+      return
+    }
+    
+    console.log('🔧 Auto-setting department:', userProfile.department_id)
+    console.log('📋 Available departments:', departments)
+    
+    // Always set short report department
+    setShortReportDept(userProfile.department_id)
+    console.log('✅ Short report dept set to:', userProfile.department_id)
+    
+    // Set default department for all forms
+    setForms(prev => ({
+      ...prev,
+      class: { ...prev.class, departmentId: userProfile.department_id },
+      student: { ...prev.student, departmentId: userProfile.department_id },
+      intern: { ...prev.intern, departmentId: userProfile.department_id },
+      suspended: { ...prev.suspended, departmentId: userProfile.department_id }
+    }))
   }, [userProfile, departments])
 
   // Generate Short Report
   const generateShortReport = async () => {
+    console.log('🎯 Generate Report clicked')
+    console.log('📊 shortReportDept value:', shortReportDept)
+    console.log('📅 shortReportDate value:', shortReportDate)
+    
     if (!shortReportDept) {
+      console.error('❌ No department selected!')
       setToast({ message: 'Please select a department', type: 'info' })
       return
     }
+    
+    console.log('✅ Department is set, generating report...')
 
     setLoadingReport(true)
     try {
@@ -867,16 +904,10 @@ const AdminDashboardNew = () => {
                   <div className="grid md:grid-cols-3 gap-4 mb-4">
                     <div>
                       <label className="block text-sm font-bold text-white mb-2 uppercase tracking-wide">Department</label>
-                      <select 
-                        value={shortReportDept} 
-                        onChange={(e) => setShortReportDept(e.target.value)} 
-                        className="w-full px-4 py-3 bg-black border-2 border-white/30 text-white rounded-lg focus:border-white outline-none transition-all duration-300"
-                      >
-                        <option value="">Select Department</option>
-                        {departments.map((dept) => (
-                          <option key={dept.id} value={dept.id}>{dept.name}</option>
-                        ))}
-                      </select>
+                      <div className="px-4 py-3 bg-gray-900 border-2 border-white/30 rounded-lg text-gray-400 cursor-not-allowed opacity-75">
+                        {departments.find(d => d.id === shortReportDept)?.name || 'Computer Science and Engineering'}
+                      </div>
+                      <input type="hidden" value={shortReportDept} />
                     </div>
                     <div>
                       <label className="block text-sm font-bold text-white mb-2 uppercase tracking-wide">Date</label>
@@ -1074,15 +1105,10 @@ const AdminDashboardNew = () => {
                         className="px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-600" 
                         required 
                       />
-                      <select 
-                        value={forms.class.departmentId} 
-                        onChange={(e) => setForms({ ...forms, class: { ...forms.class, departmentId: e.target.value }})} 
-                        className="px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-blue-600" 
-                        required
-                      >
-                        <option value="">Select Department</option>
-                        {departments.map((dept) => (<option key={dept.id} value={dept.id}>{dept.name}</option>))}
-                      </select>
+                      <div className="px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-gray-500 cursor-not-allowed opacity-60">
+                        {departments.find(d => d.id === forms.class.departmentId)?.name || 'Computer Science and Engineering'}
+                      </div>
+                      <input type="hidden" name="departmentId" value={forms.class.departmentId} required />
                     </div>
                     <div className="mt-4 flex gap-2">
                       <button type="submit" className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">Save Class</button>
@@ -1387,10 +1413,10 @@ const AdminDashboardNew = () => {
                     <div className="grid md:grid-cols-2 gap-4">
                       <input type="text" placeholder="Roll Number" value={forms.student.rollNumber} onChange={(e) => setForms({ ...forms, student: { ...forms.student, rollNumber: e.target.value }})} className="px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-600" required />
                       <input type="text" placeholder="Name" value={forms.student.name} onChange={(e) => setForms({ ...forms, student: { ...forms.student, name: e.target.value }})} className="px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-600" required />
-                      <select value={forms.student.departmentId} onChange={(e) => setForms({ ...forms, student: { ...forms.student, departmentId: e.target.value }})} className="px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-blue-600" required>
-                        <option value="">Select Department</option>
-                        {departments.map((dept) => (<option key={dept.id} value={dept.id}>{dept.name}</option>))}
-                      </select>
+                      <div className="px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-gray-500 cursor-not-allowed opacity-60">
+                        {departments.find(d => d.id === forms.student.departmentId)?.name || 'Computer Science and Engineering'}
+                      </div>
+                      <input type="hidden" name="departmentId" value={forms.student.departmentId} required />
                       <select value={forms.student.classId} onChange={(e) => setForms({ ...forms, student: { ...forms.student, classId: e.target.value }})} className="px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-blue-600" required>
                         <option value="">Select Class</option>
                         {classes.map((cls) => (<option key={cls.id} value={cls.id}>{cls.name}</option>))}
@@ -1409,10 +1435,10 @@ const AdminDashboardNew = () => {
                     <div className="grid md:grid-cols-2 gap-4">
                       <input type="text" placeholder="Roll Number" value={forms.intern.rollNumber} onChange={(e) => setForms({ ...forms, intern: { ...forms.intern, rollNumber: e.target.value }})} className="px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-600" required />
                       <input type="text" placeholder="Name" value={forms.intern.name} onChange={(e) => setForms({ ...forms, intern: { ...forms.intern, name: e.target.value }})} className="px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-600" required />
-                      <select value={forms.intern.departmentId} onChange={(e) => setForms({ ...forms, intern: { ...forms.intern, departmentId: e.target.value }})} className="px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-blue-600" required>
-                        <option value="">Select Department</option>
-                        {departments.map((dept) => (<option key={dept.id} value={dept.id}>{dept.name}</option>))}
-                      </select>
+                      <div className="px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-gray-500 cursor-not-allowed opacity-60">
+                        {departments.find(d => d.id === forms.intern.departmentId)?.name || 'Computer Science and Engineering'}
+                      </div>
+                      <input type="hidden" name="departmentId" value={forms.intern.departmentId} required />
                       <select value={forms.intern.classId} onChange={(e) => setForms({ ...forms, intern: { ...forms.intern, classId: e.target.value }})} className="px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-blue-600" required>
                         <option value="">Select Class</option>
                         {classes.map((cls) => (<option key={cls.id} value={cls.id}>{cls.name}</option>))}
@@ -1431,10 +1457,10 @@ const AdminDashboardNew = () => {
                     <div className="grid md:grid-cols-2 gap-4">
                       <input type="text" placeholder="Roll Number" value={forms.suspended.rollNumber} onChange={(e) => setForms({ ...forms, suspended: { ...forms.suspended, rollNumber: e.target.value }})} className="px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-600" required />
                       <input type="text" placeholder="Name" value={forms.suspended.name} onChange={(e) => setForms({ ...forms, suspended: { ...forms.suspended, name: e.target.value }})} className="px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-600" required />
-                      <select value={forms.suspended.departmentId} onChange={(e) => setForms({ ...forms, suspended: { ...forms.suspended, departmentId: e.target.value }})} className="px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-blue-600" required>
-                        <option value="">Select Department</option>
-                        {departments.map((dept) => (<option key={dept.id} value={dept.id}>{dept.name}</option>))}
-                      </select>
+                      <div className="px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-gray-500 cursor-not-allowed opacity-60">
+                        {departments.find(d => d.id === forms.suspended.departmentId)?.name || 'Computer Science and Engineering'}
+                      </div>
+                      <input type="hidden" name="departmentId" value={forms.suspended.departmentId} required />
                       <select value={forms.suspended.classId} onChange={(e) => setForms({ ...forms, suspended: { ...forms.suspended, classId: e.target.value }})} className="px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-blue-600" required>
                         <option value="">Select Class</option>
                         {classes.map((cls) => (<option key={cls.id} value={cls.id}>{cls.name}</option>))}
@@ -1510,10 +1536,17 @@ const AdminDashboardNew = () => {
                     </div>
                     <button onClick={async () => {
                       try {
-                        console.log('Fetching period attendance data...')
+                        console.log('📊 Fetching period attendance data...')
                         
-                        // Get current user
+                        // Get current user and their department
                         const { data: { user: currentUser } } = await supabase.auth.getUser()
+                        
+                        if (!userProfile?.department_id) {
+                          setToast({ message: 'Your account is not assigned to a department', type: 'error' })
+                          return
+                        }
+                        
+                        console.log('🔍 Filtering by department:', userProfile.department_id)
                         
                         const { data, error } = await supabase
                           .from('period_attendance')
@@ -1526,11 +1559,11 @@ const AdminDashboardNew = () => {
                             ),
                             classes!inner (
                               name,
-                              created_by
+                              department_id
                             )
                           `)
                           .eq('is_marked', true)
-                          .or(`classes.created_by.eq.${currentUser?.id},classes.created_by.is.null`)
+                          .eq('classes.department_id', userProfile.department_id)
                           .order('date', { ascending: false })
                         
                         if (error) {

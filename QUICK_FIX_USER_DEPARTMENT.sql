@@ -23,3 +23,4 @@ WHERE u.email = 'salabadeshwaran@gmail.com';
 -- role: admin
 -- department: Computer Science and Engineering
 -- code: CSE
+pm
