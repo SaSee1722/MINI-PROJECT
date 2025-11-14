@@ -503,12 +503,19 @@ const AdminDashboardNew = () => {
   // Generate Short Report
   const generateShortReport = async () => {
     console.log('🎯 Generate Report clicked')
-    console.log('📊 shortReportStream value:', shortReportStream)
-    console.log('📅 shortReportDate value:', shortReportDate)
     
-    if (!shortReportStream) {
-      console.error('❌ No stream selected!')
-      setToast({ message: 'Please select a stream', type: 'info' })
+    // Determine which stream to use based on user role
+    const reportStream = userProfile?.role === 'admin' ? shortReportStream : userProfile?.stream_id
+    
+    console.log('📊 Report stream value:', reportStream)
+    console.log('📅 shortReportDate value:', shortReportDate)
+    console.log('👤 User role:', userProfile?.role)
+    console.log('📋 Is PC:', userProfile?.is_pc)
+    
+    if (!reportStream) {
+      console.error('❌ No stream available!')
+      const message = userProfile?.role === 'admin' ? 'Please select a stream' : 'Your account is not assigned to a stream'
+      setToast({ message, type: 'info' })
       return
     }
     
@@ -517,10 +524,10 @@ const AdminDashboardNew = () => {
     setLoadingReport(true)
     try {
       // Get all classes for the selected stream
-      const streamClasses = classes.filter(c => c.stream_id === shortReportStream)
+      const streamClasses = classes.filter(c => c.stream_id === reportStream)
       
       const reportData = {
-        stream: streams.find(s => s.id === shortReportStream),
+        stream: streams.find(s => s.id === reportStream),
         date: shortReportDate,
         classes: []
       }
@@ -596,15 +603,34 @@ const AdminDashboardNew = () => {
     }
   }
 
-  const tabs = [
-    { id: 'overview', name: 'Overview' },
-    { id: 'shortreport', name: 'Short Report' },
-    { id: 'classes', name: 'Classes' },
-    { id: 'timetable', name: 'Timetable' },
-    { id: 'students', name: 'Students' },
-    { id: 'users', name: 'Users' },
-    { id: 'reports', name: 'Reports' }
-  ]
+  // Define tabs based on user role and PC status
+  const getAvailableTabs = () => {
+    const baseTabs = [
+      { id: 'overview', name: 'Overview' },
+      { id: 'classes', name: 'Classes' },
+      { id: 'timetable', name: 'Timetable' },
+      { id: 'students', name: 'Students' }
+    ]
+
+    // Add Short Report for Admins and PCs
+    if (userProfile?.role === 'admin' || userProfile?.is_pc) {
+      baseTabs.splice(1, 0, { id: 'shortreport', name: 'Short Report' })
+    }
+
+    // Add Users tab for Admins only
+    if (userProfile?.role === 'admin') {
+      baseTabs.push({ id: 'users', name: 'Users' })
+    }
+
+    // Add Reports tab for Admins only
+    if (userProfile?.role === 'admin') {
+      baseTabs.push({ id: 'reports', name: 'Reports' })
+    }
+
+    return baseTabs
+  }
+
+  const tabs = getAvailableTabs()
 
   return (
     <div className="min-h-screen bg-black text-white">
@@ -914,19 +940,44 @@ const AdminDashboardNew = () => {
                 {/* Header */}
                 <div>
                   <h2 className="text-3xl font-bold text-white mb-2">Short Report</h2>
-                  <p className="text-gray-400">Daily attendance summary by stream and class</p>
+                  <p className="text-gray-400">
+                    {userProfile?.role === 'admin' 
+                      ? 'Daily attendance summary by stream and class' 
+                      : `Daily attendance summary for ${streams.find(s => s.id === userProfile?.stream_id)?.code || 'your stream'}`
+                    }
+                  </p>
                 </div>
 
                 {/* Report Form */}
                 <div className="bg-gray-900 border border-white/20 rounded-xl p-6">
                   <div className="grid md:grid-cols-3 gap-4 mb-4">
-                    <div>
-                      <label className="block text-sm font-bold text-white mb-2 uppercase tracking-wide">Stream</label>
-                      <div className="px-4 py-3 bg-gray-900 border-2 border-white/30 rounded-lg text-gray-400 cursor-not-allowed opacity-75">
-                        {streams.find(s => s.id === shortReportStream)?.name || 'Computer Science and Engineering'}
+                    {userProfile?.role === 'admin' ? (
+                      // Admin: Show stream selector
+                      <div>
+                        <label className="block text-sm font-bold text-white mb-2 uppercase tracking-wide">Stream</label>
+                        <select
+                          value={shortReportStream}
+                          onChange={(e) => setShortReportStream(e.target.value)}
+                          className="w-full px-4 py-3 bg-gray-800 border-2 border-white/30 rounded-lg text-white focus:border-blue-500 focus:outline-none"
+                        >
+                          <option value="">Select Stream</option>
+                          {streams.map(stream => (
+                            <option key={stream.id} value={stream.id}>
+                              {stream.name}
+                            </option>
+                          ))}
+                        </select>
                       </div>
-                      <input type="hidden" value={shortReportStream} />
-                    </div>
+                    ) : (
+                      // PC: Show locked stream
+                      <div>
+                        <label className="block text-sm font-bold text-white mb-2 uppercase tracking-wide">Stream</label>
+                        <div className="px-4 py-3 bg-gray-900 border-2 border-white/30 rounded-lg text-gray-400 cursor-not-allowed opacity-75">
+                          {streams.find(s => s.id === userProfile?.stream_id)?.name || 'Computer Science and Engineering'}
+                        </div>
+                        <input type="hidden" value={userProfile?.stream_id} />
+                      </div>
+                    )}
                     <div>
                       <label className="block text-sm font-bold text-white mb-2 uppercase tracking-wide">Date</label>
                       <input 
@@ -954,11 +1005,16 @@ const AdminDashboardNew = () => {
                     {/* Report Header */}
                     <div className="mb-6 pb-4 border-b border-white/20">
                       <div className="flex items-center gap-2 mb-2">
-                        <span className="text-2xl">☀️</span>
-                        <h3 className="text-xl font-bold text-white">Department: {shortReportData.department?.name}</h3>
+                        <span className="text-2xl">🎓</span>
+                        <h3 className="text-xl font-bold text-white">Stream: {shortReportData.stream?.name}</h3>
+                        {userProfile?.is_pc && userProfile?.role !== 'admin' && (
+                          <span className="ml-2 px-2 py-1 bg-purple-900 text-purple-200 rounded text-xs font-semibold">
+                            📋 PC Report
+                          </span>
+                        )}
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="text-xl">☀️</span>
+                        <span className="text-xl">📅</span>
                         <p className="text-gray-400">Date: {new Date(shortReportData.date).toLocaleDateString('en-GB')}</p>
                       </div>
                     </div>
@@ -971,7 +1027,7 @@ const AdminDashboardNew = () => {
                           <div className="flex items-center gap-2 mb-4">
                             <span className="text-xl">➕</span>
                             <h4 className="text-lg font-bold text-white">
-                              {cls.name}: {shortReportData.department?.code} {cls.present}/{cls.total}
+                              {cls.name}: {shortReportData.stream?.code} {cls.present}/{cls.total}
                             </h4>
                           </div>
 
