@@ -66,17 +66,29 @@ const BulkStudentImport = ({ onImportComplete, streams, classes }) => {
   }
 
   const findStreamId = (streamName) => {
+    console.log('🔍 Looking for stream:', streamName, 'Available streams:', streams.map(s => ({id: s.id, name: s.name, code: s.code})))
+    
     const stream = streams.find(s => 
       s.name.toLowerCase() === streamName.toLowerCase() || 
-      s.code.toLowerCase() === streamName.toLowerCase()
+      s.code.toLowerCase() === streamName.toLowerCase() ||
+      s.name.toLowerCase().includes(streamName.toLowerCase()) ||
+      streamName.toLowerCase().includes(s.code.toLowerCase())
     )
+    
+    console.log('✅ Found stream:', stream?.id || 'NOT FOUND')
     return stream ? stream.id : null
   }
 
   const findClassId = (className) => {
+    console.log('🔍 Looking for class:', className, 'Available classes:', classes.map(c => ({id: c.id, name: c.name})))
+    
     const cls = classes.find(c => 
-      c.name.toLowerCase() === className.toLowerCase()
+      c.name.toLowerCase() === className.toLowerCase() ||
+      c.name.toLowerCase().includes(className.toLowerCase()) ||
+      className.toLowerCase().includes(c.name.toLowerCase())
     )
+    
+    console.log('✅ Found class:', cls?.id || 'NOT FOUND')
     return cls?.id
   }
 
@@ -92,6 +104,10 @@ const BulkStudentImport = ({ onImportComplete, streams, classes }) => {
     try {
       const text = await file.text()
       const students = parseCSV(text)
+
+      console.log('📄 Parsed CSV data:', students)
+      console.log('📊 Available streams:', streams)
+      console.log('🏫 Available classes:', classes)
 
       if (students.length === 0) {
         showError('No valid data found in CSV. Please check the file format.')
@@ -156,10 +172,14 @@ const BulkStudentImport = ({ onImportComplete, streams, classes }) => {
       if (errors.length > 0) {
         showWarning(`Found ${errors.length} validation errors. Check console for details.`)
         console.warn('Import validation errors:', errors)
+        
+        // Show first few errors in the UI
+        const firstErrors = errors.slice(0, 3).join('\n')
+        showError(`Validation errors:\n${firstErrors}${errors.length > 3 ? '\n...and more (check console)' : ''}`)
       }
 
       if (validStudents.length === 0) {
-        showError('No valid students to import after validation')
+        showError(`No valid students to import after validation. Found ${students.length} rows but none passed validation. Check console for details.`)
         setImporting(false)
         return
       }
