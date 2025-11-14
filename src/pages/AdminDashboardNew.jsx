@@ -364,8 +364,22 @@ const AdminDashboardNew = () => {
         }
         
         console.log('🔧 Final class name:', finalClassName)
+        
+        // Check if class already exists before adding
+        const existingClass = classes.find(c => c.name === finalClassName)
+        if (existingClass) {
+          setToast({ message: `Class "${finalClassName}" already exists in this stream!`, type: 'warning' })
+          return
+        }
+        
         result = await addClass(finalClassName, forms.class.streamId)
         console.log('✅ Class add result:', result)
+        
+        // If duplicate key error, provide helpful message
+        if (!result.success && result.error.includes('duplicate key')) {
+          setToast({ message: `Class "${finalClassName}" already exists. Try a different name.`, type: 'error' })
+          return
+        }
         break
       case 'student':
         result = await addStudent({
@@ -466,8 +480,14 @@ const AdminDashboardNew = () => {
       
       // Manual refresh for specific types to ensure UI updates
       if (type === 'class') {
+        console.log('🔄 Refreshing classes after successful addition...')
         await refetchClasses()
         fetchPeriodAttendanceCount() // Also refresh attendance count
+        
+        // Debug: Log classes after refresh
+        setTimeout(() => {
+          console.log('📋 Classes after refresh:', classes.length, classes.map(c => c.name))
+        }, 1000)
       } else if (type === 'student') {
         await refetchStudents()
         fetchPeriodAttendanceCount() // Also refresh attendance count
@@ -766,6 +786,18 @@ const AdminDashboardNew = () => {
                       <div className="flex-1">
                         <h3 className="text-lg font-bold text-white mb-2">Generate Reports</h3>
                         <p className="text-sm text-gray-400 mb-4">Create detailed attendance reports for specific periods or departments.</p>
+                        <div className="flex gap-2">
+                          <button onClick={() => setShowForm({...showForm, class: true})} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-300 font-semibold text-sm uppercase tracking-wide">
+                            + Add Class
+                          </button>
+                          <button onClick={async () => {
+                            console.log('🔄 Manual refresh classes...')
+                            await refetchClasses()
+                            console.log('📋 Classes after manual refresh:', classes.length, classes.map(c => ({name: c.name, stream_id: c.stream_id})))
+                          }} className="px-3 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-all duration-300 font-semibold text-xs">
+                            🔄 Refresh
+                          </button>
+                        </div>
                         <button onClick={() => setActiveTab('reports')} className="px-4 py-2 bg-white text-black rounded-lg hover:bg-gray-200 transition-all duration-300 font-semibold text-sm uppercase tracking-wide">
                           Go to Reports
                         </button>
@@ -1168,7 +1200,16 @@ const AdminDashboardNew = () => {
               <div>
                 <div className="flex justify-between items-center mb-6">
                   <h2 className="text-2xl font-bold">Classes</h2>
-                  <button onClick={() => setShowForm({ ...showForm, class: !showForm.class })} className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700">+ Add Class</button>
+                  <div className="flex gap-2">
+                    <button onClick={() => setShowForm({ ...showForm, class: !showForm.class })} className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700">+ Add Class</button>
+                    <button onClick={async () => {
+                      console.log('🔄 Manual refresh classes...')
+                      await refetchClasses()
+                      console.log('📋 Classes after manual refresh:', classes.length, classes.map(c => ({name: c.name, stream_id: c.stream_id})))
+                    }} className="px-3 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-all duration-300 font-semibold text-xs">
+                      🔄 Refresh
+                    </button>
+                  </div>
                 </div>
 
                 {showForm.class && (
