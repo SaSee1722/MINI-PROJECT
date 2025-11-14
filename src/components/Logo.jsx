@@ -1,6 +1,6 @@
 import React from 'react'
 
-// Modern Professional Logo for Smart Attendance
+// Modern Professional Logo for Smart Presence
 const Logo = ({ size = 'default', variant = 'full', className = '' }) => {
   const sizes = {
     small: { width: 32, height: 32, text: 'text-lg' },
@@ -54,11 +54,11 @@ const Logo = ({ size = 'default', variant = 'full', className = '' }) => {
     )
   }
 
-  // Minimal Variant (Just SA)
+  // Minimal Variant (Just SP)
   if (variant === 'minimal') {
     return (
       <div className={`flex items-center justify-center bg-gradient-to-br from-green-500 to-emerald-600 rounded-lg ${className}`} style={{ width, height }}>
-        <span className={`${text} font-black text-black`}>SA</span>
+        <span className={`${text} font-black text-black`}>SP</span>
       </div>
     )
   }
@@ -126,7 +126,7 @@ const Logo = ({ size = 'default', variant = 'full', className = '' }) => {
           SMART
         </span>
         <span className={`${text} font-black tracking-tight text-white`}>
-          ATTENDANCE
+          PRESENCE
         </span>
       </div>
     </div>

@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import { supabase } from '../services/supabase'
+import { useToast } from '../hooks/useToast'
+import { ToastContainer } from './Toast'
 
 const SimpleBulkTimetable = ({ onImportComplete, classes }) => {
   const [selectedClass, setSelectedClass] = useState('')
@@ -7,6 +9,7 @@ const SimpleBulkTimetable = ({ onImportComplete, classes }) => {
     { day: '1', period: '1', subjectCode: '', subjectName: '', facultyName: '', facultyCode: '', isLab: false }
   ])
   const [importing, setImporting] = useState(false)
+  const { toasts, removeToast, showSuccess, showError, showWarning } = useToast()
 
   const days = [
     { value: '1', label: 'Monday' },
@@ -61,12 +64,12 @@ const SimpleBulkTimetable = ({ onImportComplete, classes }) => {
     e.preventDefault()
     
     if (!selectedClass) {
-      alert('Please select a class')
+      showWarning('Please select a class')
       return
     }
 
     if (periods.some(p => !p.subjectCode || !p.subjectName || !p.facultyName)) {
-      alert('Please fill in all required fields (Subject Code, Subject Name, Faculty Name)')
+      showWarning('Please fill in all required fields (Subject Code, Subject Name, Faculty Name)')
       return
     }
 
@@ -102,7 +105,7 @@ const SimpleBulkTimetable = ({ onImportComplete, classes }) => {
     }
 
     setImporting(false)
-    alert(`Import complete!\n✅ Success: ${successCount}\n❌ Failed: ${failCount}`)
+    showSuccess(`🎉 Import complete! Success: ${successCount}, Failed: ${failCount}`, 5000)
     
     if (successCount > 0) {
       setSelectedClass('')
@@ -329,6 +332,9 @@ const SimpleBulkTimetable = ({ onImportComplete, classes }) => {
           <li>• Faculty Code is optional, all other fields are required</li>
         </ul>
       </div>
+      
+      {/* Toast Container */}
+      <ToastContainer toasts={toasts} removeToast={removeToast} />
     </div>
   )
 }

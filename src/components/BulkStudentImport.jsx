@@ -1,22 +1,23 @@
 import { useState } from 'react'
 import { supabase } from '../services/supabase'
+import { useToast } from '../hooks/useToast'
+import { ToastContainer } from './Toast'
 
-const BulkStudentImport = ({ onImportComplete, departments, classes }) => {
+const BulkStudentImport = ({ onImportComplete, streams, classes }) => {
   const [file, setFile] = useState(null)
   const [importing, setImporting] = useState(false)
-  const [error, setError] = useState('')
-  const [success, setSuccess] = useState('')
+  const { toasts, removeToast, showSuccess, showError, showWarning, showInfo } = useToast()
 
   const handleFileChange = (e) => {
     const selectedFile = e.target.files[0]
     if (selectedFile) {
       const fileType = selectedFile.name.split('.').pop().toLowerCase()
       if (fileType !== 'csv') {
-        setError('Please upload a CSV file')
+        showError('Please upload a CSV file only')
         return
       }
       setFile(selectedFile)
-      setError('')
+      showSuccess('CSV file selected successfully!')
     }
   }
 
@@ -64,12 +65,12 @@ const BulkStudentImport = ({ onImportComplete, departments, classes }) => {
     return students
   }
 
-  const findDepartmentId = (deptName) => {
-    const dept = departments.find(d => 
-      d.name.toLowerCase() === deptName.toLowerCase() || 
-      d.code.toLowerCase() === deptName.toLowerCase()
+  const findStreamId = (streamName) => {
+    const stream = streams.find(s => 
+      s.name.toLowerCase() === streamName.toLowerCase() || 
+      s.code.toLowerCase() === streamName.toLowerCase()
     )
-    return dept?.id
+    return stream ? stream.id : null
   }
 
   const findClassId = (className) => {
@@ -81,20 +82,19 @@ const BulkStudentImport = ({ onImportComplete, departments, classes }) => {
 
   const handleImport = async () => {
     if (!file) {
-      setError('Please select a file')
+      showWarning('Please select a CSV file first')
       return
     }
 
     setImporting(true)
-    setError('')
-    setSuccess('')
+    showInfo('Starting import process...')
 
     try {
       const text = await file.text()
       const students = parseCSV(text)
 
       if (students.length === 0) {
-        setError('No valid data found in CSV. Please check the file format.')
+        showError('No valid data found in CSV. Please check the file format.')
         setImporting(false)
         return
       }
@@ -110,14 +110,14 @@ const BulkStudentImport = ({ onImportComplete, departments, classes }) => {
         // Required fields - check with flexible field names
         const rollNumber = student.roll_number || student.rollnumber || student.roll
         const name = student.name || student.student_name || student.studentname
-        const department = student.department || student.dept
+        const stream = student.stream || student.department || student.dept
         const className = student.class || student.class_name || student.classname
         
-        if (!rollNumber || !name || !department || !className) {
+        if (!rollNumber || !name || !stream || !className) {
           const missing = []
           if (!rollNumber) missing.push('roll_number')
           if (!name) missing.push('name')
-          if (!department) missing.push('department')
+          if (!stream) missing.push('stream')
           if (!className) missing.push('class')
           errors.push(`Row ${rowNum}: Missing required fields: ${missing.join(', ')}`)
           continue
@@ -126,14 +126,14 @@ const BulkStudentImport = ({ onImportComplete, departments, classes }) => {
         // Update student object with normalized field names
         student.roll_number = rollNumber
         student.name = name
-        student.department = department
+        student.stream = stream
         student.class = className
 
-        const departmentId = findDepartmentId(student.department)
+        const streamId = findStreamId(student.stream)
         const classId = findClassId(student.class)
 
-        if (!departmentId) {
-          errors.push(`Row ${rowNum}: Department '${student.department}' not found`)
+        if (!streamId) {
+          errors.push(`Row ${rowNum}: Stream '${student.stream}' not found`)
           continue
         }
 
@@ -147,18 +147,19 @@ const BulkStudentImport = ({ onImportComplete, departments, classes }) => {
           name: student.name,
           email: null,
           phone: null,
-          department_id: departmentId,
+          stream_id: streamId,
           class_id: classId,
           date_of_birth: null
         })
       }
 
       if (errors.length > 0) {
-        setError(`Import errors:\n${errors.join('\n')}`)
+        showWarning(`Found ${errors.length} validation errors. Check console for details.`)
+        console.warn('Import validation errors:', errors)
       }
 
       if (validStudents.length === 0) {
-        setError('No valid students to import')
+        showError('No valid students to import after validation')
         setImporting(false)
         return
       }
@@ -173,7 +174,7 @@ const BulkStudentImport = ({ onImportComplete, departments, classes }) => {
         throw insertError
       }
 
-      setSuccess(`Successfully imported ${data.length} students!`)
+      showSuccess(`🎉 Successfully imported ${data.length} students!`, 5000)
       setFile(null)
       
       // Reset file input
@@ -184,21 +185,18 @@ const BulkStudentImport = ({ onImportComplete, departments, classes }) => {
       if (onImportComplete) {
         onImportComplete()
       }
-
-      // Clear success message after 3 seconds
-      setTimeout(() => setSuccess(''), 3000)
     } catch (err) {
       console.error('Import error:', err)
-      setError(`Import failed: ${err.message}`)
+      showError(`Import failed: ${err.message}`)
     } finally {
       setImporting(false)
     }
   }
 
   const downloadTemplate = () => {
-    const template = 'roll_number,name,department,class\n' +
-                     'CS001,John Doe,Computer Science,I YR CSE-A\n' +
-                     'CS002,Jane Smith,CS,I YR CSE-A'
+    const template = 'roll_number,name,stream,class\n' +
+                     'CS001,John Doe,CSE,I YR CSE-A\n' +
+                     'CS002,Jane Smith,CSE,I YR CSE-A'
     
     const blob = new Blob([template], { type: 'text/csv' })
     const url = window.URL.createObjectURL(blob)
@@ -212,7 +210,7 @@ const BulkStudentImport = ({ onImportComplete, departments, classes }) => {
   return (
     <div className="glass-card p-6 animate-scaleIn hover-lift">
       <h3 className="text-2xl font-bold mb-4 gradient-text flex items-center gap-2">
-        <span className="text-3xl">📊</span>
+        <span className="text-3xl">👥</span>
         Bulk Import Students
       </h3>
       
@@ -228,7 +226,7 @@ const BulkStudentImport = ({ onImportComplete, departments, classes }) => {
             ✓ name
           </span>
           <span className="px-3 py-1 bg-white rounded-full text-xs font-semibold text-blue-600 shadow-sm">
-            ✓ department
+            ✓ stream
           </span>
           <span className="px-3 py-1 bg-white rounded-full text-xs font-semibold text-blue-600 shadow-sm">
             ✓ class
@@ -260,23 +258,7 @@ const BulkStudentImport = ({ onImportComplete, departments, classes }) => {
           </div>
         )}
 
-        {error && (
-          <div className="bg-red-50 border-2 border-red-300 text-red-700 px-4 py-3 rounded-xl text-sm whitespace-pre-line animate-scaleIn shadow-lg">
-            <div className="flex items-start gap-2">
-              <span className="text-xl">⚠️</span>
-              <div>{error}</div>
-            </div>
-          </div>
-        )}
-
-        {success && (
-          <div className="bg-green-50 border-2 border-green-300 text-green-700 px-4 py-3 rounded-xl text-sm animate-scaleIn shadow-lg">
-            <div className="flex items-center gap-2">
-              <span className="text-xl">✅</span>
-              <span>{success}</span>
-            </div>
-          </div>
-        )}
+        {/* Toast notifications will appear in top-right corner */}
 
         <button
           onClick={handleImport}
@@ -300,21 +282,9 @@ const BulkStudentImport = ({ onImportComplete, departments, classes }) => {
         </button>
       </div>
 
-      <div className="mt-6 p-4 glass rounded-xl">
-        <h4 className="font-bold text-sm mb-3 flex items-center gap-2">
-          <span>📝</span>
-          CSV Format Example:
-        </h4>
-        <pre className="text-xs bg-white bg-opacity-50 p-4 rounded-lg overflow-x-auto border border-gray-200">
-roll_number,name,department,class
-CS001,John Doe,Computer Science,I YR CSE-A
-CS002,Jane Smith,CS,I YR CSE-A
-        </pre>
-        <div className="mt-3 text-xs text-gray-600 space-y-1">
-          <p>💡 <strong>Tip:</strong> Department and Class must match existing records</p>
-          <p>💡 <strong>Tip:</strong> You can use department code (e.g., "CS" instead of "Computer Science")</p>
-        </div>
-      </div>
+      
+      {/* Toast Container */}
+      <ToastContainer toasts={toasts} removeToast={removeToast} />
     </div>
   )
 }

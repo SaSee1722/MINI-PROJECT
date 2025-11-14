@@ -5,12 +5,15 @@ import { useStudents } from '../hooks/useStudents'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../services/supabase'
 import AttendanceCheckbox from './AttendanceCheckbox'
+import { useToast } from '../hooks/useToast'
+import { ToastContainer } from './Toast'
 
 const InteractiveTimetable = ({ classId, selectedDate }) => {
   const { user, userProfile } = useAuth()
   const { timetable, periodTimes, loading, addTimetableEntry, refetch: refetchTimetable } = useTimetable(classId)
   const { periodAttendance, markPeriodAttendance, getPeriodStudentAttendance, refetch: refetchAttendance } = usePeriodAttendance(classId, selectedDate)
   const { students } = useStudents()
+  const { toasts, removeToast, showSuccess, showError, showWarning } = useToast()
   
   const [selectedPeriod, setSelectedPeriod] = useState(null)
   const [attendanceMap, setAttendanceMap] = useState({})
@@ -107,6 +110,12 @@ const InteractiveTimetable = ({ classId, selectedDate }) => {
     const entry = getTimetableEntry(dayIndex, periodNum)
     if (!entry) return
 
+    // Check if user is admin - admins can only view, not mark attendance
+    if (userProfile?.role === 'admin') {
+      showWarning('Admin cannot perform attendance marking action')
+      return
+    }
+
     const isMarked = isPeriodMarked(dayIndex, periodNum)
     
     if (isMarked) {
@@ -127,7 +136,7 @@ const InteractiveTimetable = ({ classId, selectedDate }) => {
         }
       }
     } else {
-      // Show mark attendance modal
+      // Show mark attendance modal (only for staff)
       setSelectedPeriod({ ...entry, dayIndex, periodNum })
       setAttendanceMap({})
       setIsAlternativeStaff(false)
@@ -159,7 +168,7 @@ const InteractiveTimetable = ({ classId, selectedDate }) => {
 
     // Validate alternative staff selection if enabled
     if (isAlternativeStaff && !selectedAlternativeStaff) {
-      alert('Please select an alternative staff member')
+      showWarning('Please select an alternative staff member')
       return
     }
 
@@ -170,7 +179,7 @@ const InteractiveTimetable = ({ classId, selectedDate }) => {
     }))
 
     if (studentAttendance.length === 0) {
-      alert('Please mark attendance for at least one student')
+      showWarning('Please mark attendance for at least one student')
       return
     }
 
@@ -197,9 +206,9 @@ const InteractiveTimetable = ({ classId, selectedDate }) => {
 
     if (result.success) {
       const message = isAlternativeStaff 
-        ? `Attendance marked successfully by alternative staff: ${alternativeStaffData.staffName}!`
-        : 'Attendance marked successfully!'
-      alert(message)
+        ? `🎉 Attendance marked successfully by alternative staff: ${alternativeStaffData.staffName}!`
+        : '🎉 Attendance marked successfully!'
+      showSuccess(message)
       setShowAttendanceModal(false)
       setSelectedPeriod(null)
       setAttendanceMap({})
@@ -207,7 +216,7 @@ const InteractiveTimetable = ({ classId, selectedDate }) => {
       setSelectedAlternativeStaff('')
       refetchAttendance(classId, selectedDate)
     } else {
-      alert('Error: ' + result.error)
+      showError('Error: ' + result.error)
     }
   }
 
@@ -230,7 +239,7 @@ const InteractiveTimetable = ({ classId, selectedDate }) => {
       // Explicitly refetch the timetable to ensure UI updates
       await refetchTimetable(classId)
       
-      alert('Period added successfully!')
+      showSuccess('🎉 Period added successfully!')
       setShowAddPeriodModal(false)
       setNewPeriodData({
         dayOfWeek: 1,
@@ -242,7 +251,7 @@ const InteractiveTimetable = ({ classId, selectedDate }) => {
         isLab: false
       })
     } else {
-      alert('Error: ' + result.error)
+      showError('Error: ' + result.error)
     }
   }
 
@@ -269,7 +278,11 @@ const InteractiveTimetable = ({ classId, selectedDate }) => {
       <div className="bg-white rounded-lg shadow-lg overflow-hidden">
         <div className="p-6 bg-gradient-to-r from-primary-600 to-primary-700">
           <h2 className="text-2xl font-bold text-white">Weekly Timetable</h2>
-          <p className="text-primary-100 mt-1">Click on any period to mark attendance</p>
+          {userProfile?.role === 'admin' ? (
+            <p className="text-primary-100 mt-1">📋 Admin View: Timetable management only. Use staff account for attendance marking.</p>
+          ) : (
+            <p className="text-primary-100 mt-1">Click on any period to mark attendance</p>
+          )}
         </div>
 
         <div className="overflow-x-auto">
@@ -299,12 +312,16 @@ const InteractiveTimetable = ({ classId, selectedDate }) => {
                     return (
                       <td 
                         key={period} 
-                        className={`border border-gray-300 px-3 py-2 cursor-pointer transition-all ${
-                          entry 
-                            ? isMarked 
-                              ? 'bg-green-100 hover:bg-green-200' 
-                              : 'bg-blue-50 hover:bg-blue-100'
-                            : 'bg-gray-100'
+                        className={`border border-gray-300 px-3 py-2 transition-all ${
+                          userProfile?.role === 'admin' 
+                            ? entry 
+                              ? 'bg-gray-50 cursor-default' 
+                              : 'bg-gray-100 cursor-default'
+                            : entry 
+                              ? isMarked 
+                                ? 'bg-green-100 hover:bg-green-200 cursor-pointer' 
+                                : 'bg-blue-50 hover:bg-blue-100 cursor-pointer'
+                              : 'bg-gray-100 cursor-pointer'
                         }`}
                         onClick={() => entry && handlePeriodClick(dayIndex, period)}
                       >
@@ -770,6 +787,9 @@ const InteractiveTimetable = ({ classId, selectedDate }) => {
           </div>
         </div>
       )}
+      
+      {/* Toast Container */}
+      <ToastContainer toasts={toasts} removeToast={removeToast} />
     </div>
   )
 }

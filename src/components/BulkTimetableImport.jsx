@@ -1,11 +1,14 @@
 import { useState } from 'react'
 import { supabase } from '../services/supabase'
+import { useToast } from '../hooks/useToast'
+import { ToastContainer } from './Toast'
 
 const BulkTimetableImport = ({ onImportComplete, classes }) => {
   const [file, setFile] = useState(null)
   const [importing, setImporting] = useState(false)
   const [preview, setPreview] = useState([])
   const [errors, setErrors] = useState([])
+  const { toasts, removeToast, showSuccess, showError, showWarning } = useToast()
 
   const handleFileChange = (e) => {
     const selectedFile = e.target.files[0]
@@ -13,7 +16,7 @@ const BulkTimetableImport = ({ onImportComplete, classes }) => {
       setFile(selectedFile)
       parseCSV(selectedFile)
     } else {
-      alert('Please select a valid CSV file')
+      showError('Please select a valid CSV file')
     }
   }
 
@@ -89,7 +92,7 @@ const BulkTimetableImport = ({ onImportComplete, classes }) => {
 
   const handleImport = async () => {
     if (preview.length === 0) {
-      alert('No valid data to import')
+      showWarning('No valid data to import')
       return
     }
 
@@ -125,7 +128,7 @@ const BulkTimetableImport = ({ onImportComplete, classes }) => {
     }
 
     setImporting(false)
-    alert(`Import complete!\nSuccess: ${successCount}\nFailed: ${failCount}`)
+    showSuccess(`🎉 Import complete! Success: ${successCount}, Failed: ${failCount}`, 5000)
     
     if (successCount > 0) {
       setFile(null)
@@ -263,6 +266,9 @@ II CSE A,Tuesday,1,DS LAB,Data Structures Lab,MR. KUMAR,KU,Yes`
           </div>
         </div>
       )}
+      
+      {/* Toast Container */}
+      <ToastContainer toasts={toasts} removeToast={removeToast} />
     </div>
   )
 }

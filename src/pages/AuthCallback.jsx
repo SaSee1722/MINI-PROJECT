@@ -56,7 +56,7 @@ const AuthCallback = () => {
         {/* Logo */}
         <div className="text-center mb-8">
           <div className="mb-4">
-            <h1 className="text-5xl font-bold text-white tracking-tight mb-2">SMART ATTENDANCE</h1>
+            <h1 className="text-5xl font-bold text-white tracking-tight mb-2">SMART PRESENCE</h1>
             <div className="h-1 w-32 bg-white mx-auto"></div>
           </div>
         </div>

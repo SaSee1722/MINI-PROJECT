@@ -16,10 +16,12 @@ const Navbar = () => {
         <div className="flex justify-between items-center h-20">
           {/* Logo */}
           <div className="flex items-center space-x-3 cursor-pointer transition-all duration-300 hover:opacity-80" onClick={() => navigate('/')}>
-            <div className="w-12 h-12 bg-white rounded-lg flex items-center justify-center shadow-lg">
-              <div className="w-8 h-8 bg-black rounded"></div>
+            <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center shadow-lg">
+              <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+              </svg>
             </div>
-            <span className="text-2xl font-bold text-white tracking-tight">SMART ATTENDANCE</span>
+            <span className="text-2xl font-bold text-white tracking-tight">SMART PRESENCE</span>
           </div>
 
           {/* User Info & Actions */}

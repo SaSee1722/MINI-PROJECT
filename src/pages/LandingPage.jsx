@@ -114,7 +114,7 @@ const LandingPage = () => {
           <div className="flex items-center justify-between">
             <Link to="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity duration-300">
               <Logo size="default" variant="icon" />
-              <span className="text-lg sm:text-xl font-bold tracking-tight">SMART ATTENDANCE</span>
+              <span className="text-lg sm:text-xl font-bold tracking-tight">SMART PRESENCE</span>
             </Link>
             <div className="flex items-center gap-3 sm:gap-4">
               <Link 
@@ -394,10 +394,10 @@ const LandingPage = () => {
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-3">
               <Logo size="default" variant="icon" />
-              <span className="text-lg font-bold">SMART ATTENDANCE</span>
+              <span className="text-lg font-bold">SMART PRESENCE</span>
             </div>
             <div className="text-gray-400 text-sm sm:text-base text-center md:text-left">
-              © 2025 Smart Attendance. All rights reserved.
+              © 2025 Smart Presence. All rights reserved.
             </div>
           </div>
         </div>

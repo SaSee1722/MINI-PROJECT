@@ -11,8 +11,11 @@ import { Users, UserCheck, UserX, TrendingUp, FileText, Settings, Plus, Calendar
 import { generatePeriodAttendanceReport } from '../utils/pdfGenerator'
 import BulkStudentImport from '../components/BulkStudentImport'
 import SimpleBulkTimetable from '../components/SimpleBulkTimetable'
+import SmartTimetableBuilder from '../components/SmartTimetableBuilder'
 import InteractiveTimetable from '../components/InteractiveTimetable'
 import DepartmentOverview from '../components/DepartmentOverview'
+import { useToast } from '../hooks/useToast'
+import { ToastContainer } from '../components/Toast'
 
 const ModernAdminDashboard = () => {
   const { userProfile, signOut } = useAuth()
@@ -22,8 +25,9 @@ const ModernAdminDashboard = () => {
   const { sessions, addSession, deleteSession } = useSessions()
   const { attendance: staffAttendance } = useAttendance()
   const { timetable, addTimetableEntry, deleteTimetableEntry } = useTimetable()
+  const { toasts, removeToast, showSuccess, showError } = useToast()
   
-  const [activeTab, setActiveTab] = useState('overview')
+  const [activeTab, setActiveTab] = useState('timetable')
   const [showForm, setShowForm] = useState({ dept: false, class: false, session: false, student: false, intern: false, suspended: false, timetable: false })
   const [selectedClassForTimetable, setSelectedClassForTimetable] = useState('')
   const [timetableDate, setTimetableDate] = useState(new Date().toISOString().split('T')[0])
@@ -248,9 +252,9 @@ const ModernAdminDashboard = () => {
       if (type === 'intern') setForms({ ...forms, intern: { rollNumber: '', name: '', email: '', phone: '', departmentId: '', classId: '', dateOfBirth: '' }})
       if (type === 'suspended') setForms({ ...forms, suspended: { rollNumber: '', name: '', email: '', phone: '', departmentId: '', classId: '', dateOfBirth: '' }})
       if (type === 'session') setForms({ ...forms, session: { name: '', startTime: '', endTime: '' }})
-      alert('Added successfully!')
+      showSuccess('🎉 Added successfully!')
     } else {
-      alert('Error: ' + result.error)
+      showError('Error: ' + result.error)
     }
   }
 
@@ -306,6 +310,16 @@ const ModernAdminDashboard = () => {
           >
             <FileText size={20} />
             <span>Reports</span>
+          </button>
+          
+          <button
+            onClick={() => setActiveTab('timetable')}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg mb-2 transition-colors ${
+              activeTab === 'timetable' ? 'bg-gray-800 text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+            }`}
+          >
+            <Calendar size={20} />
+            <span>Timetable</span>
           </button>
         </nav>
         
@@ -614,6 +628,90 @@ const ModernAdminDashboard = () => {
           </div>
         )}
 
+        {activeTab === 'timetable' && (
+          <div className="p-8">
+            <div className="mb-8">
+              <h2 className="text-3xl font-bold text-white mb-2">📚 Timetable Management</h2>
+              <p className="text-gray-400">Create and manage class timetables with ease</p>
+            </div>
+
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+              {/* Smart Timetable Builder */}
+              <div className="xl:col-span-2">
+                <SmartTimetableBuilder 
+                  classes={classes} 
+                  onImportComplete={() => {
+                    // Refresh any timetable data if needed
+                    console.log('Timetable import completed')
+                  }} 
+                />
+              </div>
+
+              {/* Interactive Timetable Viewer */}
+              {selectedClassForTimetable && (
+                <div className="xl:col-span-2">
+                  <div className="bg-gray-900 rounded-xl p-6 border border-gray-700">
+                    <h3 className="text-xl font-bold text-white mb-4">📅 Interactive Timetable</h3>
+                    <div className="mb-4 flex gap-4">
+                      <select
+                        value={selectedClassForTimetable}
+                        onChange={(e) => setSelectedClassForTimetable(e.target.value)}
+                        className="px-4 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white focus:border-blue-500 focus:outline-none"
+                      >
+                        <option value="">Select Class</option>
+                        {classes.map(cls => (
+                          <option key={cls.id} value={cls.id}>{cls.name}</option>
+                        ))}
+                      </select>
+                      <input
+                        type="date"
+                        value={timetableDate}
+                        onChange={(e) => setTimetableDate(e.target.value)}
+                        className="px-4 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white focus:border-blue-500 focus:outline-none"
+                      />
+                    </div>
+                    <InteractiveTimetable 
+                      classId={selectedClassForTimetable} 
+                      selectedDate={timetableDate} 
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Quick Actions */}
+              <div className="bg-gray-900 rounded-xl p-6 border border-gray-700">
+                <h3 className="text-xl font-bold text-white mb-4">⚡ Quick Actions</h3>
+                <div className="space-y-3">
+                  <button
+                    onClick={() => setSelectedClassForTimetable(classes[0]?.id || '')}
+                    className="w-full px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold"
+                  >
+                    📅 View Timetable
+                  </button>
+                  <button
+                    onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+                    className="w-full px-4 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-semibold"
+                  >
+                    🚀 Create New Timetable
+                  </button>
+                </div>
+              </div>
+
+              {/* Tips & Help */}
+              <div className="bg-gray-900 rounded-xl p-6 border border-gray-700">
+                <h3 className="text-xl font-bold text-white mb-4">💡 Tips</h3>
+                <ul className="text-gray-300 space-y-2 text-sm">
+                  <li>• Use <strong>Smart Timetable Builder</strong> for quick week creation</li>
+                  <li>• Create Monday schedule first, then copy to other days</li>
+                  <li>• Use <strong>Smart Fill</strong> for common subject templates</li>
+                  <li>• Interactive viewer allows attendance marking</li>
+                  <li>• All changes are saved automatically</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Footer */}
         <div className="bg-gray-950 border-t border-gray-800 px-8 py-4 text-center text-sm text-gray-400">
           <p>© 2025 SmartAttend. All rights reserved.</p>
@@ -626,6 +724,9 @@ const ModernAdminDashboard = () => {
           </div>
         </div>
       </div>
+      
+      {/* Toast Container */}
+      <ToastContainer toasts={toasts} removeToast={removeToast} />
     </div>
   )
 }

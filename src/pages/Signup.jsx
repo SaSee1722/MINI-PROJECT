@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../services/supabase'
+import { useToast } from '../hooks/useToast'
+import { ToastContainer } from '../components/Toast'
 
 const Signup = () => {
   const [formData, setFormData] = useState({
@@ -10,50 +12,38 @@ const Signup = () => {
     password: '',
     confirmPassword: '',
     role: 'staff',
-    departmentId: ''
+    streamId: ''
   })
-  const [departments, setDepartments] = useState([])
-  const [error, setError] = useState('')
-  const [success, setSuccess] = useState('')
   const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
   const { signUp } = useAuth()
+  const { toasts, removeToast, showSuccess, showError, showWarning } = useToast()
 
-  // Fetch departments on component mount
-  useEffect(() => {
-    const fetchDepartments = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('departments')
-          .select('id, name, code')
-          .order('name', { ascending: true })
-        
-        if (error) throw error
-        setDepartments(data || [])
-      } catch (err) {
-        console.error('Error fetching departments:', err)
-      }
-    }
-    fetchDepartments()
-  }, [])
+  // Define the 5 streams
+  const streams = [
+    { id: 'cse', name: 'Computer Science and Engineering', code: 'CSE' },
+    { id: 'ece', name: 'Electronics and Communication Engineering', code: 'ECE' },
+    { id: 'eee', name: 'Electrical and Electronics Engineering', code: 'EEE' },
+    { id: 'mech', name: 'Mechanical Engineering', code: 'MECH' },
+    { id: 'civil', name: 'Civil Engineering', code: 'CIVIL' }
+  ]
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    setError('')
 
     // Validation
     if (formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match')
+      showError('Passwords do not match')
       return
     }
 
     if (formData.password.length < 6) {
-      setError('Password must be at least 6 characters')
+      showError('Password must be at least 6 characters')
       return
     }
 
     if (!formData.departmentId) {
-      setError('Please select a department')
+      showWarning('Please select a department')
       return
     }
 
@@ -72,19 +62,19 @@ const Signup = () => {
           data: {
             name: formData.name,
             role: formData.role,
-            department_id: formData.departmentId
+            stream_id: formData.streamId
           }
         }
       })
       
       if (signUpError) {
-        setError(signUpError.message)
+        showError(signUpError.message)
         setLoading(false)
         return
       }
 
       if (!authData.user) {
-        setError('Failed to create account. Please try again.')
+        showError('Failed to create account. Please try again.')
         setLoading(false)
         return
       }
@@ -100,7 +90,7 @@ const Signup = () => {
           .update({ 
             role: formData.role,
             name: formData.name,
-            department_id: formData.departmentId
+            stream_id: formData.streamId
           })
           .eq('email', formData.email)
 
@@ -112,14 +102,13 @@ const Signup = () => {
       }
 
       // Show success message and redirect after a short delay
-      setError('') // Clear any errors
-      setSuccess('✅ Account created successfully! Redirecting to login...')
+      showSuccess('🎉 Account created successfully! Redirecting to login...', 3000)
       setTimeout(() => {
         navigate('/login')
       }, 2000)
     } catch (err) {
       console.error('Signup error:', err)
-      setError('Failed to create account. Please check your internet connection and try again.')
+      showError('Failed to create account. Please check your internet connection and try again.')
     } finally {
       setLoading(false)
     }
@@ -143,7 +132,7 @@ const Signup = () => {
         {/* Logo */}
         <div className="text-center mb-8">
           <div className="mb-4">
-            <h1 className="text-5xl font-bold text-white tracking-tight mb-2">SMART ATTENDANCE</h1>
+            <h1 className="text-5xl font-bold text-white tracking-tight mb-2">SMART PRESENCE</h1>
             <div className="h-1 w-32 bg-white mx-auto"></div>
           </div>
           <p className="text-gray-400 text-lg">Create your account to get started</p>
@@ -152,22 +141,7 @@ const Signup = () => {
         {/* Signup Form */}
         <div className="bg-gray-900 border-2 border-white/20 p-8 rounded-2xl hover:border-white/40 transition-all duration-300 shadow-2xl">
           <form onSubmit={handleSubmit} className="space-y-5">
-            {error && (
-              <div className="bg-red-500/20 border-2 border-red-500 text-white px-4 py-3 rounded-xl animate-scaleIn shadow-lg">
-                <div className="flex items-center gap-2">
-                  <span className="font-bold">❌ ERROR:</span>
-                  <span>{error}</span>
-                </div>
-              </div>
-            )}
-
-            {success && (
-              <div className="bg-green-500/20 border-2 border-green-500 text-white px-4 py-3 rounded-xl animate-scaleIn shadow-lg">
-                <div className="flex items-center gap-2">
-                  <span className="font-bold">{success}</span>
-                </div>
-              </div>
-            )}
+            {/* Toast notifications will appear in top-right corner */}
 
             <div>
               <label htmlFor="name" className="block text-sm font-bold text-white mb-2 uppercase tracking-wide">
@@ -218,28 +192,28 @@ const Signup = () => {
             </div>
 
             <div>
-              <label htmlFor="departmentId" className="block text-sm font-bold text-white mb-2 uppercase tracking-wide">
-                Department
+              <label htmlFor="streamId" className="block text-sm font-bold text-white mb-2 uppercase tracking-wide">
+                Stream
               </label>
               <select
-                id="departmentId"
-                name="departmentId"
-                value={formData.departmentId}
+                id="streamId"
+                name="streamId"
+                value={formData.streamId}
                 onChange={handleChange}
                 required
                 className="w-full px-5 py-4 bg-black border-2 border-white/30 text-white rounded-xl focus:border-white outline-none transition-all duration-300"
               >
-                <option value="">Select Department</option>
-                {departments.map(dept => (
-                  <option key={dept.id} value={dept.id}>
-                    {dept.name} ({dept.code})
+                <option value="">Select Stream</option>
+                {streams.map(stream => (
+                  <option key={stream.id} value={stream.id}>
+                    {stream.name} ({stream.code})
                   </option>
                 ))}
               </select>
               <p className="mt-2 text-xs text-gray-400">
                 {formData.role === 'admin' 
-                  ? 'As Dean, you will manage this department' 
-                  : 'You will only see classes from this department'}
+                  ? 'As Dean, you will manage this stream' 
+                  : 'You will only see classes from this stream'}
               </p>
             </div>
 
@@ -309,6 +283,9 @@ const Signup = () => {
           </div>
         </div>
       </div>
+      
+      {/* Toast Container */}
+      <ToastContainer toasts={toasts} removeToast={removeToast} />
     </div>
   )
 }

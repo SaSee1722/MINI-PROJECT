@@ -1,14 +1,16 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { useToast } from '../hooks/useToast'
+import { ToastContainer } from '../components/Toast'
 
 const Login = () => {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
   const { signIn, user, userProfile } = useAuth()
+  const { toasts, removeToast, showSuccess, showError, showInfo } = useToast()
 
   // Redirect if already logged in
   useEffect(() => {
@@ -23,14 +25,14 @@ const Login = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    setError('')
     setLoading(true)
+    showInfo('Signing you in...')
 
     try {
       const { data, error } = await signIn(email, password)
       
       if (error) {
-        setError(error.message)
+        showError(error.message)
         setLoading(false)
         return
       }
@@ -48,13 +50,13 @@ const Login = () => {
           // Navigation will happen via useEffect
         } else if (attempts >= maxAttempts) {
           clearInterval(checkProfile)
-          setError('Login successful but your profile could not be loaded. Please contact support or check the browser console for details.')
+          showError('Login successful but your profile could not be loaded. Please contact support.')
           setLoading(false)
         }
       }, 500)
     } catch (err) {
       console.error('Login error:', err)
-      setError('An unexpected error occurred')
+      showError('An unexpected error occurred')
       setLoading(false)
     }
   }
@@ -70,7 +72,7 @@ const Login = () => {
         {/* Logo */}
         <div className="text-center mb-8">
           <div className="mb-4">
-            <h1 className="text-5xl font-bold text-white tracking-tight mb-2">SMART ATTENDANCE</h1>
+            <h1 className="text-5xl font-bold text-white tracking-tight mb-2">SMART PRESENCE</h1>
             <div className="h-1 w-32 bg-white mx-auto"></div>
           </div>
           <p className="text-gray-400 text-lg">Welcome back! Sign in to continue</p>
@@ -79,14 +81,7 @@ const Login = () => {
         {/* Login Form */}
         <div className="bg-gray-900 border-2 border-white/20 p-8 rounded-2xl hover:border-white/40 transition-all duration-300 shadow-2xl">
           <form onSubmit={handleSubmit} className="space-y-6">
-            {error && (
-              <div className="bg-white/10 border-2 border-white text-white px-4 py-3 rounded-xl animate-scaleIn shadow-lg">
-                <div className="flex items-center gap-2">
-                  <span className="font-bold">ERROR:</span>
-                  <span>{error}</span>
-                </div>
-              </div>
-            )}
+            {/* Toast notifications will appear in top-right corner */}
 
             <div>
               <label htmlFor="email" className="block text-sm font-bold text-white mb-2 uppercase tracking-wide">
@@ -152,6 +147,9 @@ const Login = () => {
           </div>
         </div>
       </div>
+      
+      {/* Toast Container */}
+      <ToastContainer toasts={toasts} removeToast={removeToast} />
     </div>
   )
 }

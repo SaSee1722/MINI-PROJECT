@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { supabase } from '../services/supabase'
 import Tesseract from 'tesseract.js'
+import { useToast } from '../hooks/useToast'
+import { ToastContainer } from './Toast'
 
 const TimetableImageUpload = ({ onImportComplete, classes }) => {
   const [selectedClass, setSelectedClass] = useState('')
@@ -10,6 +12,7 @@ const TimetableImageUpload = ({ onImportComplete, classes }) => {
   const [extractedData, setExtractedData] = useState(null)
   const [ocrProgress, setOcrProgress] = useState(0)
   const [importing, setImporting] = useState(false)
+  const { toasts, removeToast, showSuccess, showError, showWarning, showInfo } = useToast()
 
   const handleImageChange = (e) => {
     const file = e.target.files[0]
@@ -26,7 +29,7 @@ const TimetableImageUpload = ({ onImportComplete, classes }) => {
 
   const processImage = async () => {
     if (!image || !selectedClass) {
-      alert('Please select a class and upload an image')
+      showWarning('Please select a class and upload an image')
       return
     }
 
@@ -54,11 +57,13 @@ const TimetableImageUpload = ({ onImportComplete, classes }) => {
       setExtractedData(parsedData)
       
       if (parsedData.length === 0) {
-        alert('Could not extract timetable data from the image. Please make sure the image is clear and contains a timetable.')
+        showWarning('Could not extract timetable data from the image. Please make sure the image is clear and contains a timetable.')
+      } else {
+        showSuccess(`🎉 Successfully extracted ${parsedData.length} timetable entries!`)
       }
     } catch (error) {
       console.error('OCR Error:', error)
-      alert('Failed to process image. Please try again with a clearer image.')
+      showError('Failed to process image. Please try again with a clearer image.')
     } finally {
       setProcessing(false)
       setOcrProgress(0)
@@ -234,7 +239,7 @@ const TimetableImageUpload = ({ onImportComplete, classes }) => {
 
   const handleImport = async () => {
     if (!extractedData || extractedData.length === 0) {
-      alert('No data to import')
+      showWarning('No data to import')
       return
     }
 
@@ -270,7 +275,7 @@ const TimetableImageUpload = ({ onImportComplete, classes }) => {
     }
 
     setImporting(false)
-    alert(`Import complete!\n✅ Success: ${successCount}\n❌ Failed: ${failCount}`)
+    showSuccess(`🎉 Import complete! Success: ${successCount}, Failed: ${failCount}`, 5000)
     
     if (successCount > 0) {
       setSelectedClass('')
@@ -460,6 +465,9 @@ const TimetableImageUpload = ({ onImportComplete, classes }) => {
           <li>• The system works best with structured timetable formats</li>
         </ul>
       </div>
+      
+      {/* Toast Container */}
+      <ToastContainer toasts={toasts} removeToast={removeToast} />
     </div>
   )
 }

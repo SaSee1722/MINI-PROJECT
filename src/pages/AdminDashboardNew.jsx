@@ -1,17 +1,18 @@
 import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useStudents } from '../hooks/useStudents'
-import { useDepartments } from '../hooks/useDepartments'
+// import { useDepartments } from '../hooks/useDepartments' // Replaced with streams
 import { useClasses } from '../hooks/useClasses'
 import { useSessions } from '../hooks/useSessions'
 import { useStudentAttendance } from '../hooks/useStudentAttendance'
 import { useAttendance } from '../hooks/useAttendance'
 import { useTimetable } from '../hooks/useTimetable'
+import { useUsers } from '../hooks/useUsers'
 import { supabase } from '../services/supabase'
 import Navbar from '../components/Navbar'
 import BulkStudentImport from '../components/BulkStudentImport'
-import TimetableImageUpload from '../components/TimetableImageUpload'
 import InteractiveTimetable from '../components/InteractiveTimetable'
+import AdminTimetableView from '../components/AdminTimetableView'
 import DepartmentOverview from '../components/DepartmentOverview'
 import Toast from '../components/Toast'
 import { generateAttendanceReport, generatePeriodAttendanceReport } from '../utils/pdfGenerator'
@@ -260,15 +261,24 @@ const AttendanceTrendChart = ({ attendanceData, totalStudents }) => {
 const AdminDashboardNew = () => {
   const { userProfile } = useAuth()
   const { students, addStudent, deleteStudent, refetch: refetchStudents } = useStudents()
-  const { departments, addDepartment, deleteDepartment } = useDepartments()
   const { classes, addClass, deleteClass } = useClasses()
   const { sessions, addSession, deleteSession } = useSessions()
   const { attendance: studentAttendance } = useStudentAttendance()
   const { attendance: staffAttendance } = useAttendance()
   const { timetable, addTimetableEntry, deleteTimetableEntry } = useTimetable()
+  const { users, onlineUsers, deleteUser, deleteMyAccount, updateUser, appointAsPC, removePC } = useUsers()
+
+  // Define the 5 streams
+  const streams = [
+    { id: 'cse', name: 'Computer Science and Engineering', code: 'CSE' },
+    { id: 'ece', name: 'Electronics and Communication Engineering', code: 'ECE' },
+    { id: 'eee', name: 'Electrical and Electronics Engineering', code: 'EEE' },
+    { id: 'mech', name: 'Mechanical Engineering', code: 'MECH' },
+    { id: 'civil', name: 'Civil Engineering', code: 'CIVIL' }
+  ]
 
   const [activeTab, setActiveTab] = useState('overview')
-  const [showForm, setShowForm] = useState({ dept: false, class: false, session: false, student: false, intern: false, suspended: false, timetable: false })
+  const [showForm, setShowForm] = useState({ dept: false, class: false, session: false, student: false, intern: false, suspended: false, timetable: false, bulkTimetable: false })
   const [periodAttendanceCount, setPeriodAttendanceCount] = useState(0)
   const [studentSearchQuery, setStudentSearchQuery] = useState('')
   const [toast, setToast] = useState(null)
@@ -277,19 +287,19 @@ const AdminDashboardNew = () => {
   const fetchPeriodAttendanceCount = async () => {
     try {
       // Wait for userProfile to load
-      if (!userProfile?.department_id) {
+      if (!userProfile?.stream_id) {
         console.log('⏳ Waiting for user profile to load...')
         setPeriodAttendanceCount(0)
         return
       }
       
-      console.log('📊 Fetching period attendance count for department:', userProfile.department_id)
+      console.log('📊 Fetching period attendance count for stream:', userProfile.stream_id)
       
       const { count, error } = await supabase
         .from('period_attendance')
-        .select('*, classes!inner(department_id)', { count: 'exact', head: true })
+        .select('*, classes!inner(stream_id)', { count: 'exact', head: true })
         .eq('is_marked', true)
-        .eq('classes.department_id', userProfile.department_id)
+        .eq('classes.stream_id', userProfile.stream_id)
       
       if (error) {
         console.error('Error fetching count:', error)
@@ -306,17 +316,17 @@ const AdminDashboardNew = () => {
 
   // Fetch count when userProfile loads
   useEffect(() => {
-    if (userProfile?.department_id) {
+    if (userProfile?.stream_id) {
       fetchPeriodAttendanceCount()
     }
   }, [userProfile])
   
   const [forms, setForms] = useState({
-    dept: { name: '', code: '', description: '' },
-    class: { name: '', departmentId: '' },
-    student: { rollNumber: '', name: '', email: '', phone: '', departmentId: '', classId: '', dateOfBirth: '' },
-    intern: { rollNumber: '', name: '', email: '', phone: '', departmentId: '', classId: '', dateOfBirth: '' },
-    suspended: { rollNumber: '', name: '', email: '', phone: '', departmentId: '', classId: '', dateOfBirth: '' },
+    stream: { name: '', code: '', description: '' },
+    class: { name: '', streamId: '' },
+    student: { rollNumber: '', name: '', email: '', phone: '', streamId: '', classId: '', dateOfBirth: '' },
+    intern: { rollNumber: '', name: '', email: '', phone: '', streamId: '', classId: '', dateOfBirth: '' },
+    suspended: { rollNumber: '', name: '', email: '', phone: '', streamId: '', classId: '', dateOfBirth: '' },
     timetable: { classId: '', dayOfWeek: '1', periodNumber: '1', subjectCode: '', subjectName: '', facultyName: '', facultyCode: '', isLab: false }
   })
 
@@ -325,11 +335,12 @@ const AdminDashboardNew = () => {
     let result
     
     switch(type) {
-      case 'dept':
-        result = await addDepartment(forms.dept.name, forms.dept.code, forms.dept.description)
-        break
+      case 'stream':
+        // Streams are predefined, no need to add them
+        setToast({ message: 'Streams are predefined and cannot be added!', type: 'info' })
+        return
       case 'class':
-        result = await addClass(forms.class.name, forms.class.departmentId)
+        result = await addClass(forms.class.name, forms.class.streamId)
         break
       case 'student':
         result = await addStudent({
@@ -337,7 +348,7 @@ const AdminDashboardNew = () => {
           name: forms.student.name,
           email: forms.student.email || null,
           phone: forms.student.phone || null,
-          department_id: forms.student.departmentId,
+          stream_id: forms.student.streamId,
           class_id: forms.student.classId,
           date_of_birth: forms.student.dateOfBirth || null,
           status: 'active'
@@ -367,7 +378,7 @@ const AdminDashboardNew = () => {
             name: forms.intern.name,
             email: forms.intern.email || null,
             phone: forms.intern.phone || null,
-            department_id: forms.intern.departmentId,
+            stream_id: forms.intern.streamId,
             class_id: forms.intern.classId,
             date_of_birth: forms.intern.dateOfBirth || null,
             status: 'intern'
@@ -398,7 +409,7 @@ const AdminDashboardNew = () => {
             name: forms.suspended.name,
             email: forms.suspended.email || null,
             phone: forms.suspended.phone || null,
-            department_id: forms.suspended.departmentId,
+            stream_id: forms.suspended.streamId,
             class_id: forms.suspended.classId,
             date_of_birth: forms.suspended.dateOfBirth || null,
             status: 'suspended'
@@ -421,10 +432,10 @@ const AdminDashboardNew = () => {
     
     if (result.success) {
       setShowForm({ ...showForm, [type]: false })
-      setForms({ ...forms, [type]: type === 'dept' ? { name: '', code: '', description: '' } : 
-                type === 'class' ? { name: '', departmentId: '' } :
+      setForms({ ...forms, [type]: type === 'stream' ? { name: '', code: '', description: '' } : 
+                type === 'class' ? { name: '', streamId: '' } :
                 type === 'timetable' ? { classId: '', dayOfWeek: '1', periodNumber: '1', subjectCode: '', subjectName: '', facultyName: '', facultyCode: '', isLab: false } :
-                { rollNumber: '', name: '', email: '', phone: '', departmentId: '', classId: '', dateOfBirth: '' }
+                { rollNumber: '', name: '', email: '', phone: '', streamId: '', classId: '', dateOfBirth: '' }
       })
       setToast({ message: `${type.charAt(0).toUpperCase() + type.slice(1)} added successfully!`, type: 'success' })
     } else {
@@ -436,79 +447,85 @@ const AdminDashboardNew = () => {
   const [timetableDate, setTimetableDate] = useState(new Date().toISOString().split('T')[0])
   
   // Short Report states
-  const [shortReportDept, setShortReportDept] = useState('')
+  const [shortReportStream, setShortReportStream] = useState('')
   const [shortReportDate, setShortReportDate] = useState(new Date().toISOString().split('T')[0])
   const [shortReportData, setShortReportData] = useState(null)
   const [loadingReport, setLoadingReport] = useState(false)
 
-  // Auto-set department when user profile and departments are loaded
+  // Auto-set stream when user profile is loaded
   useEffect(() => {
-    console.log('🔍 Checking user profile:', userProfile)
-    console.log('📋 Departments loaded:', departments.length)
-    
-    if (!userProfile) {
-      console.warn('⚠️ User profile not loaded yet')
-      return
+    const setupUserStream = async () => {
+      console.log('🔍 Checking user profile:', userProfile)
+      
+      if (!userProfile) {
+        console.warn('⚠️ User profile not loaded yet')
+        return
+      }
+      
+      // Auto-assign CSE stream if user doesn't have one
+      let userStreamId = userProfile.stream_id
+      if (!userStreamId) {
+        console.log('🔧 User has no stream_id, auto-assigning CSE stream')
+        userStreamId = 'cse' // Default to CSE stream
+        
+        // Optionally update the database (silent update)
+        try {
+          await supabase
+            .from('users')
+            .update({ stream_id: 'cse' })
+            .eq('id', userProfile.id)
+          console.log('✅ Auto-assigned CSE stream to user')
+        } catch (error) {
+          console.warn('Could not update user stream in database:', error)
+        }
+      }
+      
+      console.log('🔧 Auto-setting stream:', userStreamId)
+      console.log('📋 Available streams:', streams)
+      
+      // Always set short report stream
+      setShortReportStream(userStreamId)
+      console.log('✅ Short report stream set to:', userStreamId)
+      
+      // Set default stream for all forms
+      setForms(prev => ({
+        ...prev,
+        class: { ...prev.class, streamId: userStreamId },
+        student: { ...prev.student, streamId: userStreamId },
+        intern: { ...prev.intern, streamId: userStreamId },
+        suspended: { ...prev.suspended, streamId: userStreamId }
+      }))
     }
-    
-    if (!userProfile.department_id) {
-      console.error('❌ CRITICAL: User has no department_id! Please run SQL to fix.')
-      console.error('📝 Run this SQL: UPDATE users SET department_id = (SELECT id FROM departments WHERE code = \'CSE\') WHERE email = \'' + userProfile.email + '\';')
-      setToast({ 
-        message: 'Your account is not assigned to a department. Please contact administrator.', 
-        type: 'error' 
-      })
-      return
-    }
-    
-    if (departments.length === 0) {
-      console.warn('⚠️ Departments not loaded yet')
-      return
-    }
-    
-    console.log('🔧 Auto-setting department:', userProfile.department_id)
-    console.log('📋 Available departments:', departments)
-    
-    // Always set short report department
-    setShortReportDept(userProfile.department_id)
-    console.log('✅ Short report dept set to:', userProfile.department_id)
-    
-    // Set default department for all forms
-    setForms(prev => ({
-      ...prev,
-      class: { ...prev.class, departmentId: userProfile.department_id },
-      student: { ...prev.student, departmentId: userProfile.department_id },
-      intern: { ...prev.intern, departmentId: userProfile.department_id },
-      suspended: { ...prev.suspended, departmentId: userProfile.department_id }
-    }))
-  }, [userProfile, departments])
+
+    setupUserStream()
+  }, [userProfile])
 
   // Generate Short Report
   const generateShortReport = async () => {
     console.log('🎯 Generate Report clicked')
-    console.log('📊 shortReportDept value:', shortReportDept)
+    console.log('📊 shortReportStream value:', shortReportStream)
     console.log('📅 shortReportDate value:', shortReportDate)
     
-    if (!shortReportDept) {
-      console.error('❌ No department selected!')
-      setToast({ message: 'Please select a department', type: 'info' })
+    if (!shortReportStream) {
+      console.error('❌ No stream selected!')
+      setToast({ message: 'Please select a stream', type: 'info' })
       return
     }
     
-    console.log('✅ Department is set, generating report...')
+    console.log('🚀 Starting report generation...')
 
     setLoadingReport(true)
     try {
-      // Get all classes for the selected department
-      const deptClasses = classes.filter(c => c.department_id === shortReportDept)
+      // Get all classes for the selected stream
+      const streamClasses = classes.filter(c => c.stream_id === shortReportStream)
       
       const reportData = {
-        department: departments.find(d => d.id === shortReportDept),
+        stream: streams.find(s => s.id === shortReportStream),
         date: shortReportDate,
         classes: []
       }
 
-      for (const cls of deptClasses) {
+      for (const cls of streamClasses) {
         // Get all students in this class
         const classStudents = students.filter(s => s.class_id === cls.id)
         const totalStudents = classStudents.length
@@ -585,6 +602,7 @@ const AdminDashboardNew = () => {
     { id: 'classes', name: 'Classes' },
     { id: 'timetable', name: 'Timetable' },
     { id: 'students', name: 'Students' },
+    { id: 'users', name: 'Users' },
     { id: 'reports', name: 'Reports' }
   ]
 
@@ -896,18 +914,18 @@ const AdminDashboardNew = () => {
                 {/* Header */}
                 <div>
                   <h2 className="text-3xl font-bold text-white mb-2">Short Report</h2>
-                  <p className="text-gray-400">Daily attendance summary by department and class</p>
+                  <p className="text-gray-400">Daily attendance summary by stream and class</p>
                 </div>
 
                 {/* Report Form */}
                 <div className="bg-gray-900 border border-white/20 rounded-xl p-6">
                   <div className="grid md:grid-cols-3 gap-4 mb-4">
                     <div>
-                      <label className="block text-sm font-bold text-white mb-2 uppercase tracking-wide">Department</label>
+                      <label className="block text-sm font-bold text-white mb-2 uppercase tracking-wide">Stream</label>
                       <div className="px-4 py-3 bg-gray-900 border-2 border-white/30 rounded-lg text-gray-400 cursor-not-allowed opacity-75">
-                        {departments.find(d => d.id === shortReportDept)?.name || 'Computer Science and Engineering'}
+                        {streams.find(s => s.id === shortReportStream)?.name || 'Computer Science and Engineering'}
                       </div>
-                      <input type="hidden" value={shortReportDept} />
+                      <input type="hidden" value={shortReportStream} />
                     </div>
                     <div>
                       <label className="block text-sm font-bold text-white mb-2 uppercase tracking-wide">Date</label>
@@ -997,7 +1015,7 @@ const AdminDashboardNew = () => {
                     {/* Report Footer */}
                     <div className="mt-6 pt-4 border-t border-white/20">
                       <p className="text-gray-400 text-sm">
-                        Reported by: <span className="text-white font-semibold">Dean, {shortReportData.department?.code}</span>
+                        Reported by: <span className="text-white font-semibold">Dean, {shortReportData.stream?.code}</span>
                       </p>
                     </div>
 
@@ -1005,9 +1023,9 @@ const AdminDashboardNew = () => {
                     <div className="mt-6">
                       <button
                         onClick={() => {
-                          const reportText = `☀️Department: ${shortReportData.department?.name}\n☀️Date: ${new Date(shortReportData.date).toLocaleDateString('en-GB')}\n\n${shortReportData.classes.map(cls => 
-                            `➕${cls.name}: ${shortReportData.department?.code}  ${cls.present}/${cls.total}\n${cls.approved > 0 ? `📍Approved: ${String(cls.approved).padStart(2, '0')}\n` : ''}${cls.unapproved > 0 ? `📍Unapproved: ${String(cls.unapproved).padStart(2, '0')}\n` : ''}${cls.onDuty > 0 ? `📍OD: ${String(cls.onDuty).padStart(2, '0')}\n` : ''}${cls.suspended > 0 ? `📍Suspend: ${String(cls.suspended).padStart(2, '0')}\n` : ''}${cls.intern > 0 ? `📍Intern: ${String(cls.intern).padStart(2, '0')}\n` : ''}`
-                          ).join('\n')}\n\nReported by: Dean, ${shortReportData.department?.code}`
+                          const reportText = `☀️Stream: ${shortReportData.stream?.name}\n☀️Date: ${new Date(shortReportData.date).toLocaleDateString('en-GB')}\n\n${shortReportData.classes.map(cls => 
+                            `➕${cls.name}: ${shortReportData.stream?.code}  ${cls.present}/${cls.total}\n${cls.approved > 0 ? `📍Approved: ${String(cls.approved).padStart(2, '0')}\n` : ''}${cls.unapproved > 0 ? `📍Unapproved: ${String(cls.unapproved).padStart(2, '0')}\n` : ''}${cls.onDuty > 0 ? `📍OD: ${String(cls.onDuty).padStart(2, '0')}\n` : ''}${cls.suspended > 0 ? `📍Suspend: ${String(cls.suspended).padStart(2, '0')}\n` : ''}${cls.intern > 0 ? `📍Intern: ${String(cls.intern).padStart(2, '0')}\n` : ''}`
+                          ).join('\n')}\n\nReported by: Dean, ${shortReportData.stream?.code}`
                           
                           navigator.clipboard.writeText(reportText)
                           setToast({ message: 'Report copied to clipboard!', type: 'success' })
@@ -1025,65 +1043,34 @@ const AdminDashboardNew = () => {
                     <svg className="w-16 h-16 text-gray-600 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
-                    <p className="text-gray-400 text-lg">Select a department and date to generate the short report</p>
+                    <p className="text-gray-400 text-lg">Select a stream and date to generate the short report</p>
                   </div>
                 )}
               </div>
             )}
 
-            {activeTab === 'departments' && (
+            {activeTab === 'streams' && (
               <div>
                 <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-2xl font-bold">Departments</h2>
-                  <button onClick={() => setShowForm({ ...showForm, dept: !showForm.dept })} className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700">
-                    + Add Department
-                  </button>
+                  <h2 className="text-2xl font-bold">Streams</h2>
+                  <div className="text-gray-400 text-sm">
+                    Streams are predefined: CSE, ECE, EEE, MECH, CIVIL
+                  </div>
                 </div>
 
-                {showForm.dept && (
-                  <form onSubmit={(e) => handleSubmit('dept', e)} className="bg-gray-900 border border-gray-700 p-6 rounded-lg mb-6">
-                    <div className="grid md:grid-cols-3 gap-4">
-                      <input type="text" placeholder="Department Name" value={forms.dept.name} onChange={(e) => setForms({ ...forms, dept: { ...forms.dept, name: e.target.value }})} className="px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-600" required />
-                      <input type="text" placeholder="Code (e.g., CS)" value={forms.dept.code} onChange={(e) => setForms({ ...forms, dept: { ...forms.dept, code: e.target.value }})} className="px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-600" required />
-                      <input type="text" placeholder="Description" value={forms.dept.description} onChange={(e) => setForms({ ...forms, dept: { ...forms.dept, description: e.target.value }})} className="px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-600" />
+                {/* Display predefined streams */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {streams.map(stream => (
+                    <div key={stream.id} className="bg-gray-900 border border-gray-700 p-6 rounded-lg">
+                      <h3 className="text-lg font-bold text-white mb-2">{stream.code}</h3>
+                      <p className="text-gray-300 text-sm">{stream.name}</p>
+                      <div className="mt-4 text-xs text-gray-500">
+                        Classes: {classes.filter(c => c.stream_id === stream.id).length}
+                      </div>
                     </div>
-                    <div className="mt-4 flex gap-2">
-                      <button type="submit" className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">Save</button>
-                      <button type="button" onClick={() => setShowForm({ ...showForm, dept: false })} className="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600">Cancel</button>
-                    </div>
-                  </form>
-                )}
-
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead className="bg-gray-900 border-b border-gray-700">
-                      <tr>
-                        <th className="px-4 py-3 text-left text-gray-400">Code</th>
-                        <th className="px-4 py-3 text-left text-gray-400">Name</th>
-                        <th className="px-4 py-3 text-left text-gray-400">Description</th>
-                        <th className="px-4 py-3 text-left text-gray-400">Students</th>
-                        <th className="px-4 py-3 text-left text-gray-400">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {departments.map((dept) => (
-                        <tr key={dept.id} className="border-b border-gray-700 hover:bg-gray-750">
-                          <td className="px-4 py-3 font-medium">{dept.code}</td>
-                          <td className="px-4 py-3">{dept.name}</td>
-                          <td className="px-4 py-3 text-gray-400">{dept.description}</td>
-                          <td className="px-4 py-3">
-                            <span className="px-3 py-1 bg-white text-black rounded-full text-sm font-bold">
-                              {dept.student_count || 0} Students
-                            </span>
-                          </td>
-                          <td className="px-4 py-3">
-                            <button onClick={() => confirm('Delete?') && deleteDepartment(dept.id)} className="text-red-500 hover:text-red-400 font-semibold">Delete</button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                  ))}
                 </div>
+
               </div>
             )}
 
@@ -1106,9 +1093,9 @@ const AdminDashboardNew = () => {
                         required 
                       />
                       <div className="px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-gray-500 cursor-not-allowed opacity-60">
-                        {departments.find(d => d.id === forms.class.departmentId)?.name || 'Computer Science and Engineering'}
+                        {streams.find(s => s.id === forms.class.streamId)?.name || 'Computer Science and Engineering'}
                       </div>
-                      <input type="hidden" name="departmentId" value={forms.class.departmentId} required />
+                      <input type="hidden" name="streamId" value={forms.class.streamId} required />
                     </div>
                     <div className="mt-4 flex gap-2">
                       <button type="submit" className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">Save Class</button>
@@ -1147,17 +1134,22 @@ const AdminDashboardNew = () => {
                     <h2 className="text-2xl font-bold">Class Timetable</h2>
                     <p className="text-gray-600">View and manage class timetables</p>
                   </div>
-                  <button 
-                    onClick={() => setShowForm({ ...showForm, timetable: !showForm.timetable })} 
-                    className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 flex items-center gap-2"
-                  >
-                    <span className="text-xl">+</span> Add Period
-                  </button>
+                  <div className="flex gap-3">
+                    <button 
+                      onClick={() => setShowForm({ ...showForm, timetable: !showForm.timetable })} 
+                      className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 flex items-center gap-2"
+                    >
+                      <span className="text-xl">+</span> Add Period
+                    </button>
+                    <button 
+                      onClick={() => setShowForm({ ...showForm, bulkTimetable: !showForm.bulkTimetable })} 
+                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2"
+                    >
+                      <span className="text-xl">📊</span> CSV Import (36 Periods)
+                    </button>
+                  </div>
                 </div>
 
-                <div className="mb-6">
-                  <TimetableImageUpload onImportComplete={() => window.location.reload()} classes={classes} />
-                </div>
 
                 {showForm.timetable && (
                   <form onSubmit={(e) => handleSubmit('timetable', e)} className="bg-gray-50 p-6 rounded-lg mb-6 border-2 border-primary-200">
@@ -1292,25 +1284,289 @@ const AdminDashboardNew = () => {
                     </div>
                   </form>
                 )}
+
+                {showForm.bulkTimetable && (
+                  <div className="glass-card p-6 animate-scaleIn hover-lift mb-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-2xl font-bold gradient-text flex items-center gap-2">
+                        <span className="text-3xl">📊</span>
+                        CSV Import - Class Timetable
+                      </h3>
+                      <button 
+                        onClick={() => setShowForm({ ...showForm, bulkTimetable: false })} 
+                        className="text-gray-500 hover:text-gray-700"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                    
+                    {/* Class Selection */}
+                    <div className="mb-6">
+                      <label className="block text-sm font-bold text-gray-700 mb-2">Select Class *</label>
+                      <select
+                        value={forms.timetable.classId}
+                        onChange={(e) => setForms({ ...forms, timetable: { ...forms.timetable, classId: e.target.value }})}
+                        className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-blue-500 focus:outline-none bg-white shadow-sm"
+                        required
+                      >
+                        <option value="">Choose a class...</option>
+                        {classes.map((cls) => (
+                          <option key={cls.id} value={cls.id}>
+                            {cls.name} ({cls.departments?.name})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* CSV Template Section */}
+                    <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl border-2 border-blue-200">
+                      <p className="text-sm text-gray-800 mb-3 font-medium">
+                        ✨ Upload a CSV file with timetable data
+                      </p>
+                      <div className="flex flex-wrap gap-2 mb-3">
+                        <span className="px-3 py-1 bg-white rounded-full text-xs font-semibold text-blue-600 shadow-sm">
+                          ✓ day
+                        </span>
+                        <span className="px-3 py-1 bg-white rounded-full text-xs font-semibold text-blue-600 shadow-sm">
+                          ✓ period
+                        </span>
+                        <span className="px-3 py-1 bg-white rounded-full text-xs font-semibold text-blue-600 shadow-sm">
+                          ✓ subject_code
+                        </span>
+                        <span className="px-3 py-1 bg-white rounded-full text-xs font-semibold text-blue-600 shadow-sm">
+                          ✓ subject_name
+                        </span>
+                        <span className="px-3 py-1 bg-white rounded-full text-xs font-semibold text-blue-600 shadow-sm">
+                          ✓ faculty_name
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => {
+                          // Download CSV template
+                          const csvContent = `day,period,subject_code,subject_name,faculty_name,faculty_code,room_number,is_lab
+Monday,1,CA(302),Computer Architecture,Mrs.I.Roshini,IR,R101,false
+Monday,2,DS(302),Data Structures,Mr.Shivasankaran,SSS,R102,false
+Monday,3,OOP(303),Object Oriented Programming,Ms.M.Benitta Mary,MBM,R103,true
+Monday,4,DM(302),Discrete Mathematics,Mrs.R.TamilSelvi,RT,R104,false
+Monday,5,ESS(301),Environmental Science,Dr.M.Kumaran,MK,R105,false
+Monday,6,DPSD(301),Digital Principles,Ms.Sree Arthi D,DSA,R106,true
+Tuesday,1,CA(302),Computer Architecture,Mrs.I.Roshini,IR,R101,false
+Tuesday,2,DS(302),Data Structures,Mr.Shivasankaran,SSS,R102,false
+Tuesday,3,OOP(303),Object Oriented Programming,Ms.M.Benitta Mary,MBM,R103,true
+Tuesday,4,DM(302),Discrete Mathematics,Mrs.R.TamilSelvi,RT,R104,false
+Tuesday,5,ESS(301),Environmental Science,Dr.M.Kumaran,MK,R105,false
+Tuesday,6,DPSD(301),Digital Principles,Ms.Sree Arthi D,DSA,R106,true
+Wednesday,1,CA(302),Computer Architecture,Mrs.I.Roshini,IR,R101,false
+Wednesday,2,DS(302),Data Structures,Mr.Shivasankaran,SSS,R102,false
+Wednesday,3,OOP(303),Object Oriented Programming,Ms.M.Benitta Mary,MBM,R103,true
+Wednesday,4,DM(302),Discrete Mathematics,Mrs.R.TamilSelvi,RT,R104,false
+Wednesday,5,ESS(301),Environmental Science,Dr.M.Kumaran,MK,R105,false
+Wednesday,6,DPSD(301),Digital Principles,Ms.Sree Arthi D,DSA,R106,true
+Thursday,1,CA(302),Computer Architecture,Mrs.I.Roshini,IR,R101,false
+Thursday,2,DS(302),Data Structures,Mr.Shivasankaran,SSS,R102,false
+Thursday,3,OOP(303),Object Oriented Programming,Ms.M.Benitta Mary,MBM,R103,true
+Thursday,4,DM(302),Discrete Mathematics,Mrs.R.TamilSelvi,RT,R104,false
+Thursday,5,ESS(301),Environmental Science,Dr.M.Kumaran,MK,R105,false
+Thursday,6,DPSD(301),Digital Principles,Ms.Sree Arthi D,DSA,R106,true
+Friday,1,CA(302),Computer Architecture,Mrs.I.Roshini,IR,R101,false
+Friday,2,DS(302),Data Structures,Mr.Shivasankaran,SSS,R102,false
+Friday,3,OOP(303),Object Oriented Programming,Ms.M.Benitta Mary,MBM,R103,true
+Friday,4,DM(302),Discrete Mathematics,Mrs.R.TamilSelvi,RT,R104,false
+Friday,5,ESS(301),Environmental Science,Dr.M.Kumaran,MK,R105,false
+Friday,6,DPSD(301),Digital Principles,Ms.Sree Arthi D,DSA,R106,true
+Saturday,1,CA(302),Computer Architecture,Mrs.I.Roshini,IR,R101,false
+Saturday,2,DS(302),Data Structures,Mr.Shivasankaran,SSS,R102,false
+Saturday,3,OOP(303),Object Oriented Programming,Ms.M.Benitta Mary,MBM,R103,true
+Saturday,4,DM(302),Discrete Mathematics,Mrs.R.TamilSelvi,RT,R104,false
+Saturday,5,ESS(301),Environmental Science,Dr.M.Kumaran,MK,R105,false
+Saturday,6,DPSD(301),Digital Principles,Ms.Sree Arthi D,DSA,R106,true`
+
+                          const blob = new Blob([csvContent], { type: 'text/csv' })
+                          const url = window.URL.createObjectURL(blob)
+                          const a = document.createElement('a')
+                          a.href = url
+                          a.download = 'timetable_template.csv'
+                          document.body.appendChild(a)
+                          a.click()
+                          document.body.removeChild(a)
+                          window.URL.revokeObjectURL(url)
+                          setToast({ message: '📥 CSV template downloaded!', type: 'success' })
+                        }}
+                        className="px-4 py-2 bg-gradient-blue text-white rounded-xl hover:shadow-lg hover:scale-105 transition-all font-semibold text-sm flex items-center gap-2"
+                      >
+                        <span>📥</span>
+                        Download CSV Template
+                      </button>
+                    </div>
+
+                    {/* File Upload Section */}
+                    <div className="space-y-4">
+                      <div>
+                        <input
+                          id="timetable-csv-input"
+                          type="file"
+                          accept=".csv"
+                          onChange={async (e) => {
+                            const file = e.target.files[0]
+                            if (!file) return
+                            
+                            if (!forms.timetable.classId) {
+                              setToast({ message: 'Please select a class first!', type: 'error' })
+                              return
+                            }
+                            
+                            const reader = new FileReader()
+                            reader.onload = async (event) => {
+                              const text = event.target.result
+                              const lines = text.split('\n').filter(line => line.trim())
+                              const headers = lines[0].split(',').map(h => h.trim().toLowerCase())
+                              
+                              // Validate headers
+                              const requiredHeaders = ['day', 'period', 'subject_code', 'subject_name', 'faculty_name']
+                              const missingHeaders = requiredHeaders.filter(h => !headers.includes(h))
+                              
+                              if (missingHeaders.length > 0) {
+                                setToast({ message: `Missing required columns: ${missingHeaders.join(', ')}`, type: 'error' })
+                                return
+                              }
+                              
+                              let successCount = 0
+                              let failCount = 0
+                              
+                              for (let i = 1; i < lines.length; i++) {
+                                const values = lines[i].split(',').map(v => v.trim())
+                                if (values.length !== headers.length) continue
+                                
+                                const row = {}
+                                headers.forEach((header, index) => {
+                                  row[header] = values[index]
+                                })
+                                
+                                // Validate required fields
+                                if (!row.day || !row.period || !row.subject_code || !row.subject_name || !row.faculty_name) {
+                                  failCount++
+                                  continue
+                                }
+                                
+                                // Convert day name to number
+                                const dayMap = {
+                                  'monday': 1, 'mon': 1, '1': 1,
+                                  'tuesday': 2, 'tue': 2, '2': 2,
+                                  'wednesday': 3, 'wed': 3, '3': 3,
+                                  'thursday': 4, 'thu': 4, '4': 4,
+                                  'friday': 5, 'fri': 5, '5': 5,
+                                  'saturday': 6, 'sat': 6, '6': 6
+                                }
+                                
+                                const dayNumber = dayMap[row.day.toLowerCase()]
+                                const periodNumber = parseInt(row.period)
+                                
+                                if (!dayNumber || !periodNumber || periodNumber < 1 || periodNumber > 6) {
+                                  failCount++
+                                  continue
+                                }
+                                
+                                try {
+                                  const { error } = await supabase
+                                    .from('timetable')
+                                    .insert([{
+                                      class_id: forms.timetable.classId,
+                                      day_of_week: dayNumber,
+                                      period_number: periodNumber,
+                                      subject_code: row.subject_code,
+                                      subject_name: row.subject_name,
+                                      faculty_name: row.faculty_name,
+                                      faculty_code: row.faculty_code || null,
+                                      is_lab: row.is_lab === 'true' || row.is_lab === '1' || row.is_lab === 'yes'
+                                    }])
+                                  
+                                  if (error) {
+                                    console.error('Error:', error)
+                                    failCount++
+                                  } else {
+                                    successCount++
+                                  }
+                                } catch (err) {
+                                  console.error('Error:', err)
+                                  failCount++
+                                }
+                              }
+                              
+                              setToast({ 
+                                message: `🎉 CSV import complete! Success: ${successCount}, Failed: ${failCount}`, 
+                                type: successCount > 0 ? 'success' : 'error' 
+                              })
+                              
+                              if (successCount > 0) {
+                                setShowForm({ ...showForm, bulkTimetable: false })
+                                window.location.reload()
+                              }
+                            }
+                            reader.readAsText(file)
+                          }}
+                          className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700"
+                        />
+                      </div>
+
+                      {/* Import Button */}
+                      <button
+                        onClick={() => document.getElementById('timetable-csv-input').click()}
+                        className="w-full px-6 py-4 bg-gradient-purple text-white rounded-xl hover:shadow-2xl hover:scale-105 font-bold text-lg transition-all relative overflow-hidden group"
+                      >
+                        <span className="relative z-10 flex items-center justify-center gap-2">
+                          <span>📤</span>
+                          Import Timetable
+                        </span>
+                        <div className="absolute inset-0 bg-white opacity-0 group-hover:opacity-20 transition-opacity"></div>
+                      </button>
+                    </div>
+
+                    {/* Format Guide */}
+                    <div className="mt-6 p-4 bg-gray-50 rounded-xl border border-gray-200">
+                      <h4 className="font-bold text-gray-800 mb-3">📝 Example CSV Format:</h4>
+                      <div className="bg-white p-3 rounded text-xs font-mono overflow-x-auto border">
+                        <div className="text-gray-700">
+                          day,period,subject_code,subject_name,faculty_name,faculty_code,room_number,is_lab<br/>
+                          Monday,1,CA(302),Computer Architecture,Mrs.I.Roshini,IR,R101,false<br/>
+                          Monday,2,DS(302),Data Structures,Mr.Shivasankaran,SSS,R102,false<br/>
+                          Monday,3,OOP(303),Object Oriented Programming,Ms.M.Benitta Mary,MBM,R103,true<br/>
+                          Tuesday,1,DM(302),Discrete Mathematics,Mrs.R.TamilSelvi,RT,R104,false<br/>
+                          ...
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
                   
-                <div className="mb-6">
-                  <label className="block text-sm font-medium text-white mb-2">Select Class</label>
-                  <select
-                    value={selectedClassForTimetable}
-                    onChange={(e) => setSelectedClassForTimetable(e.target.value)}
-                    className="w-full px-4 py-3 border-2 border-white/30 bg-black text-white rounded-lg focus:ring-2 focus:ring-white focus:border-white outline-none transition-all"
-                  >
-                    <option value="" className="bg-gray-800">-- Select a Class --</option>
-                    {classes.map((cls) => (
-                      <option key={cls.id} value={cls.id} className="bg-gray-800">
-                        {cls.name}
-                      </option>
-                    ))}
-                  </select>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                  <div>
+                    <label className="block text-sm font-medium text-white mb-2">Select Class</label>
+                    <select
+                      value={selectedClassForTimetable}
+                      onChange={(e) => setSelectedClassForTimetable(e.target.value)}
+                      className="w-full px-4 py-3 border-2 border-white/30 bg-black text-white rounded-lg focus:ring-2 focus:ring-white focus:border-white outline-none transition-all"
+                    >
+                      <option value="" className="bg-gray-800">-- Select a Class --</option>
+                      {classes.map((cls) => (
+                        <option key={cls.id} value={cls.id} className="bg-gray-800">
+                          {cls.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-white mb-2">Select Date</label>
+                    <input
+                      type="date"
+                      value={timetableDate}
+                      onChange={(e) => setTimetableDate(e.target.value)}
+                      className="w-full px-4 py-3 border-2 border-white/30 bg-black text-white rounded-lg focus:ring-2 focus:ring-white focus:border-white outline-none transition-all"
+                    />
+                  </div>
                 </div>
 
                 {selectedClassForTimetable ? (
-                  <InteractiveTimetable 
+                  <AdminTimetableView 
                     classId={selectedClassForTimetable} 
                     selectedDate={timetableDate}
                   />
@@ -1383,7 +1639,7 @@ const AdminDashboardNew = () => {
                 </div>
 
                 <div className="mb-6">
-                  <BulkStudentImport onImportComplete={refetchStudents} departments={departments} classes={classes} />
+                  <BulkStudentImport onImportComplete={refetchStudents} streams={streams} classes={classes} />
                 </div>
 
                 {/* Search Bar */}
@@ -1414,9 +1670,9 @@ const AdminDashboardNew = () => {
                       <input type="text" placeholder="Roll Number" value={forms.student.rollNumber} onChange={(e) => setForms({ ...forms, student: { ...forms.student, rollNumber: e.target.value }})} className="px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-600" required />
                       <input type="text" placeholder="Name" value={forms.student.name} onChange={(e) => setForms({ ...forms, student: { ...forms.student, name: e.target.value }})} className="px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-600" required />
                       <div className="px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-gray-500 cursor-not-allowed opacity-60">
-                        {departments.find(d => d.id === forms.student.departmentId)?.name || 'Computer Science and Engineering'}
+                        {streams.find(s => s.id === forms.student.streamId)?.name || 'Computer Science and Engineering'}
                       </div>
-                      <input type="hidden" name="departmentId" value={forms.student.departmentId} required />
+                      <input type="hidden" name="streamId" value={forms.student.streamId} required />
                       <select value={forms.student.classId} onChange={(e) => setForms({ ...forms, student: { ...forms.student, classId: e.target.value }})} className="px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-blue-600" required>
                         <option value="">Select Class</option>
                         {classes.map((cls) => (<option key={cls.id} value={cls.id}>{cls.name}</option>))}
@@ -1436,9 +1692,9 @@ const AdminDashboardNew = () => {
                       <input type="text" placeholder="Roll Number" value={forms.intern.rollNumber} onChange={(e) => setForms({ ...forms, intern: { ...forms.intern, rollNumber: e.target.value }})} className="px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-600" required />
                       <input type="text" placeholder="Name" value={forms.intern.name} onChange={(e) => setForms({ ...forms, intern: { ...forms.intern, name: e.target.value }})} className="px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-600" required />
                       <div className="px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-gray-500 cursor-not-allowed opacity-60">
-                        {departments.find(d => d.id === forms.intern.departmentId)?.name || 'Computer Science and Engineering'}
+                        {streams.find(s => s.id === forms.intern.streamId)?.name || 'Computer Science and Engineering'}
                       </div>
-                      <input type="hidden" name="departmentId" value={forms.intern.departmentId} required />
+                      <input type="hidden" name="streamId" value={forms.intern.streamId} required />
                       <select value={forms.intern.classId} onChange={(e) => setForms({ ...forms, intern: { ...forms.intern, classId: e.target.value }})} className="px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-blue-600" required>
                         <option value="">Select Class</option>
                         {classes.map((cls) => (<option key={cls.id} value={cls.id}>{cls.name}</option>))}
@@ -1458,9 +1714,9 @@ const AdminDashboardNew = () => {
                       <input type="text" placeholder="Roll Number" value={forms.suspended.rollNumber} onChange={(e) => setForms({ ...forms, suspended: { ...forms.suspended, rollNumber: e.target.value }})} className="px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-600" required />
                       <input type="text" placeholder="Name" value={forms.suspended.name} onChange={(e) => setForms({ ...forms, suspended: { ...forms.suspended, name: e.target.value }})} className="px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-600" required />
                       <div className="px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-gray-500 cursor-not-allowed opacity-60">
-                        {departments.find(d => d.id === forms.suspended.departmentId)?.name || 'Computer Science and Engineering'}
+                        {streams.find(s => s.id === forms.suspended.streamId)?.name || 'Computer Science and Engineering'}
                       </div>
-                      <input type="hidden" name="departmentId" value={forms.suspended.departmentId} required />
+                      <input type="hidden" name="streamId" value={forms.suspended.streamId} required />
                       <select value={forms.suspended.classId} onChange={(e) => setForms({ ...forms, suspended: { ...forms.suspended, classId: e.target.value }})} className="px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-blue-600" required>
                         <option value="">Select Class</option>
                         {classes.map((cls) => (<option key={cls.id} value={cls.id}>{cls.name}</option>))}
@@ -1517,6 +1773,217 @@ const AdminDashboardNew = () => {
                       ))}
                     </tbody>
                   </table>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'users' && (
+              <div>
+                <div className="flex justify-between items-center mb-6">
+                  <div>
+                    <h2 className="text-2xl font-bold">User Management</h2>
+                    <p className="text-gray-400 text-sm mt-1">Manage user accounts and permissions</p>
+                  </div>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={async () => {
+                        if (window.confirm('⚠️ Are you sure you want to delete your account? This action cannot be undone!')) {
+                          const result = await deleteMyAccount()
+                          if (result.success) {
+                            setToast({ message: '✅ Account deleted successfully. You will be signed out.', type: 'success' })
+                            // User will be automatically signed out
+                            setTimeout(() => {
+                              window.location.href = '/login'
+                            }, 2000)
+                          } else {
+                            setToast({ message: '❌ Error deleting account: ' + result.error, type: 'error' })
+                          }
+                        }
+                      }}
+                      className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 flex items-center gap-2"
+                    >
+                      🗑️ Delete My Account
+                    </button>
+                  </div>
+                </div>
+
+                {/* Users Table */}
+                <div className="bg-gray-900 border border-gray-700 rounded-lg overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="bg-gray-800 border-b border-gray-700">
+                        <tr>
+                          <th className="px-4 py-3 text-left text-gray-400 font-semibold">Name</th>
+                          <th className="px-4 py-3 text-left text-gray-400 font-semibold">Email</th>
+                          <th className="px-4 py-3 text-left text-gray-400 font-semibold">Role</th>
+                          <th className="px-4 py-3 text-left text-gray-400 font-semibold">Stream</th>
+                          <th className="px-4 py-3 text-left text-gray-400 font-semibold">Created</th>
+                          <th className="px-4 py-3 text-left text-gray-400 font-semibold">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {users
+                          .filter(user => {
+                            // Show all users if current user is admin, or only same stream users if staff
+                            if (userProfile?.role === 'admin') return true
+                            return user.stream_id === userProfile?.stream_id
+                          })
+                          .map((user) => (
+                          <tr key={user.id} className="border-b border-gray-700 hover:bg-gray-800">
+                            <td className="px-4 py-3">
+                              <div className="flex items-center gap-3">
+                                <div className="relative">
+                                  <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-sm">
+                                    {user.name?.charAt(0)?.toUpperCase() || 'U'}
+                                  </div>
+                                  {/* Online Status Indicator */}
+                                  {onlineUsers.has(user.id) && (
+                                    <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-green-400 border-2 border-gray-900 rounded-full animate-pulse shadow-lg"></div>
+                                  )}
+                                </div>
+                                <div>
+                                  <div className="font-medium text-white">{user.name || 'Unknown'}</div>
+                                  {user.id === userProfile?.id && (
+                                    <div className="text-xs text-green-400 font-semibold">You</div>
+                                  )}
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3 text-gray-300">{user.email}</td>
+                            <td className="px-4 py-3">
+                              <div className="flex flex-col gap-1">
+                                <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                                  user.role === 'admin' 
+                                    ? 'bg-red-900 text-red-200' 
+                                    : 'bg-blue-900 text-blue-200'
+                                }`}>
+                                  {user.role === 'admin' ? '👑 Admin' : '👨‍🏫 Staff'}
+                                </span>
+                                {user.is_pc && (
+                                  <span className="px-2 py-1 bg-purple-900 text-purple-200 rounded-full text-xs font-semibold">
+                                    📋 PC
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                            <td className="px-4 py-3">
+                              <span className="px-2 py-1 bg-gray-700 text-gray-300 rounded text-xs font-semibold">
+                                {streams.find(s => s.id === user.stream_id)?.code || 'N/A'}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-gray-400 text-sm">
+                              {new Date(user.created_at).toLocaleDateString('en-GB')}
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="flex gap-2">
+                                {user.id !== userProfile?.id && (
+                                  <>
+                                    <button
+                                      onClick={async () => {
+                                        const newRole = user.role === 'admin' ? 'staff' : 'admin'
+                                        if (window.confirm(`Change ${user.name}'s role to ${newRole}?`)) {
+                                          const result = await updateUser(user.id, { role: newRole })
+                                          if (result.success) {
+                                            setToast({ message: `✅ User role updated to ${newRole}`, type: 'success' })
+                                          } else {
+                                            setToast({ message: '❌ Error updating role: ' + result.error, type: 'error' })
+                                          }
+                                        }
+                                      }}
+                                      className="px-3 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700 transition-colors"
+                                    >
+                                      {user.role === 'admin' ? '👨‍🏫 Make Staff' : '👑 Make Admin'}
+                                    </button>
+                                    
+                                    {/* PC Appointment Button */}
+                                    {user.role !== 'admin' && (
+                                      <button
+                                        onClick={async () => {
+                                          if (user.is_pc) {
+                                            // Remove PC role
+                                            if (window.confirm(`Remove ${user.name} as Program Coordinator?`)) {
+                                              const result = await removePC(user.id)
+                                              if (result.success) {
+                                                setToast({ message: `✅ ${user.name} removed as PC`, type: 'success' })
+                                              } else {
+                                                setToast({ message: '❌ Error removing PC: ' + result.error, type: 'error' })
+                                              }
+                                            }
+                                          } else {
+                                            // Appoint as PC
+                                            if (window.confirm(`Appoint ${user.name} as Program Coordinator for ${streams.find(s => s.id === user.stream_id)?.code || 'this stream'}? This will remove PC role from others in the same stream.`)) {
+                                              const result = await appointAsPC(user.id)
+                                              if (result.success) {
+                                                setToast({ message: `✅ ${user.name} appointed as PC`, type: 'success' })
+                                              } else {
+                                                setToast({ message: '❌ Error appointing PC: ' + result.error, type: 'error' })
+                                              }
+                                            }
+                                          }
+                                        }}
+                                        className={`px-3 py-1 rounded text-xs transition-colors ${
+                                          user.is_pc 
+                                            ? 'bg-purple-600 text-white hover:bg-purple-700' 
+                                            : 'bg-purple-600 text-white hover:bg-purple-700'
+                                        }`}
+                                      >
+                                        {user.is_pc ? '📋 Remove PC' : '📋 Make PC'}
+                                      </button>
+                                    )}
+                                    <button
+                                      onClick={async () => {
+                                        if (window.confirm(`⚠️ Are you sure you want to delete ${user.name}'s account? This action cannot be undone!`)) {
+                                          const result = await deleteUser(user.id)
+                                          if (result.success) {
+                                            setToast({ message: `✅ User ${user.name} deleted successfully`, type: 'success' })
+                                          } else {
+                                            setToast({ message: '❌ Error deleting user: ' + result.error, type: 'error' })
+                                          }
+                                        }
+                                      }}
+                                      className="px-3 py-1 bg-red-600 text-white rounded text-xs hover:bg-red-700 transition-colors"
+                                    >
+                                      🗑️ Delete
+                                    </button>
+                                  </>
+                                )}
+                                {user.id === userProfile?.id && (
+                                  <span className="px-3 py-1 bg-gray-600 text-gray-300 rounded text-xs cursor-not-allowed">
+                                    Current User
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  
+                  {users.length === 0 && (
+                    <div className="p-8 text-center text-gray-400">
+                      <svg className="w-16 h-16 mx-auto mb-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
+                      </svg>
+                      <p className="text-lg font-semibold">No users found</p>
+                      <p className="text-sm">Users will appear here once they sign up</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* User Management Info */}
+                <div className="mt-6 p-4 bg-blue-900 border border-blue-700 rounded-lg">
+                  <h4 className="font-bold text-blue-100 mb-2">👥 User Management Guidelines</h4>
+                  <ul className="text-blue-200 text-sm space-y-1">
+                    <li>• <strong>👑 Admins</strong> can see and manage all users across all streams</li>
+                    <li>• <strong>👨‍🏫 Staff</strong> can only see users from their own stream ({streams.find(s => s.id === userProfile?.stream_id)?.code || 'N/A'})</li>
+                    <li>• <strong>📋 PC (Program Coordinator)</strong> is a special staff role with additional privileges</li>
+                    <li>• <strong>Only one PC per stream</strong> - appointing a new PC removes the role from others</li>
+                    <li>• <strong>🟢 Green dot on avatar</strong> indicates users who are currently online</li>
+                    <li>• <strong>Delete My Account</strong> allows users to delete their own account</li>
+                    <li>• You cannot delete or modify your own account from this interface</li>
+                    <li>• Role changes take effect immediately</li>
+                  </ul>
                 </div>
               </div>
             )}

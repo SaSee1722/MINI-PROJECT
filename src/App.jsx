@@ -22,7 +22,7 @@ const LoadingSpinner = () => (
         <div className="w-20 h-20 bg-white rounded-lg flex items-center justify-center shadow-2xl mx-auto mb-4 animate-pulse">
           <div className="w-14 h-14 bg-black rounded"></div>
         </div>
-        <h1 className="text-4xl font-bold text-white tracking-tight mb-2">SMART ATTENDANCE</h1>
+        <h1 className="text-4xl font-bold text-white tracking-tight mb-2">SMART PRESENCE</h1>
         <div className="h-1 w-32 bg-white mx-auto"></div>
       </div>
       <div className="text-white text-lg font-semibold uppercase tracking-wider animate-pulse">Loading...</div>
