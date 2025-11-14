@@ -22,9 +22,10 @@ const ModernAdminDashboard = () => {
   const { students, addStudent, deleteStudent, refetch: refetchStudents } = useStudents()
   // const { departments, addDepartment, deleteDepartment } = useDepartments() // Replaced with streams
   
-  // Define the 5 streams
+  // Define the 6 streams
   const streams = [
     { id: 'cse', name: 'Computer Science and Engineering', code: 'CSE' },
+    { id: 'it', name: 'Information Technology', code: 'IT' },
     { id: 'ece', name: 'Electronics and Communication Engineering', code: 'ECE' },
     { id: 'eee', name: 'Electrical and Electronics Engineering', code: 'EEE' },
     { id: 'mech', name: 'Mechanical Engineering', code: 'MECH' },

@@ -268,9 +268,10 @@ const AdminDashboardNew = () => {
   const { timetable, addTimetableEntry, deleteTimetableEntry } = useTimetable()
   const { users, onlineUsers, deleteUser, deleteMyAccount, updateUser, appointAsPC, removePC } = useUsers()
 
-  // Define the 5 streams
+  // Define the 6 streams
   const streams = [
     { id: 'cse', name: 'Computer Science and Engineering', code: 'CSE' },
+    { id: 'it', name: 'Information Technology', code: 'IT' },
     { id: 'ece', name: 'Electronics and Communication Engineering', code: 'ECE' },
     { id: 'eee', name: 'Electrical and Electronics Engineering', code: 'EEE' },
     { id: 'mech', name: 'Mechanical Engineering', code: 'MECH' },
@@ -282,6 +283,16 @@ const AdminDashboardNew = () => {
   const [periodAttendanceCount, setPeriodAttendanceCount] = useState(0)
   const [studentSearchQuery, setStudentSearchQuery] = useState('')
   const [toast, setToast] = useState(null)
+
+  // Function to get department name based on selected class
+  const getDepartmentForClass = (classId) => {
+    const selectedClass = classes.find(c => c.id === classId)
+    if (selectedClass) {
+      const stream = streams.find(s => s.id === selectedClass.stream_id)
+      return stream?.name || 'Department'
+    }
+    return 'Select Class First'
+  }
 
   // Fetch today's period attendance count
   const fetchPeriodAttendanceCount = async () => {
@@ -1779,10 +1790,20 @@ Saturday,6,DPSD(301),Digital Principles,Ms.Sree Arthi D,DSA,R106,true`
                       <input type="text" placeholder="Roll Number" value={forms.student.rollNumber} onChange={(e) => setForms({ ...forms, student: { ...forms.student, rollNumber: e.target.value }})} className="px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-600" required />
                       <input type="text" placeholder="Name" value={forms.student.name} onChange={(e) => setForms({ ...forms, student: { ...forms.student, name: e.target.value }})} className="px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-600" required />
                       <div className="px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-gray-500 cursor-not-allowed opacity-60">
-                        {streams.find(s => s.id === forms.student.streamId)?.name || 'Computer Science and Engineering'}
+                        {getDepartmentForClass(forms.student.classId)}
                       </div>
                       <input type="hidden" name="streamId" value={forms.student.streamId} required />
-                      <select value={forms.student.classId} onChange={(e) => setForms({ ...forms, student: { ...forms.student, classId: e.target.value }})} className="px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-blue-600" required>
+                      <select value={forms.student.classId} onChange={(e) => {
+                        const selectedClass = classes.find(c => c.id === e.target.value)
+                        setForms({ 
+                          ...forms, 
+                          student: { 
+                            ...forms.student, 
+                            classId: e.target.value,
+                            streamId: selectedClass?.stream_id || ''
+                          }
+                        })
+                      }} className="px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-blue-600" required>
                         <option value="">Select Class</option>
                         {classes.map((cls) => (<option key={cls.id} value={cls.id}>{cls.name}</option>))}
                       </select>
@@ -1801,10 +1822,20 @@ Saturday,6,DPSD(301),Digital Principles,Ms.Sree Arthi D,DSA,R106,true`
                       <input type="text" placeholder="Roll Number" value={forms.intern.rollNumber} onChange={(e) => setForms({ ...forms, intern: { ...forms.intern, rollNumber: e.target.value }})} className="px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-600" required />
                       <input type="text" placeholder="Name" value={forms.intern.name} onChange={(e) => setForms({ ...forms, intern: { ...forms.intern, name: e.target.value }})} className="px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-600" required />
                       <div className="px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-gray-500 cursor-not-allowed opacity-60">
-                        {streams.find(s => s.id === forms.intern.streamId)?.name || 'Computer Science and Engineering'}
+                        {getDepartmentForClass(forms.intern.classId)}
                       </div>
                       <input type="hidden" name="streamId" value={forms.intern.streamId} required />
-                      <select value={forms.intern.classId} onChange={(e) => setForms({ ...forms, intern: { ...forms.intern, classId: e.target.value }})} className="px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-blue-600" required>
+                      <select value={forms.intern.classId} onChange={(e) => {
+                        const selectedClass = classes.find(c => c.id === e.target.value)
+                        setForms({ 
+                          ...forms, 
+                          intern: { 
+                            ...forms.intern, 
+                            classId: e.target.value,
+                            streamId: selectedClass?.stream_id || ''
+                          }
+                        })
+                      }} className="px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-blue-600" required>
                         <option value="">Select Class</option>
                         {classes.map((cls) => (<option key={cls.id} value={cls.id}>{cls.name}</option>))}
                       </select>
@@ -1823,10 +1854,20 @@ Saturday,6,DPSD(301),Digital Principles,Ms.Sree Arthi D,DSA,R106,true`
                       <input type="text" placeholder="Roll Number" value={forms.suspended.rollNumber} onChange={(e) => setForms({ ...forms, suspended: { ...forms.suspended, rollNumber: e.target.value }})} className="px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-600" required />
                       <input type="text" placeholder="Name" value={forms.suspended.name} onChange={(e) => setForms({ ...forms, suspended: { ...forms.suspended, name: e.target.value }})} className="px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-600" required />
                       <div className="px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-gray-500 cursor-not-allowed opacity-60">
-                        {streams.find(s => s.id === forms.suspended.streamId)?.name || 'Computer Science and Engineering'}
+                        {getDepartmentForClass(forms.suspended.classId)}
                       </div>
                       <input type="hidden" name="streamId" value={forms.suspended.streamId} required />
-                      <select value={forms.suspended.classId} onChange={(e) => setForms({ ...forms, suspended: { ...forms.suspended, classId: e.target.value }})} className="px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-blue-600" required>
+                      <select value={forms.suspended.classId} onChange={(e) => {
+                        const selectedClass = classes.find(c => c.id === e.target.value)
+                        setForms({ 
+                          ...forms, 
+                          suspended: { 
+                            ...forms.suspended, 
+                            classId: e.target.value,
+                            streamId: selectedClass?.stream_id || ''
+                          }
+                        })
+                      }} className="px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-blue-600" required>
                         <option value="">Select Class</option>
                         {classes.map((cls) => (<option key={cls.id} value={cls.id}>{cls.name}</option>))}
                       </select>
