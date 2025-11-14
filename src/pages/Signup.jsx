@@ -42,8 +42,8 @@ const Signup = () => {
       return
     }
 
-    if (!formData.departmentId) {
-      showWarning('Please select a department')
+    if (!formData.streamId) {
+      showWarning('Please select a stream')
       return
     }
 
