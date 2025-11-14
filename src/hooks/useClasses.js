@@ -68,7 +68,18 @@ export const useClasses = () => {
         .select()
 
       if (error) throw error
-      await fetchClasses()
+      
+      // Immediately add the new class to the state for instant UI update
+      if (data && data.length > 0) {
+        const newClass = data[0]
+        setClasses(prevClasses => [...prevClasses, newClass])
+      }
+      
+      // Also refresh in background to ensure consistency
+      setTimeout(async () => {
+        await fetchClasses()
+      }, 500)
+      
       return { success: true, data }
     } catch (err) {
       console.error('Error adding class:', err)
