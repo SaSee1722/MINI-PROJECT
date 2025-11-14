@@ -1878,22 +1878,6 @@ Saturday,6,DPSD(301),Digital Principles,Ms.Sree Arthi D,DSA,R106,true`
                               <div className="flex gap-2">
                                 {user.id !== userProfile?.id && (
                                   <>
-                                    <button
-                                      onClick={async () => {
-                                        const newRole = user.role === 'admin' ? 'staff' : 'admin'
-                                        if (window.confirm(`Change ${user.name}'s role to ${newRole}?`)) {
-                                          const result = await updateUser(user.id, { role: newRole })
-                                          if (result.success) {
-                                            setToast({ message: `✅ User role updated to ${newRole}`, type: 'success' })
-                                          } else {
-                                            setToast({ message: '❌ Error updating role: ' + result.error, type: 'error' })
-                                          }
-                                        }
-                                      }}
-                                      className="px-3 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700 transition-colors"
-                                    >
-                                      {user.role === 'admin' ? '👨‍🏫 Make Staff' : '👑 Make Admin'}
-                                    </button>
                                     
                                     {/* PC Appointment Button */}
                                     {user.role !== 'admin' && (
@@ -1971,20 +1955,6 @@ Saturday,6,DPSD(301),Digital Principles,Ms.Sree Arthi D,DSA,R106,true`
                   )}
                 </div>
 
-                {/* User Management Info */}
-                <div className="mt-6 p-4 bg-blue-900 border border-blue-700 rounded-lg">
-                  <h4 className="font-bold text-blue-100 mb-2">👥 User Management Guidelines</h4>
-                  <ul className="text-blue-200 text-sm space-y-1">
-                    <li>• <strong>👑 Admins</strong> can see and manage all users across all streams</li>
-                    <li>• <strong>👨‍🏫 Staff</strong> can only see users from their own stream ({streams.find(s => s.id === userProfile?.stream_id)?.code || 'N/A'})</li>
-                    <li>• <strong>📋 PC (Program Coordinator)</strong> is a special staff role with additional privileges</li>
-                    <li>• <strong>Only one PC per stream</strong> - appointing a new PC removes the role from others</li>
-                    <li>• <strong>🟢 Green dot on avatar</strong> indicates users who are currently online</li>
-                    <li>• <strong>Delete My Account</strong> allows users to delete their own account</li>
-                    <li>• You cannot delete or modify your own account from this interface</li>
-                    <li>• Role changes take effect immediately</li>
-                  </ul>
-                </div>
               </div>
             )}
 
