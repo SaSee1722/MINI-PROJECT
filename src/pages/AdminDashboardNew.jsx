@@ -283,7 +283,7 @@ const AdminDashboardNew = () => {
   const [studentSearchQuery, setStudentSearchQuery] = useState('')
   const [toast, setToast] = useState(null)
 
-  // Fetch period attendance count
+  // Fetch today's period attendance count
   const fetchPeriodAttendanceCount = async () => {
     try {
       // Wait for userProfile to load
@@ -293,12 +293,16 @@ const AdminDashboardNew = () => {
         return
       }
       
-      console.log('📊 Fetching period attendance count for stream:', userProfile.stream_id)
+      console.log('📊 Fetching today\'s period attendance count for stream:', userProfile.stream_id)
+      
+      // Get today's date in YYYY-MM-DD format
+      const today = new Date().toISOString().split('T')[0]
       
       const { count, error } = await supabase
         .from('period_attendance')
         .select('*, classes!inner(stream_id)', { count: 'exact', head: true })
         .eq('is_marked', true)
+        .eq('date', today)
         .eq('classes.stream_id', userProfile.stream_id)
       
       if (error) {
@@ -306,7 +310,7 @@ const AdminDashboardNew = () => {
         throw error
       }
       
-      console.log('✅ Period attendance count:', count)
+      console.log('✅ Today\'s period attendance count:', count)
       setPeriodAttendanceCount(count || 0)
     } catch (err) {
       console.error('Error fetching period attendance count:', err)
@@ -716,7 +720,7 @@ const AdminDashboardNew = () => {
                       </div>
                     </div>
                     <h3 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent group-hover:from-orange-400 group-hover:to-amber-400 transition-all duration-300 mb-1">{periodAttendanceCount}</h3>
-                    <p className="text-xs sm:text-sm text-gray-500">Period</p>
+                    <p className="text-xs sm:text-sm text-gray-500">Today</p>
                   </div>
                 </div>
 
@@ -1173,7 +1177,12 @@ const AdminDashboardNew = () => {
                         <tr key={cls.id} className="border-b border-gray-700 hover:bg-gray-750">
                           <td className="px-4 py-3 font-medium text-lg">{cls.name}</td>
                           <td className="px-4 py-3">
-                            <button onClick={() => confirm('Delete?') && deleteClass(cls.id)} className="text-red-500 hover:text-red-400 font-semibold">Delete</button>
+                            <button onClick={async () => {
+                              if (confirm('Delete?')) {
+                                await deleteClass(cls.id)
+                                fetchPeriodAttendanceCount() // Refresh count after class deletion
+                              }
+                            }} className="text-red-500 hover:text-red-400 font-semibold">Delete</button>
                           </td>
                         </tr>
                       ))}
@@ -1823,7 +1832,12 @@ Saturday,6,DPSD(301),Digital Principles,Ms.Sree Arthi D,DSA,R106,true`
                             </span>
                           </td>
                           <td className="px-4 py-3">
-                            <button onClick={() => confirm('Delete?') && deleteStudent(student.id)} className="text-red-500 hover:text-red-400">Delete</button>
+                            <button onClick={async () => {
+                              if (confirm('Delete?')) {
+                                await deleteStudent(student.id)
+                                fetchPeriodAttendanceCount() // Refresh count after deletion
+                              }
+                            }} className="text-red-500 hover:text-red-400">Delete</button>
                           </td>
                         </tr>
                       ))}
@@ -1976,6 +1990,7 @@ Saturday,6,DPSD(301),Digital Principles,Ms.Sree Arthi D,DSA,R106,true`
                                           const result = await deleteUser(user.id)
                                           if (result.success) {
                                             setToast({ message: `✅ User ${user.name} deleted successfully`, type: 'success' })
+                                            fetchPeriodAttendanceCount() // Refresh count after user deletion
                                           } else {
                                             setToast({ message: '❌ Error deleting user: ' + result.error, type: 'error' })
                                           }
