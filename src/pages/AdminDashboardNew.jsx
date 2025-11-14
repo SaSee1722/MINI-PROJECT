@@ -283,6 +283,84 @@ const AdminDashboardNew = () => {
   const [periodAttendanceCount, setPeriodAttendanceCount] = useState(0)
   const [studentSearchQuery, setStudentSearchQuery] = useState('')
   const [toast, setToast] = useState(null)
+  const [selectedStudents, setSelectedStudents] = useState([])
+  const [selectAll, setSelectAll] = useState(false)
+
+  // Bulk delete functions
+  const handleSelectAll = () => {
+    const filteredStudents = students.filter(student => {
+      if (!studentSearchQuery) return true
+      const query = studentSearchQuery.toLowerCase()
+      return student.name.toLowerCase().includes(query) || 
+             student.roll_number.toLowerCase().includes(query)
+    })
+    
+    if (selectAll) {
+      setSelectedStudents([])
+    } else {
+      setSelectedStudents(filteredStudents.map(s => s.id))
+    }
+    setSelectAll(!selectAll)
+  }
+
+  const handleSelectStudent = (studentId) => {
+    if (selectedStudents.includes(studentId)) {
+      setSelectedStudents(selectedStudents.filter(id => id !== studentId))
+    } else {
+      setSelectedStudents([...selectedStudents, studentId])
+    }
+  }
+
+  const handleBulkDelete = async () => {
+    if (selectedStudents.length === 0) {
+      setToast({ message: 'Please select students to delete', type: 'warning' })
+      return
+    }
+
+    const confirmMessage = `Are you sure you want to delete ${selectedStudents.length} selected student(s)? This action cannot be undone!`
+    if (!confirm(confirmMessage)) return
+
+    try {
+      for (const studentId of selectedStudents) {
+        await deleteStudent(studentId)
+      }
+      setToast({ message: `Successfully deleted ${selectedStudents.length} student(s)`, type: 'success' })
+      setSelectedStudents([])
+      setSelectAll(false)
+      fetchPeriodAttendanceCount() // Refresh count after deletion
+    } catch (error) {
+      setToast({ message: 'Error deleting students: ' + error.message, type: 'error' })
+    }
+  }
+
+  const handleDeleteAll = async () => {
+    const filteredStudents = students.filter(student => {
+      if (!studentSearchQuery) return true
+      const query = studentSearchQuery.toLowerCase()
+      return student.name.toLowerCase().includes(query) || 
+             student.roll_number.toLowerCase().includes(query)
+    })
+
+    if (filteredStudents.length === 0) {
+      setToast({ message: 'No students to delete', type: 'warning' })
+      return
+    }
+
+    const confirmMessage = `⚠️ DANGER: Are you sure you want to delete ALL ${filteredStudents.length} student(s)? This will permanently remove all student data and cannot be undone!`
+    if (!confirm(confirmMessage)) return
+
+    try {
+      for (const student of filteredStudents) {
+        await deleteStudent(student.id)
+      }
+      setToast({ message: `Successfully deleted all ${filteredStudents.length} student(s)`, type: 'success' })
+      setSelectedStudents([])
+      setSelectAll(false)
+      fetchPeriodAttendanceCount() // Refresh count after deletion
+    } catch (error) {
+      setToast({ message: 'Error deleting all students: ' + error.message, type: 'error' })
+    }
+  }
 
   // Function to get department name based on class name patterns
   const getDepartmentForClass = (classId) => {
@@ -812,18 +890,6 @@ const AdminDashboardNew = () => {
                       <div className="flex-1">
                         <h3 className="text-lg font-bold text-white mb-2">Generate Reports</h3>
                         <p className="text-sm text-gray-400 mb-4">Create detailed attendance reports for specific periods or departments.</p>
-                        <div className="flex gap-2">
-                          <button onClick={() => setShowForm({...showForm, class: true})} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-300 font-semibold text-sm uppercase tracking-wide">
-                            + Add Class
-                          </button>
-                          <button onClick={async () => {
-                            console.log('🔄 Manual refresh classes...')
-                            await refetchClasses()
-                            console.log('📋 Classes after manual refresh:', classes.length, classes.map(c => ({name: c.name, stream_id: c.stream_id})))
-                          }} className="px-3 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-all duration-300 font-semibold text-xs">
-                            🔄 Refresh
-                          </button>
-                        </div>
                         <button onClick={() => setActiveTab('reports')} className="px-4 py-2 bg-white text-black rounded-lg hover:bg-gray-200 transition-all duration-300 font-semibold text-sm uppercase tracking-wide">
                           Go to Reports
                         </button>
@@ -1226,7 +1292,6 @@ const AdminDashboardNew = () => {
               <div>
                 <div className="flex justify-between items-center mb-6">
                   <h2 className="text-2xl font-bold">Classes</h2>
-                  <button onClick={() => setShowForm({ ...showForm, class: !showForm.class })} className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700">+ Add Class</button>
                 </div>
 
                 {showForm.class && (
@@ -1791,6 +1856,51 @@ Saturday,6,DPSD(301),Digital Principles,Ms.Sree Arthi D,DSA,R106,true`
                   </div>
                 </div>
 
+                {/* Bulk Delete Controls */}
+                {selectedStudents.length > 0 && (
+                  <div className="bg-red-900/20 border border-red-500/30 rounded-lg p-4 mb-6">
+                    <div className="flex items-center justify-between">
+                      <span className="text-red-400 font-medium">
+                        {selectedStudents.length} student(s) selected
+                      </span>
+                      <div className="flex gap-2">
+                        <button 
+                          onClick={handleBulkDelete}
+                          className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all duration-300 font-semibold text-sm"
+                        >
+                          🗑️ Delete Selected
+                        </button>
+                        <button 
+                          onClick={() => {setSelectedStudents([]); setSelectAll(false)}}
+                          className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-all duration-300 font-semibold text-sm"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Delete All Button */}
+                <div className="flex justify-between items-center mb-4">
+                  <div className="flex items-center gap-4">
+                    <span className="text-gray-400 text-sm">
+                      {students.filter(student => {
+                        if (!studentSearchQuery) return true
+                        const query = studentSearchQuery.toLowerCase()
+                        return student.name.toLowerCase().includes(query) || 
+                               student.roll_number.toLowerCase().includes(query)
+                      }).length} student(s) found
+                    </span>
+                  </div>
+                  <button 
+                    onClick={handleDeleteAll}
+                    className="px-4 py-2 bg-red-700 text-white rounded-lg hover:bg-red-800 transition-all duration-300 font-semibold text-sm"
+                  >
+                    ⚠️ Delete All Students
+                  </button>
+                </div>
+
                 <div className="mb-6">
                   <BulkStudentImport onImportComplete={refetchStudents} streams={streams} classes={classes} />
                 </div>
@@ -1916,6 +2026,14 @@ Saturday,6,DPSD(301),Digital Principles,Ms.Sree Arthi D,DSA,R106,true`
                   <table className="w-full">
                     <thead className="bg-gray-900 border-b border-gray-700">
                       <tr>
+                        <th className="px-4 py-3 text-left text-gray-400">
+                          <input
+                            type="checkbox"
+                            checked={selectAll}
+                            onChange={handleSelectAll}
+                            className="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500"
+                          />
+                        </th>
                         <th className="px-4 py-3 text-left text-gray-400">Roll No</th>
                         <th className="px-4 py-3 text-left text-gray-400">Name</th>
                         <th className="px-4 py-3 text-left text-gray-400">Department</th>
@@ -1934,6 +2052,14 @@ Saturday,6,DPSD(301),Digital Principles,Ms.Sree Arthi D,DSA,R106,true`
                         })
                         .map((student) => (
                         <tr key={student.id} className="border-b border-gray-700 hover:bg-gray-750">
+                          <td className="px-4 py-3">
+                            <input
+                              type="checkbox"
+                              checked={selectedStudents.includes(student.id)}
+                              onChange={() => handleSelectStudent(student.id)}
+                              className="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500"
+                            />
+                          </td>
                           <td className="px-4 py-3 font-medium">{student.roll_number}</td>
                           <td className="px-4 py-3">{student.name}</td>
                           <td className="px-4 py-3">{student.departments?.name}</td>
