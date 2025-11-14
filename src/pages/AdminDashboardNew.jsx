@@ -284,12 +284,39 @@ const AdminDashboardNew = () => {
   const [studentSearchQuery, setStudentSearchQuery] = useState('')
   const [toast, setToast] = useState(null)
 
-  // Function to get department name based on selected class
+  // Function to get department name based on class name patterns
   const getDepartmentForClass = (classId) => {
     const selectedClass = classes.find(c => c.id === classId)
     if (selectedClass) {
-      const stream = streams.find(s => s.id === selectedClass.stream_id)
-      return stream?.name || 'Department'
+      console.log('🔍 Selected class:', selectedClass.name)
+      
+      // Determine department based on class name patterns
+      const className = selectedClass.name.toUpperCase()
+      
+      if (className.includes('IT')) {
+        console.log('🏢 Department: Information Technology')
+        return 'Information Technology'
+      } else if (className.includes('CSE') || className.includes('COMPUTER')) {
+        console.log('🏢 Department: Computer Science and Engineering')
+        return 'Computer Science and Engineering'
+      } else if (className.includes('ECE') || className.includes('ELECTRONICS')) {
+        console.log('🏢 Department: Electronics and Communication Engineering')
+        return 'Electronics and Communication Engineering'
+      } else if (className.includes('EEE') || className.includes('ELECTRICAL')) {
+        console.log('🏢 Department: Electrical and Electronics Engineering')
+        return 'Electrical and Electronics Engineering'
+      } else if (className.includes('MECH') || className.includes('MECHANICAL')) {
+        console.log('🏢 Department: Mechanical Engineering')
+        return 'Mechanical Engineering'
+      } else if (className.includes('CIVIL')) {
+        console.log('🏢 Department: Civil Engineering')
+        return 'Civil Engineering'
+      } else {
+        // Fallback to stream-based department
+        const stream = streams.find(s => s.id === selectedClass.stream_id)
+        console.log('🏢 Department (fallback):', stream?.name || 'Department')
+        return stream?.name || 'Department'
+      }
     }
     return 'Select Class First'
   }
@@ -364,9 +391,15 @@ const AdminDashboardNew = () => {
           return
         }
         
+        // Check if streamId is missing
+        if (!forms.class.streamId) {
+          console.error('❌ StreamId is missing! Using userProfile stream_id as fallback')
+          forms.class.streamId = userProfile?.stream_id || 'cse'
+        }
+        
         // Use the class name as entered by user (no auto-appending)
         let finalClassName = forms.class.name.trim()
-        console.log('🔧 Final class name:', finalClassName)
+        console.log('🔧 Final class name:', finalClassName, 'Stream ID:', forms.class.streamId)
         
         // Check if class already exists before adding
         const existingClass = classes.find(c => c.name === finalClassName)
@@ -475,9 +508,9 @@ const AdminDashboardNew = () => {
     if (result.success) {
       setShowForm({ ...showForm, [type]: false })
       setForms({ ...forms, [type]: type === 'stream' ? { name: '', code: '', description: '' } : 
-                type === 'class' ? { name: '', streamId: '' } :
+                type === 'class' ? { name: '', streamId: userProfile?.stream_id || '' } :
                 type === 'timetable' ? { classId: '', dayOfWeek: '1', periodNumber: '1', subjectCode: '', subjectName: '', facultyName: '', facultyCode: '', isLab: false } :
-                { rollNumber: '', name: '', email: '', phone: '', streamId: '', classId: '', dateOfBirth: '' }
+                { rollNumber: '', name: '', email: '', phone: '', streamId: userProfile?.stream_id || '', classId: '', dateOfBirth: '' }
       })
       setToast({ message: `${type.charAt(0).toUpperCase() + type.slice(1)} added successfully!`, type: 'success' })
       
