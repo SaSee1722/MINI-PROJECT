@@ -346,7 +346,25 @@ const AdminDashboardNew = () => {
       case 'class':
         console.log('🏫 Adding class:', forms.class.name, 'to stream:', forms.class.streamId)
         console.log('👤 User profile stream:', userProfile?.stream_id)
-        result = await addClass(forms.class.name, forms.class.streamId)
+        
+        // Check if class name is empty or just whitespace
+        if (!forms.class.name || forms.class.name.trim() === '') {
+          setToast({ message: 'Please enter a class name', type: 'error' })
+          return
+        }
+        
+        // Get stream info for better naming
+        const streamInfo = streams.find(s => s.id === forms.class.streamId)
+        const streamCode = streamInfo?.code || 'UNKNOWN'
+        
+        // Create a unique class name by combining with stream code if not already included
+        let finalClassName = forms.class.name.trim()
+        if (!finalClassName.includes(streamCode)) {
+          finalClassName = `${finalClassName} - ${streamCode}`
+        }
+        
+        console.log('🔧 Final class name:', finalClassName)
+        result = await addClass(finalClassName, forms.class.streamId)
         console.log('✅ Class add result:', result)
         break
       case 'student':
