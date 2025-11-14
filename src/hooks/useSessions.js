@@ -13,10 +13,10 @@ export const useSessions = () => {
       // Get current user
       const { data: { user } } = await supabase.auth.getUser()
       
-      // Get user profile to check role and department
+      // Get user profile to check role and stream
       const { data: profile } = await supabase
         .from('users')
-        .select('role, department_id')
+        .select('role, stream_id')
         .eq('id', user?.id)
         .single()
       

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useStudents } from '../hooks/useStudents'
-import { useDepartments } from '../hooks/useDepartments'
+// import { useDepartments } from '../hooks/useDepartments' // Replaced with streams
 import { useClasses } from '../hooks/useClasses'
 import { useSessions } from '../hooks/useSessions'
 import { useAttendance } from '../hooks/useAttendance'
@@ -20,7 +20,16 @@ import { ToastContainer } from '../components/Toast'
 const ModernAdminDashboard = () => {
   const { userProfile, signOut } = useAuth()
   const { students, addStudent, deleteStudent, refetch: refetchStudents } = useStudents()
-  const { departments, addDepartment, deleteDepartment } = useDepartments()
+  // const { departments, addDepartment, deleteDepartment } = useDepartments() // Replaced with streams
+  
+  // Define the 5 streams
+  const streams = [
+    { id: 'cse', name: 'Computer Science and Engineering', code: 'CSE' },
+    { id: 'ece', name: 'Electronics and Communication Engineering', code: 'ECE' },
+    { id: 'eee', name: 'Electrical and Electronics Engineering', code: 'EEE' },
+    { id: 'mech', name: 'Mechanical Engineering', code: 'MECH' },
+    { id: 'civil', name: 'Civil Engineering', code: 'CIVIL' }
+  ]
   const { classes, addClass, deleteClass } = useClasses()
   const { sessions, addSession, deleteSession } = useSessions()
   const { attendance: staffAttendance } = useAttendance()

@@ -18,10 +18,10 @@ export const useAttendance = () => {
         return
       }
 
-      // Get user profile to check role and department
+      // Get user profile to check role and stream
       const { data: profile } = await supabase
         .from('users')
-        .select('role, department_id')
+        .select('role, stream_id')
         .eq('id', user.id)
         .single()
 
@@ -29,15 +29,15 @@ export const useAttendance = () => {
         .from('staff_attendance')
         .select(`
           *,
-          users!inner (id, name, email, department_id),
+          users!inner (id, name, email, stream_id),
           sessions (id, name, start_time, end_time)
         `)
         .order('date', { ascending: false })
 
-      // Filter by department for admin users
-      if (profile?.role === 'admin' && profile?.department_id) {
-        console.log('🔍 Admin filtering staff attendance by department:', profile.department_id)
-        query = query.eq('users.department_id', profile.department_id)
+      // Filter by stream for admin users
+      if (profile?.role === 'admin' && profile?.stream_id) {
+        console.log('🔍 Admin filtering staff attendance by stream:', profile.stream_id)
+        query = query.eq('users.stream_id', profile.stream_id)
       }
 
       const { data, error } = await query
