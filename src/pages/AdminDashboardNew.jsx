@@ -261,7 +261,7 @@ const AttendanceTrendChart = ({ attendanceData, totalStudents }) => {
 const AdminDashboardNew = () => {
   const { userProfile } = useAuth()
   const { students, addStudent, deleteStudent, refetch: refetchStudents } = useStudents()
-  const { classes, addClass, deleteClass } = useClasses()
+  const { classes, addClass, deleteClass, refetch: refetchClasses } = useClasses()
   const { sessions, addSession, deleteSession } = useSessions()
   const { attendance: studentAttendance } = useStudentAttendance()
   const { attendance: staffAttendance } = useAttendance()
@@ -344,7 +344,10 @@ const AdminDashboardNew = () => {
         setToast({ message: 'Streams are predefined and cannot be added!', type: 'info' })
         return
       case 'class':
+        console.log('🏫 Adding class:', forms.class.name, 'to stream:', forms.class.streamId)
+        console.log('👤 User profile stream:', userProfile?.stream_id)
         result = await addClass(forms.class.name, forms.class.streamId)
+        console.log('✅ Class add result:', result)
         break
       case 'student':
         result = await addStudent({
@@ -442,6 +445,15 @@ const AdminDashboardNew = () => {
                 { rollNumber: '', name: '', email: '', phone: '', streamId: '', classId: '', dateOfBirth: '' }
       })
       setToast({ message: `${type.charAt(0).toUpperCase() + type.slice(1)} added successfully!`, type: 'success' })
+      
+      // Manual refresh for specific types to ensure UI updates
+      if (type === 'class') {
+        await refetchClasses()
+        fetchPeriodAttendanceCount() // Also refresh attendance count
+      } else if (type === 'student') {
+        await refetchStudents()
+        fetchPeriodAttendanceCount() // Also refresh attendance count
+      }
     } else {
       setToast({ message: 'Error: ' + result.error, type: 'error' })
     }
