@@ -13,10 +13,10 @@ export const useClasses = () => {
       // Get current user
       const { data: { user } } = await supabase.auth.getUser()
       
-      // Get user profile to check role and department
+      // Get user profile to check role and stream
       const { data: profile } = await supabase
         .from('users')
-        .select('role, department_id')
+        .select('role, stream_id')
         .eq('id', user?.id)
         .single()
       
@@ -24,19 +24,18 @@ export const useClasses = () => {
         .from('classes')
         .select(`
           *,
-          departments (id, name, code),
           users (id, name, email)
         `)
       
-      // Filter by department
-      if (profile?.department_id) {
-        // Both admin and staff see only their department's classes
-        query = query.eq('department_id', profile.department_id)
+      // Filter by stream
+      if (profile?.stream_id) {
+        // Both admin and staff see only their stream's classes
+        query = query.eq('stream_id', profile.stream_id)
       } else if (profile?.role === 'admin') {
-        // Fallback: If no department assigned, filter by created_by
+        // Fallback: If no stream assigned, filter by created_by
         query = query.or(`created_by.eq.${user?.id},created_by.is.null`)
       }
-      // If no department and not admin, show all (backward compatibility)
+      // If no stream and not admin, show all (backward compatibility)
       
       const { data, error } = await query.order('name', { ascending: true })
 
@@ -54,7 +53,7 @@ export const useClasses = () => {
     fetchClasses()
   }, [])
 
-  const addClass = async (name, departmentId) => {
+  const addClass = async (name, streamId) => {
     try {
       // Get current user
       const { data: { user } } = await supabase.auth.getUser()
@@ -63,7 +62,7 @@ export const useClasses = () => {
         .from('classes')
         .insert([{ 
           name, 
-          department_id: departmentId,
+          stream_id: streamId,
           created_by: user?.id
         }])
         .select()
