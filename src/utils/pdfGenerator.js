@@ -36,7 +36,6 @@ export const generatePeriodAttendanceReport = async (periodData, supabase) => {
           students (
             roll_number,
             name,
-            departments (name),
             classes (name)
           )
         `)
@@ -62,7 +61,6 @@ export const generatePeriodAttendanceReport = async (periodData, supabase) => {
           allRecords.push({
             rollNumber: student.students?.roll_number || 'N/A',
             name: student.students?.name || 'N/A',
-            department: student.students?.departments?.name || 'N/A',
             class: student.students?.classes?.name || record.classes?.name || 'N/A',
             date: new Date(record.date).toLocaleDateString(),
             period: record.period_number,
@@ -85,7 +83,6 @@ export const generatePeriodAttendanceReport = async (periodData, supabase) => {
   const tableData = allRecords.map(record => [
     record.rollNumber,
     record.name,
-    record.department,
     record.class,
     record.date,
     record.subject,
@@ -96,7 +93,7 @@ export const generatePeriodAttendanceReport = async (periodData, supabase) => {
   // Generate table
   autoTable(doc, {
     startY: 40,
-    head: [['Roll No', 'Name', 'Department', 'Class', 'Date', 'Subject', 'Faculty', 'Status']],
+    head: [['Roll No', 'Name', 'Class', 'Date', 'Subject', 'Faculty', 'Status']],
     body: tableData,
     theme: 'striped',
     headStyles: {
@@ -115,14 +112,13 @@ export const generatePeriodAttendanceReport = async (periodData, supabase) => {
       minCellHeight: 8
     },
     columnStyles: {
-      0: { cellWidth: 26, overflow: 'ellipsize' },  // Roll No
-      1: { cellWidth: 48, overflow: 'linebreak' },  // Name - More space for full names
-      2: { cellWidth: 36, overflow: 'ellipsize' },  // Department
-      3: { cellWidth: 22, halign: 'center', overflow: 'ellipsize' },  // Class
-      4: { cellWidth: 24, halign: 'center', overflow: 'ellipsize' },  // Date
-      5: { cellWidth: 38, overflow: 'linebreak' },  // Subject - More space
-      6: { cellWidth: 32, overflow: 'ellipsize' },  // Faculty
-      7: { cellWidth: 26, halign: 'center', overflow: 'ellipsize' }   // Status
+      0: { cellWidth: 28, overflow: 'ellipsize' },  // Roll No
+      1: { cellWidth: 52, overflow: 'linebreak' },  // Name - More space for full names
+      2: { cellWidth: 24, halign: 'center', overflow: 'ellipsize' },  // Class
+      3: { cellWidth: 26, halign: 'center', overflow: 'ellipsize' },  // Date
+      4: { cellWidth: 42, overflow: 'linebreak' },  // Subject - More space
+      5: { cellWidth: 36, overflow: 'ellipsize' },  // Faculty
+      6: { cellWidth: 28, halign: 'center', overflow: 'ellipsize' }   // Status
     },
     // Add custom styling for different statuses and alternative staff
     didParseCell: function(data) {
@@ -135,7 +131,7 @@ export const generatePeriodAttendanceReport = async (periodData, supabase) => {
       }
       
       // Color code the faculty column for alternative staff
-      if (data.column.index === 6 && data.cell.section === 'body') {
+      if (data.column.index === 5 && data.cell.section === 'body') {
         const faculty = data.cell.raw
         if (faculty.includes('(Alt.)')) {
           data.cell.styles.textColor = [204, 102, 0] // Orange for alternative staff
@@ -144,7 +140,7 @@ export const generatePeriodAttendanceReport = async (periodData, supabase) => {
       }
       
       // Color code status column
-      if (data.column.index === 7 && data.cell.section === 'body') {
+      if (data.column.index === 6 && data.cell.section === 'body') {
         const status = data.cell.raw
         if (status.includes('Approved')) {
           data.cell.styles.textColor = [34, 139, 34] // Green for approved
@@ -210,7 +206,6 @@ export const generateAttendanceReport = (attendanceData, reportType = 'student')
       return [
         record.students?.roll_number || 'N/A',
         record.students?.name || 'N/A',
-        record.students?.departments?.name || 'N/A',
         record.classes?.name || 'N/A',
         record.sessions?.name 
           ? `${record.sessions.name} (${record.sessions.start_time} - ${record.sessions.end_time})`
@@ -222,7 +217,7 @@ export const generateAttendanceReport = (attendanceData, reportType = 'student')
     
     autoTable(doc, {
       startY: 35,
-      head: [['Roll No', 'Name', 'Department', 'Class', 'Session', 'Date', 'Status']],
+      head: [['Roll No', 'Name', 'Class', 'Session', 'Date', 'Status']],
       body: tableData,
       theme: 'striped',
       headStyles: {
@@ -235,17 +230,16 @@ export const generateAttendanceReport = (attendanceData, reportType = 'student')
         cellPadding: 3
       },
       columnStyles: {
-        0: { cellWidth: 20 },
-        1: { cellWidth: 35 },
-        2: { cellWidth: 30 },
-        3: { cellWidth: 25 },
-        4: { cellWidth: 35 },
-        5: { cellWidth: 25 },
-        6: { cellWidth: 20 }
+        0: { cellWidth: 22 },
+        1: { cellWidth: 40 },
+        2: { cellWidth: 28 },
+        3: { cellWidth: 40 },
+        4: { cellWidth: 28 },
+        5: { cellWidth: 22 }
       },
       // Add custom styling for different statuses
       didParseCell: function(data) {
-        if (data.column.index === 6 && data.cell.section === 'body') {
+        if (data.column.index === 5 && data.cell.section === 'body') {
           const status = data.cell.raw
           if (status.includes('Approved')) {
             data.cell.styles.textColor = [34, 139, 34] // Green for approved

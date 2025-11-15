@@ -15,8 +15,8 @@ export const useStudentAttendance = () => {
       // Get current user
       const { data: { user: currentUser } } = await supabase.auth.getUser()
       
-      // Fetch attendance with user filtering through students
-      const { data, error } = await supabase
+      // Build base query
+      let query = supabase
         .from('student_attendance')
         .select(`
           *,
@@ -30,8 +30,14 @@ export const useStudentAttendance = () => {
           classes (id, name),
           sessions (id, name, start_time, end_time)
         `)
-        .or(`students.created_by.eq.${currentUser?.id},students.created_by.is.null`)
         .order('date', { ascending: false })
+
+      // If we know the current user, filter to students they created
+      if (currentUser?.id) {
+        query = query.eq('students.created_by', currentUser.id)
+      }
+
+      const { data, error } = await query
 
       if (error) throw error
       setAttendance(data || [])

@@ -24,7 +24,8 @@ export const useStudents = () => {
         .from('students')
         .select(`
           *,
-          classes (id, name)
+          classes (id, name),
+          departments (id, name, code)
         `)
       
       // Filter by stream

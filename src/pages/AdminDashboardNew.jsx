@@ -281,6 +281,9 @@ const AdminDashboardNew = () => {
   const [activeTab, setActiveTab] = useState('overview')
   const [showForm, setShowForm] = useState({ dept: false, class: false, session: false, student: false, intern: false, suspended: false, timetable: false, bulkTimetable: false })
   const [periodAttendanceCount, setPeriodAttendanceCount] = useState(0)
+  const [studentAttendanceCount, setStudentAttendanceCount] = useState(0)
+  const [staffAttendanceCount, setStaffAttendanceCount] = useState(0)
+  const [periodStudentAttendance, setPeriodStudentAttendance] = useState([])
   const [studentSearchQuery, setStudentSearchQuery] = useState('')
   const [toast, setToast] = useState(null)
   const [selectedStudents, setSelectedStudents] = useState([])
@@ -409,37 +412,83 @@ const AdminDashboardNew = () => {
         return
       }
       
-      console.log('📊 Fetching today\'s period attendance count for stream:', userProfile.stream_id)
+      console.log('📊 Fetching today\'s attendance count for stream:', userProfile.stream_id)
       
       // Get today's date in YYYY-MM-DD format
       const today = new Date().toISOString().split('T')[0]
       
-      const { count, error } = await supabase
+      const { count: studentCount, error: studentError } = await supabase
         .from('period_attendance')
         .select('*, classes!inner(stream_id)', { count: 'exact', head: true })
         .eq('is_marked', true)
         .eq('date', today)
         .eq('classes.stream_id', userProfile.stream_id)
-      
-      if (error) {
-        console.error('Error fetching count:', error)
-        throw error
+
+      const { count: staffCount, error: staffError } = await supabase
+        .from('staff_attendance')
+        .select('*, users!inner(stream_id)', { count: 'exact', head: true })
+        .eq('date', today)
+        .eq('users.stream_id', userProfile.stream_id)
+
+      if (studentError) {
+        console.error('Error fetching student count:', studentError)
+        throw studentError
       }
-      
-      console.log('✅ Today\'s period attendance count:', count)
-      setPeriodAttendanceCount(count || 0)
+
+      if (staffError) {
+        console.error('Error fetching staff count:', staffError)
+        throw staffError
+      }
+
+      const totalCount = (studentCount || 0) + (staffCount || 0)
+      console.log('✅ Today\'s attendance count - Students:', studentCount, 'Staff:', staffCount, 'Total:', totalCount)
+      setPeriodAttendanceCount(totalCount)
+      setStudentAttendanceCount(studentCount || 0)
+      setStaffAttendanceCount(staffCount || 0)
     } catch (err) {
-      console.error('Error fetching period attendance count:', err)
+      console.error('Error fetching attendance count:', err)
       setPeriodAttendanceCount(0)
     }
   }
 
-  // Fetch count when userProfile loads
+  // Fetch period student attendance data
+  const fetchPeriodStudentAttendance = async () => {
+    try {
+      if (!userProfile?.stream_id || classes.length === 0) return
+      
+      // Get class IDs for this stream
+      const streamClassIds = classes
+        .filter(c => c.stream_id === userProfile.stream_id)
+        .map(c => c.id)
+      
+      if (streamClassIds.length === 0) return
+      
+      // Fetch attendance data for all classes in this stream
+      const { data, error } = await supabase
+        .from('period_student_attendance')
+        .select(`
+          *,
+          students (class_id, status, id),
+          period_attendance (date)
+        `)
+        .in('students.class_id', streamClassIds)
+        .order('created_at', { ascending: false })
+      
+      if (error) throw error
+      setPeriodStudentAttendance(data || [])
+    } catch (err) {
+      console.error('Error fetching period student attendance:', err)
+      setPeriodStudentAttendance([])
+    }
+  }
+
+  // Fetch count when userProfile loads OR when attendance data changes
   useEffect(() => {
     if (userProfile?.stream_id) {
       fetchPeriodAttendanceCount()
+      fetchPeriodStudentAttendance()
     }
-  }, [userProfile])
+  }, [userProfile, studentAttendance, staffAttendance, classes, students, users])
   
   const [forms, setForms] = useState({
     stream: { name: '', code: '', description: '' },
@@ -602,7 +651,7 @@ const AdminDashboardNew = () => {
   }
 
   const [selectedClassForTimetable, setSelectedClassForTimetable] = useState('')
-  const [timetableDate, setTimetableDate] = useState(new Date().toISOString().split('T')[0])
+  const [timetableDate] = useState(new Date().toISOString().split('T')[0])
   
   // Short Report states
   const [shortReportStream, setShortReportStream] = useState('')
@@ -662,8 +711,8 @@ const AdminDashboardNew = () => {
   const generateShortReport = async () => {
     console.log('🎯 Generate Report clicked')
     
-    // Determine which stream to use based on user role
-    const reportStream = userProfile?.role === 'admin' ? shortReportStream : userProfile?.stream_id
+    // Determine which stream to use (fallback to user stream or CSE)
+    const reportStream = shortReportStream || userProfile?.stream_id || 'cse'
     
     console.log('📊 Report stream value:', reportStream)
     console.log('📅 shortReportDate value:', shortReportDate)
@@ -790,6 +839,40 @@ const AdminDashboardNew = () => {
 
   const tabs = getAvailableTabs()
 
+  const [reportStudentSessionCount, setReportStudentSessionCount] = useState(0)
+  const [reportStaffMarkedCount, setReportStaffMarkedCount] = useState(0)
+
+  useEffect(() => {
+    const fetchReportCounts = async () => {
+      try {
+        if (!userProfile?.stream_id) return
+
+        const { count: studentSessionsCount, error: studentSessionsError } = await supabase
+          .from('period_attendance')
+          .select('*, classes!inner(stream_id)', { count: 'exact', head: true })
+          .eq('is_marked', true)
+          .eq('classes.stream_id', userProfile.stream_id)
+
+        if (studentSessionsError) throw studentSessionsError
+        setReportStudentSessionCount(studentSessionsCount || 0)
+
+        const { count: staffMarkedCount, error: staffMarkedError } = await supabase
+          .from('staff_attendance')
+          .select('*, users!inner(stream_id)', { count: 'exact', head: true })
+          .eq('users.stream_id', userProfile.stream_id)
+
+        if (staffMarkedError) throw staffMarkedError
+        setReportStaffMarkedCount(staffMarkedCount || 0)
+      } catch (err) {
+        console.error('Error fetching report counts:', err)
+        setReportStudentSessionCount(0)
+        setReportStaffMarkedCount(0)
+      }
+    }
+
+    fetchReportCounts()
+  }, [userProfile, classes])
+
   return (
     <div className="min-h-screen bg-black text-white">
       <Navbar />
@@ -863,19 +946,33 @@ const AdminDashboardNew = () => {
                     <p className="text-xs sm:text-sm text-gray-500">Total</p>
                   </div>
 
-                  {/* Attendance Records */}
-                  <div className="group bg-gradient-to-br from-gray-900 to-gray-800 border border-white/20 rounded-xl p-3 sm:p-6 hover:border-orange-500/50 hover:shadow-lg hover:shadow-orange-500/20 transition-all duration-500 hover:scale-105 cursor-pointer">
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">
-                      <p className="text-gray-400 text-xs sm:text-sm font-semibold uppercase tracking-wide">Records</p>
-                      <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-orange-500/20 to-amber-500/20 group-hover:from-orange-500/30 group-hover:to-amber-500/30 rounded-lg flex items-center justify-center transition-all duration-300">
-                        <svg className="w-4 h-4 sm:w-5 sm:h-5 text-white group-hover:text-orange-400 transition-colors duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                        </svg>
-                      </div>
-                    </div>
-                    <h3 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent group-hover:from-orange-400 group-hover:to-amber-400 transition-all duration-300 mb-1">{periodAttendanceCount}</h3>
-                    <p className="text-xs sm:text-sm text-gray-500">Today</p>
-                  </div>
+                  {/* Student Attendance Records */}
+                   <div className="group bg-gradient-to-br from-gray-900 to-gray-800 border border-white/20 rounded-xl p-3 sm:p-6 hover:border-blue-500/50 hover:shadow-lg hover:shadow-blue-500/20 transition-all duration-500 hover:scale-105 cursor-pointer">
+                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">
+                      <p className="text-gray-400 text-xs sm:text-sm font-semibold uppercase tracking-wide">Student Reports</p>
+                       <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-blue-500/20 to-cyan-500/20 group-hover:from-blue-500/30 group-hover:to-cyan-500/30 rounded-lg flex items-center justify-center transition-all duration-300">
+                         <svg className="w-4 h-4 sm:w-5 sm:h-5 text-white group-hover:text-blue-400 transition-colors duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                         </svg>
+                       </div>
+                     </div>
+                     <h3 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent group-hover:from-blue-400 group-hover:to-cyan-400 transition-all duration-300 mb-1">{studentAttendanceCount}</h3>
+                     <p className="text-xs sm:text-sm text-gray-500">Today</p>
+                   </div>
+
+                   {/* Staff Attendance Records */}
+                   <div className="group bg-gradient-to-br from-gray-900 to-gray-800 border border-white/20 rounded-xl p-3 sm:p-6 hover:border-orange-500/50 hover:shadow-lg hover:shadow-orange-500/20 transition-all duration-500 hover:scale-105 cursor-pointer">
+                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">
+                      <p className="text-gray-400 text-xs sm:text-sm font-semibold uppercase tracking-wide">Staff Reports</p>
+                       <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-orange-500/20 to-amber-500/20 group-hover:from-orange-500/30 group-hover:to-amber-500/30 rounded-lg flex items-center justify-center transition-all duration-300">
+                         <svg className="w-4 h-4 sm:w-5 sm:h-5 text-white group-hover:text-orange-400 transition-colors duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.856-1.487M7 20H2v-2a3 3 0 015.856-1.487M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 0a2 2 0 11-4 0 2 2 0 014 0zM5 7a2 2 0 11-4 0 2 2 0 014 0z" />
+                         </svg>
+                       </div>
+                     </div>
+                     <h3 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent group-hover:from-orange-400 group-hover:to-amber-400 transition-all duration-300 mb-1">{staffAttendanceCount}</h3>
+                     <p className="text-xs sm:text-sm text-gray-500">Today</p>
+                   </div>
                 </div>
 
                 {/* Quick Actions */}
@@ -918,15 +1015,18 @@ const AdminDashboardNew = () => {
                 {/* Charts Section */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   {/* Attendance Trend Chart */}
-                  <AttendanceTrendChart 
-                    attendanceData={studentAttendance} 
-                    totalStudents={students.filter(s => s.status === 'active').length} 
-                  />
+                   <AttendanceTrendChart 
+                     attendanceData={periodStudentAttendance.map(pa => ({
+                       date: pa.period_attendance?.date,
+                       status: pa.status
+                     }))} 
+                     totalStudents={students.filter(s => s.status === 'active').length} 
+                   />
 
-                  {/* Status Breakdown Pie Chart */}
+                  {/* Today's Attendance Pie Chart */}
                   <div className="bg-gray-900 border border-white/20 rounded-xl p-6">
-                    <h3 className="text-lg font-bold text-white mb-2">Student Status Breakdown</h3>
-                    <p className="text-sm text-gray-400 mb-6">Current distribution (Today)</p>
+                    <h3 className="text-lg font-bold text-white mb-2">Today's Attendance Status</h3>
+                    <p className="text-sm text-gray-400 mb-6">Real-time distribution of active students</p>
                     
                     <div className="flex items-center justify-center mb-6">
                       {/* Donut Chart */}
@@ -938,22 +1038,25 @@ const AdminDashboardNew = () => {
                         </defs>
                         
                         {/* Calculate percentages */}
-                        {(() => {
-                          const activeCount = students.filter(s => s.status === 'active').length
-                          const internCount = students.filter(s => s.status === 'intern').length
-                          const suspendedCount = students.filter(s => s.status === 'suspended').length
-                          
-                          // Calculate absent count from today's attendance
-                          const today = new Date().toISOString().split('T')[0]
-                          const todayAttendance = studentAttendance.filter(a => a.date === today)
-                          const absentCount = todayAttendance.filter(a => a.status === 'absent').length
-                          
-                          const total = activeCount + internCount + suspendedCount + absentCount || 1
-                          
-                          const activePercent = (activeCount / total) * 100
-                          const internPercent = (internCount / total) * 100
-                          const suspendedPercent = (suspendedCount / total) * 100
-                          const absentPercent = (absentCount / total) * 100
+                         {(() => {
+                           const activeCount = students.filter(s => s.status === 'active').length
+                           const internCount = students.filter(s => s.status === 'intern').length
+                           const suspendedCount = students.filter(s => s.status === 'suspended').length
+                           
+                           // Calculate today's attendance status
+                           const today = new Date().toISOString().split('T')[0]
+                           const todayAttendance = periodStudentAttendance.filter(pa => pa.period_attendance?.date === today)
+                           const presentCount = todayAttendance.filter(a => a.status === 'present').length
+                           const absentCount = todayAttendance.filter(a => a.status === 'absent').length
+                           const onDutyCount = todayAttendance.filter(a => a.status === 'on_duty').length
+                           
+                           const activeStudentsCount = students.filter(s => s.status === 'active').length
+                           const total = activeStudentsCount || 1
+                           
+                           const presentPercent = (presentCount / total) * 100
+                           const absentPercent = (absentCount / total) * 100
+                           const onDutyPercent = (onDutyCount / total) * 100
+                           const notMarkedPercent = ((total - presentCount - absentCount - onDutyCount) / total) * 100
                           
                           // Calculate arc paths
                           const radius = 70
@@ -990,29 +1093,29 @@ const AdminDashboardNew = () => {
                           
                           return (
                             <>
-                              {/* Active - Green */}
-                              {activePercent > 0 && (
-                                <path d={createArc(activePercent, '#10b981')} fill="#10b981" filter="url(#shadow)" className="hover:opacity-80 transition-opacity cursor-pointer"/>
+                              {/* Present - Green */}
+                              {presentPercent > 0 && (
+                                <path d={createArc(presentPercent, '#10b981')} fill="#10b981" filter="url(#shadow)" className="hover:opacity-80 transition-opacity cursor-pointer"/>
                               )}
-                              {/* Intern - Gray */}
-                              {internPercent > 0 && (
-                                <path d={createArc(internPercent, '#6b7280')} fill="#6b7280" filter="url(#shadow)" className="hover:opacity-80 transition-opacity cursor-pointer"/>
-                              )}
-                              {/* Suspended - Dark Gray */}
-                              {suspendedPercent > 0 && (
-                                <path d={createArc(suspendedPercent, '#374151')} fill="#374151" filter="url(#shadow)" className="hover:opacity-80 transition-opacity cursor-pointer"/>
+                              {/* On Duty - Blue */}
+                              {onDutyPercent > 0 && (
+                                <path d={createArc(onDutyPercent, '#3b82f6')} fill="#3b82f6" filter="url(#shadow)" className="hover:opacity-80 transition-opacity cursor-pointer"/>
                               )}
                               {/* Absent - Red */}
                               {absentPercent > 0 && (
                                 <path d={createArc(absentPercent, '#ef4444')} fill="#ef4444" filter="url(#shadow)" className="hover:opacity-80 transition-opacity cursor-pointer"/>
+                              )}
+                              {/* Not Marked - Gray */}
+                              {notMarkedPercent > 0 && (
+                                <path d={createArc(notMarkedPercent, '#9ca3af')} fill="#9ca3af" filter="url(#shadow)" className="hover:opacity-80 transition-opacity cursor-pointer"/>
                               )}
                               
                               {/* Center circle */}
                               <circle cx="100" cy="100" r="45" fill="#111827"/>
                               
                               {/* Center text */}
-                              <text x="100" y="95" textAnchor="middle" className="text-2xl font-bold fill-white">{total}</text>
-                              <text x="100" y="110" textAnchor="middle" className="text-xs fill-gray-400">Total</text>
+                              <text x="100" y="95" textAnchor="middle" className="text-2xl font-bold fill-white">{presentCount}</text>
+                              <text x="100" y="110" textAnchor="middle" className="text-xs fill-gray-400">Present</text>
                             </>
                           )
                         })()}
@@ -1020,73 +1123,74 @@ const AdminDashboardNew = () => {
                     </div>
                     
                     {/* Legend */}
-                    <div className="space-y-3">
-                      {(() => {
-                        const activeCount = students.filter(s => s.status === 'active').length
-                        const internCount = students.filter(s => s.status === 'intern').length
-                        const suspendedCount = students.filter(s => s.status === 'suspended').length
-                        const today = new Date().toISOString().split('T')[0]
-                        const todayAttendance = studentAttendance.filter(a => a.date === today)
-                        const absentCount = todayAttendance.filter(a => a.status === 'absent').length
-                        const total = activeCount + internCount + suspendedCount + absentCount || 1
-                        
-                        return (
-                          <>
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-2">
-                                <div className="w-3 h-3 rounded-full bg-green-500"></div>
-                                <span className="text-sm text-gray-300">Active</span>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <span className="text-sm font-bold text-white">{activeCount}</span>
-                                <span className="text-xs text-green-500 font-semibold">
-                                  {Math.round((activeCount / total) * 100)}%
-                                </span>
-                              </div>
-                            </div>
-                            
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-2">
-                                <div className="w-3 h-3 rounded-full bg-gray-500"></div>
-                                <span className="text-sm text-gray-300">Intern</span>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <span className="text-sm font-bold text-white">{internCount}</span>
-                                <span className="text-xs text-gray-400 font-semibold">
-                                  {Math.round((internCount / total) * 100)}%
-                                </span>
-                              </div>
-                            </div>
-                            
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-2">
-                                <div className="w-3 h-3 rounded-full bg-gray-700"></div>
-                                <span className="text-sm text-gray-300">Suspended</span>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <span className="text-sm font-bold text-white">{suspendedCount}</span>
-                                <span className="text-xs text-gray-400 font-semibold">
-                                  {Math.round((suspendedCount / total) * 100)}%
-                                </span>
-                              </div>
-                            </div>
-                            
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-2">
-                                <div className="w-3 h-3 rounded-full bg-red-500"></div>
-                                <span className="text-sm text-gray-300">Absent</span>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <span className="text-sm font-bold text-white">{absentCount}</span>
-                                <span className="text-xs text-red-500 font-semibold">
-                                  {Math.round((absentCount / total) * 100)}%
-                                </span>
-                              </div>
-                            </div>
-                          </>
-                        )
-                      })()}
-                    </div>
+                     <div className="space-y-3">
+                       {(() => {
+                         const activeStudentsCount = students.filter(s => s.status === 'active').length
+                         const today = new Date().toISOString().split('T')[0]
+                         const todayAttendance = periodStudentAttendance.filter(pa => pa.period_attendance?.date === today)
+                         const presentCount = todayAttendance.filter(a => a.status === 'present').length
+                         const absentCount = todayAttendance.filter(a => a.status === 'absent').length
+                         const onDutyCount = todayAttendance.filter(a => a.status === 'on_duty').length
+                         const notMarkedCount = activeStudentsCount - presentCount - absentCount - onDutyCount
+                         const total = activeStudentsCount || 1
+                         
+                         return (
+                           <>
+                             <div className="flex items-center justify-between">
+                               <div className="flex items-center gap-2">
+                                 <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                                 <span className="text-sm text-gray-300">Present</span>
+                               </div>
+                               <div className="flex items-center gap-2">
+                                 <span className="text-sm font-bold text-white">{presentCount}</span>
+                                 <span className="text-xs text-green-500 font-semibold">
+                                   {Math.round((presentCount / total) * 100)}%
+                                 </span>
+                               </div>
+                             </div>
+                             
+                             <div className="flex items-center justify-between">
+                               <div className="flex items-center gap-2">
+                                 <div className="w-3 h-3 rounded-full bg-blue-500"></div>
+                                 <span className="text-sm text-gray-300">On Duty</span>
+                               </div>
+                               <div className="flex items-center gap-2">
+                                 <span className="text-sm font-bold text-white">{onDutyCount}</span>
+                                 <span className="text-xs text-blue-500 font-semibold">
+                                   {Math.round((onDutyCount / total) * 100)}%
+                                 </span>
+                               </div>
+                             </div>
+                             
+                             <div className="flex items-center justify-between">
+                               <div className="flex items-center gap-2">
+                                 <div className="w-3 h-3 rounded-full bg-red-500"></div>
+                                 <span className="text-sm text-gray-300">Absent</span>
+                               </div>
+                               <div className="flex items-center gap-2">
+                                 <span className="text-sm font-bold text-white">{absentCount}</span>
+                                 <span className="text-xs text-red-500 font-semibold">
+                                   {Math.round((absentCount / total) * 100)}%
+                                 </span>
+                               </div>
+                             </div>
+                             
+                             <div className="flex items-center justify-between">
+                               <div className="flex items-center gap-2">
+                                 <div className="w-3 h-3 rounded-full bg-gray-400"></div>
+                                 <span className="text-sm text-gray-300">Not Marked</span>
+                               </div>
+                               <div className="flex items-center gap-2">
+                                 <span className="text-sm font-bold text-white">{notMarkedCount}</span>
+                                 <span className="text-xs text-gray-400 font-semibold">
+                                   {Math.round((notMarkedCount / total) * 100)}%
+                                 </span>
+                               </div>
+                             </div>
+                           </>
+                         )
+                       })()}
+                     </div>
                   </div>
                 </div>
 
@@ -1109,33 +1213,15 @@ const AdminDashboardNew = () => {
                 {/* Report Form */}
                 <div className="bg-gray-900 border border-white/20 rounded-xl p-6">
                   <div className="grid md:grid-cols-3 gap-4 mb-4">
-                    {userProfile?.role === 'admin' ? (
-                      // Admin: Show stream selector
-                      <div>
-                        <label className="block text-sm font-bold text-white mb-2 uppercase tracking-wide">Stream</label>
-                        <select
-                          value={shortReportStream}
-                          onChange={(e) => setShortReportStream(e.target.value)}
-                          className="w-full px-4 py-3 bg-gray-800 border-2 border-white/30 rounded-lg text-white focus:border-blue-500 focus:outline-none"
-                        >
-                          <option value="">Select Stream</option>
-                          {streams.map(stream => (
-                            <option key={stream.id} value={stream.id}>
-                              {stream.name}
-                            </option>
-                          ))}
-                        </select>
+                    <div>
+                      <label className="block text-sm font-bold text-white mb-2 uppercase tracking-wide">Stream</label>
+                      <div className="px-4 py-3 bg-gray-900 border-2 border-white/30 rounded-lg text-gray-400 cursor-not-allowed opacity-75">
+                        {streams.find(s => s.id === shortReportStream)?.name ||
+                          streams.find(s => s.id === userProfile?.stream_id)?.name ||
+                          'Computer Science and Engineering'}
                       </div>
-                    ) : (
-                      // PC: Show locked stream
-                      <div>
-                        <label className="block text-sm font-bold text-white mb-2 uppercase tracking-wide">Stream</label>
-                        <div className="px-4 py-3 bg-gray-900 border-2 border-white/30 rounded-lg text-gray-400 cursor-not-allowed opacity-75">
-                          {streams.find(s => s.id === userProfile?.stream_id)?.name || 'Computer Science and Engineering'}
-                        </div>
-                        <input type="hidden" value={userProfile?.stream_id} />
-                      </div>
-                    )}
+                      <input type="hidden" value={shortReportStream || userProfile?.stream_id || 'cse'} />
+                    </div>
                     <div>
                       <label className="block text-sm font-bold text-white mb-2 uppercase tracking-wide">Date</label>
                       <input 
@@ -1257,7 +1343,7 @@ const AdminDashboardNew = () => {
                     <svg className="w-16 h-16 text-gray-600 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
-                    <p className="text-gray-400 text-lg">Select a stream and date to generate the short report</p>
+                    <p className="text-gray-400 text-lg">Select a date to generate the short report for your stream</p>
                   </div>
                 )}
               </div>
@@ -1292,6 +1378,12 @@ const AdminDashboardNew = () => {
               <div>
                 <div className="flex justify-between items-center mb-6">
                   <h2 className="text-2xl font-bold">Classes</h2>
+                  <button
+                    onClick={() => setShowForm({ ...showForm, class: !showForm.class })}
+                    className="px-4 py-2 bg-white text-black rounded-lg hover:bg-gray-200 transition-all duration-300 font-semibold"
+                  >
+                    Add Class
+                  </button>
                 </div>
 
                 {showForm.class && (
@@ -1756,7 +1848,7 @@ Saturday,6,DPSD(301),Digital Principles,Ms.Sree Arthi D,DSA,R106,true`
                   </div>
                 )}
                   
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                <div className="grid grid-cols-1 gap-4 mb-6">
                   <div>
                     <label className="block text-sm font-medium text-white mb-2">Select Class</label>
                     <select
@@ -1771,15 +1863,6 @@ Saturday,6,DPSD(301),Digital Principles,Ms.Sree Arthi D,DSA,R106,true`
                         </option>
                       ))}
                     </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-white mb-2">Select Date</label>
-                    <input
-                      type="date"
-                      value={timetableDate}
-                      onChange={(e) => setTimetableDate(e.target.value)}
-                      className="w-full px-4 py-3 border-2 border-white/30 bg-black text-white rounded-lg focus:ring-2 focus:ring-white focus:border-white outline-none transition-all"
-                    />
                   </div>
                 </div>
 
@@ -2166,16 +2249,18 @@ Saturday,6,DPSD(301),Digital Principles,Ms.Sree Arthi D,DSA,R106,true`
                             <td className="px-4 py-3 text-gray-300">{user.email}</td>
                             <td className="px-4 py-3">
                               <div className="flex flex-col gap-1">
-                                <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                                <span className={`px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1.5 w-fit ${
                                   user.role === 'admin' 
-                                    ? 'bg-red-900 text-red-200' 
-                                    : 'bg-blue-900 text-blue-200'
+                                    ? 'bg-red-900/40 text-red-100 border border-red-700' 
+                                    : 'bg-blue-900/40 text-blue-100 border border-blue-700'
                                 }`}>
-                                  {user.role === 'admin' ? '👑 Admin' : '👨‍🏫 Staff'}
+                                  <div className={`w-2 h-2 rounded-full ${user.role === 'admin' ? 'bg-red-400' : 'bg-blue-400'}`}></div>
+                                  {user.role === 'admin' ? 'Administrator' : 'Staff'}
                                 </span>
                                 {user.is_pc && (
-                                  <span className="px-2 py-1 bg-purple-900 text-purple-200 rounded-full text-xs font-semibold">
-                                    📋 PC
+                                  <span className="px-3 py-1 bg-purple-900/40 text-purple-100 rounded-full text-xs font-semibold border border-purple-700 flex items-center gap-1.5 w-fit">
+                                    <div className="w-2 h-2 rounded-full bg-purple-400"></div>
+                                    Program Coordinator
                                   </span>
                                 )}
                               </div>
@@ -2202,9 +2287,9 @@ Saturday,6,DPSD(301),Digital Principles,Ms.Sree Arthi D,DSA,R106,true`
                                             if (window.confirm(`Remove ${user.name} as Program Coordinator?`)) {
                                               const result = await removePC(user.id)
                                               if (result.success) {
-                                                setToast({ message: `✅ ${user.name} removed as PC`, type: 'success' })
+                                                setToast({ message: `${user.name} removed as Program Coordinator`, type: 'success' })
                                               } else {
-                                                setToast({ message: '❌ Error removing PC: ' + result.error, type: 'error' })
+                                                setToast({ message: 'Error removing PC: ' + result.error, type: 'error' })
                                               }
                                             }
                                           } else {
@@ -2212,31 +2297,31 @@ Saturday,6,DPSD(301),Digital Principles,Ms.Sree Arthi D,DSA,R106,true`
                                             if (window.confirm(`Appoint ${user.name} as Program Coordinator for ${streams.find(s => s.id === user.stream_id)?.code || 'this stream'}? This will remove PC role from others in the same stream.`)) {
                                               const result = await appointAsPC(user.id)
                                               if (result.success) {
-                                                setToast({ message: `✅ ${user.name} appointed as PC`, type: 'success' })
+                                                setToast({ message: `${user.name} appointed as Program Coordinator`, type: 'success' })
                                               } else {
-                                                setToast({ message: '❌ Error appointing PC: ' + result.error, type: 'error' })
+                                                setToast({ message: 'Error appointing Program Coordinator: ' + result.error, type: 'error' })
                                               }
                                             }
                                           }
                                         }}
-                                        className={`px-3 py-1 rounded text-xs transition-colors ${
-                                          user.is_pc 
-                                            ? 'bg-purple-600 text-white hover:bg-purple-700' 
-                                            : 'bg-purple-600 text-white hover:bg-purple-700'
-                                        }`}
-                                      >
-                                        {user.is_pc ? '📋 Remove PC' : '📋 Make PC'}
-                                      </button>
+                                        className={`px-3 py-1 rounded text-xs transition-colors font-semibold ${
+                                           user.is_pc 
+                                             ? 'bg-purple-600 text-white hover:bg-purple-700' 
+                                             : 'bg-purple-600 text-white hover:bg-purple-700'
+                                         }`}
+                                        >
+                                         {user.is_pc ? 'Remove PC' : 'Make PC'}
+                                        </button>
                                     )}
                                     <button
                                       onClick={async () => {
-                                        if (window.confirm(`⚠️ Are you sure you want to delete ${user.name}'s account? This action cannot be undone!`)) {
+                                        if (window.confirm(`Are you sure you want to delete ${user.name}'s account? This action cannot be undone!`)) {
                                           const result = await deleteUser(user.id)
                                           if (result.success) {
-                                            setToast({ message: `✅ User ${user.name} deleted successfully`, type: 'success' })
+                                            setToast({ message: `User ${user.name} deleted successfully`, type: 'success' })
                                             fetchPeriodAttendanceCount() // Refresh count after user deletion
                                           } else {
-                                            setToast({ message: '❌ Error deleting user: ' + result.error, type: 'error' })
+                                            setToast({ message: 'Error deleting user: ' + result.error, type: 'error' })
                                           }
                                         }
                                       }}
@@ -2283,54 +2368,62 @@ Saturday,6,DPSD(301),Digital Principles,Ms.Sree Arthi D,DSA,R106,true`
                       <p className="text-sm text-gray-400">Download all student attendance records</p>
                     </div>
                     <div className="mb-4 p-3 bg-black border border-white/20 rounded-lg">
-                      <div className="text-sm text-gray-400 mb-1">Total Period Attendance Records</div>
-                      <div className="text-3xl font-bold text-white">{periodAttendanceCount}</div>
-                    </div>
-                    <button onClick={async () => {
-                      try {
-                        console.log('📊 Fetching period attendance data...')
-                        
-                        // Get current user and their department
-                        const { data: { user: currentUser } } = await supabase.auth.getUser()
-                        
-                        if (!userProfile?.department_id) {
-                          setToast({ message: 'Your account is not assigned to a department', type: 'error' })
-                          return
-                        }
-                        
-                        console.log('🔍 Filtering by department:', userProfile.department_id)
-                        
-                        const { data, error } = await supabase
-                          .from('period_attendance')
-                          .select(`
-                            *,
-                            timetable (
-                              subject_code,
-                              subject_name,
-                              faculty_name
-                            ),
-                            classes!inner (
-                              name,
-                              department_id
-                            )
-                          `)
-                          .eq('is_marked', true)
-                          .eq('classes.department_id', userProfile.department_id)
-                          .order('date', { ascending: false })
-                        
-                        if (error) {
-                          console.error('Supabase error:', error)
-                          throw error
-                        }
-                        
-                        console.log('Fetched data:', data)
-                        
-                        if (!data || data.length === 0) {
-                          setToast({ message: 'No attendance records found', type: 'info' })
-                          return
-                        }
-                        
-                        await generatePeriodAttendanceReport(data, supabase)
+                       <div className="text-sm text-gray-400 mb-1">Total Marked Sessions</div>
+                       <div className="text-3xl font-bold text-white">{reportStudentSessionCount}</div>
+                     </div>
+                     <button onClick={async () => {
+                       try {
+                         console.log('📊 Fetching all student attendance records...')
+                         
+                         if (!userProfile?.stream_id) {
+                           setToast({ message: 'Your account is not assigned to a stream', type: 'error' })
+                           return
+                         }
+                         
+                         console.log('🔍 Fetching records for stream:', userProfile.stream_id)
+                         
+                         // Get stream class IDs
+                         const streamClassIds = classes
+                           .filter(c => c.stream_id === userProfile.stream_id)
+                           .map(c => c.id)
+                         
+                         if (streamClassIds.length === 0) {
+                           setToast({ message: 'No classes found for your stream', type: 'info' })
+                           return
+                         }
+                         
+                         // Fetch all attendance records for this stream
+                         const { data, error } = await supabase
+                           .from('period_attendance')
+                           .select(`
+                             *,
+                             timetable (
+                               subject_code,
+                               subject_name,
+                               faculty_name
+                             ),
+                             classes (
+                               name,
+                               stream_id
+                             )
+                           `)
+                           .eq('is_marked', true)
+                           .in('class_id', streamClassIds)
+                           .order('date', { ascending: false })
+                         
+                         if (error) {
+                           console.error('Supabase error:', error)
+                           throw error
+                         }
+                         
+                         console.log('Fetched data:', data?.length, 'records')
+                         
+                         if (!data || data.length === 0) {
+                           setToast({ message: 'No attendance records found for your stream', type: 'info' })
+                           return
+                         }
+                         
+                         await generatePeriodAttendanceReport(data, supabase)
                       } catch (err) {
                         console.error('Error details:', err)
                         setToast({ message: `Error fetching attendance records: ${err.message}`, type: 'error' })
@@ -2346,14 +2439,15 @@ Saturday,6,DPSD(301),Digital Principles,Ms.Sree Arthi D,DSA,R106,true`
                       <p className="text-sm text-gray-400">Download all staff attendance records</p>
                     </div>
                     <div className="mb-4 p-3 bg-black border border-white/20 rounded-lg">
-                      <div className="text-sm text-gray-400 mb-1">Total Staff Records</div>
-                      <div className="text-3xl font-bold text-white">{staffAttendance.length}</div>
-                    </div>
+                       <div className="text-sm text-gray-400 mb-1">Total Staff Marked</div>
+                       <div className="text-3xl font-bold text-white">{reportStaffMarkedCount}</div>
+                     </div>
                     <button onClick={() => {
-                      if (staffAttendance.length > 0) {
-                        generateAttendanceReport(staffAttendance, 'staff')
+                      const staffForStream = staffAttendance.filter(sa => sa.users?.stream_id === userProfile?.stream_id)
+                      if (staffForStream.length > 0) {
+                        generateAttendanceReport(staffForStream, 'staff')
                       } else {
-                        setToast({ message: 'No staff attendance records found', type: 'info' })
+                        setToast({ message: 'No staff attendance records found for your stream', type: 'info' })
                       }
                     }} className="w-full px-6 py-3 bg-white text-black rounded-lg hover:bg-gray-200 transition-all duration-300 font-semibold uppercase tracking-wide">
                       Download Staff Report PDF

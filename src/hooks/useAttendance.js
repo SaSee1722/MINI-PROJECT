@@ -57,16 +57,33 @@ export const useAttendance = () => {
     fetchAttendance()
   }, [])
 
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        fetchAttendance()
+      } else {
+        setAttendance([])
+      }
+    })
+    return () => subscription.unsubscribe()
+  }, [])
+
   const markAttendance = async (userId, date, status, sessionId = null) => {
     try {
       // Check if attendance already exists for this user, date, and session
-      const { data: existing } = await supabase
+      let existingQuery = supabase
         .from('staff_attendance')
         .select('id')
         .eq('user_id', userId)
         .eq('date', date)
-        .eq('session_id', sessionId)
-        .single()
+
+      if (sessionId === null) {
+        existingQuery = existingQuery.is('session_id', null)
+      } else {
+        existingQuery = existingQuery.eq('session_id', sessionId)
+      }
+
+      const { data: existing } = await existingQuery.single()
 
       if (existing) {
         // Update existing record

@@ -25,9 +25,9 @@ export const useSessions = () => {
         .select('*')
       
       // Sessions are global (not department-specific)
-      // But filter by created_by for admin
-      if (profile?.role === 'admin') {
-        query = query.or(`created_by.eq.${user?.id},created_by.is.null`)
+      // For admins, optionally filter sessions they created (if needed by RLS)
+      if (profile?.role === 'admin' && user?.id) {
+        query = query.eq('created_by', user.id)
       }
       // Staff sees all sessions (sessions are time periods, not department-specific)
       

@@ -65,6 +65,69 @@ const BulkStudentImport = ({ onImportComplete, streams, classes }) => {
     return students
   }
 
+  // Map departments to streams
+  // IT, AIML, AIDS, and CYBER are departments within CSE stream, not separate streams
+  const getStreamIdFromDepartment = (departmentName) => {
+    if (!departmentName) return null
+    
+    const dept = departmentName.toLowerCase().trim()
+    
+    // CSE stream departments (all map to CSE stream)
+    if (dept === 'cse' || dept === 'computer science' || dept === 'computer science and engineering') {
+      return 'cse'
+    }
+    
+    // IT department maps to CSE stream
+    if (dept === 'it' || dept === 'information technology') {
+      return 'cse'
+    }
+    
+    // AIML department maps to CSE stream
+    if (dept === 'aiml' || dept === 'ai/ml' || dept === 'artificial intelligence and machine learning' || 
+        dept === 'artificial intelligence' || dept === 'machine learning') {
+      return 'cse'
+    }
+    
+    // AIDS department maps to CSE stream
+    if (dept === 'aids' || dept === 'ai/ds' || dept === 'artificial intelligence and data science' || 
+        dept === 'data science') {
+      return 'cse'
+    }
+    
+    // CYBER department maps to CSE stream
+    if (dept === 'cyber' || dept === 'cybersecurity' || dept === 'cyber security' || 
+        dept === 'cyber security engineering') {
+      return 'cse'
+    }
+    
+    // Other departments map to their respective streams
+    if (dept === 'ece' || dept === 'electronics and communication' || dept === 'electronics and communication engineering') {
+      return 'ece'
+    }
+    
+    if (dept === 'eee' || dept === 'electrical and electronics' || dept === 'electrical and electronics engineering') {
+      return 'eee'
+    }
+    
+    if (dept === 'mech' || dept === 'mechanical' || dept === 'mechanical engineering') {
+      return 'mech'
+    }
+    
+    if (dept === 'civil' || dept === 'civil engineering') {
+      return 'civil'
+    }
+    
+    // Fallback: try to find in streams array
+    const stream = streams.find(s => 
+      s.name.toLowerCase() === departmentName.toLowerCase() || 
+      s.code.toLowerCase() === departmentName.toLowerCase() ||
+      s.name.toLowerCase().includes(departmentName.toLowerCase()) ||
+      departmentName.toLowerCase().includes(s.code.toLowerCase())
+    )
+    
+    return stream ? stream.id : null
+  }
+
   const findStreamId = (streamName) => {
     console.log('🔍 Looking for stream:', streamName, 'Available streams:', streams.map(s => ({id: s.id, name: s.name, code: s.code})))
     
@@ -80,16 +143,120 @@ const BulkStudentImport = ({ onImportComplete, streams, classes }) => {
   }
 
   const findClassId = (className) => {
+    if (!className) return null
+    
     console.log('🔍 Looking for class:', className, 'Available classes:', classes.map(c => ({id: c.id, name: c.name})))
     
-    const cls = classes.find(c => 
-      c.name.toLowerCase() === className.toLowerCase() ||
-      c.name.toLowerCase().includes(className.toLowerCase()) ||
-      className.toLowerCase().includes(c.name.toLowerCase())
-    )
+    // Normalize the class name for matching (remove extra spaces, convert to lowercase)
+    const normalizedInput = className.toLowerCase().trim().replace(/\s+/g, ' ')
     
-    console.log('✅ Found class:', cls?.id || 'NOT FOUND')
-    return cls?.id
+    // Extract year part from input for validation
+    const inputParts = normalizedInput.split(/\s+/)
+    const inputYear = inputParts.find(p => ['i', 'ii', 'iii', 'iv', '1', '2', '3', '4'].includes(p))
+    
+    // Step 1: Try exact match first (highest priority)
+    let cls = classes.find(c => {
+      const normalizedClass = c.name.toLowerCase().trim().replace(/\s+/g, ' ')
+      if (normalizedClass === normalizedInput) {
+        // Verify year matches if both have years (prevent II matching III)
+        if (inputYear) {
+          const classParts = normalizedClass.split(/\s+/)
+          const classYear = classParts.find(p => ['i', 'ii', 'iii', 'iv', '1', '2', '3', '4'].includes(p))
+          if (classYear && classYear !== inputYear) {
+            console.log(`⚠️ Year mismatch: input has "${inputYear}" but class has "${classYear}" - skipping`)
+            return false  // Years don't match exactly
+          }
+        }
+        return true
+      }
+      return false
+    })
+    
+    if (cls) {
+      console.log('✅ Found class (exact match):', cls.id, cls.name)
+      return cls.id
+    }
+    
+    // Step 2: Try matching with "YR" variations (III IT vs III YR IT)
+    // Remove "YR" or "YEAR" from both for comparison, but keep the rest exact
+    const inputWithoutYear = normalizedInput.replace(/\s*(yr|year)\s*/gi, ' ').replace(/\s+/g, ' ').trim()
+    cls = classes.find(c => {
+      const classWithoutYear = c.name.toLowerCase().trim().replace(/\s*(yr|year)\s*/gi, ' ').replace(/\s+/g, ' ').trim()
+      if (classWithoutYear === inputWithoutYear) {
+        // Double-check: verify year parts match exactly
+        if (inputYear) {
+          const classParts = classWithoutYear.split(/\s+/)
+          const classYear = classParts.find(p => ['i', 'ii', 'iii', 'iv', '1', '2', '3', '4'].includes(p))
+          if (classYear && classYear !== inputYear) {
+            console.log(`⚠️ Year mismatch in YR variation: input has "${inputYear}" but class has "${classYear}" - skipping`)
+            return false  // Years don't match exactly
+          }
+        }
+        return true
+      }
+      return false
+    })
+    
+    if (cls) {
+      console.log('✅ Found class (year variation exact match):', cls.id, cls.name)
+      return cls.id
+    }
+    
+    // Step 3: Try matching with roman numeral conversions (III vs 3, II vs 2, I vs 1)
+    // Convert both to a common format and compare
+    const romanToNum = { 'i': '1', 'ii': '2', 'iii': '3', 'iv': '4' }
+    const numToRoman = { '1': 'i', '2': 'ii', '3': 'iii', '4': 'iv' }
+    
+    // Convert input: replace roman numerals with numbers
+    let normalizedInputWithNums = normalizedInput
+    Object.entries(romanToNum).forEach(([roman, num]) => {
+      // Use word boundaries to avoid matching "II" in "III"
+      normalizedInputWithNums = normalizedInputWithNums.replace(new RegExp(`\\b${roman}\\b`, 'gi'), num)
+    })
+    
+    // Also try converting numbers to roman
+    let normalizedInputWithRoman = normalizedInput
+    Object.entries(numToRoman).forEach(([num, roman]) => {
+      normalizedInputWithRoman = normalizedInputWithRoman.replace(new RegExp(`\\b${num}\\b`, 'gi'), roman)
+    })
+    
+    // Try exact match with converted formats
+    cls = classes.find(c => {
+      const normalizedClass = c.name.toLowerCase().trim().replace(/\s+/g, ' ')
+      
+      // Convert class name: replace roman numerals with numbers
+      let normalizedClassWithNums = normalizedClass
+      Object.entries(romanToNum).forEach(([roman, num]) => {
+        normalizedClassWithNums = normalizedClassWithNums.replace(new RegExp(`\\b${roman}\\b`, 'gi'), num)
+      })
+      
+      // Convert class name: replace numbers with roman
+      let normalizedClassWithRoman = normalizedClass
+      Object.entries(numToRoman).forEach(([num, roman]) => {
+        normalizedClassWithRoman = normalizedClassWithRoman.replace(new RegExp(`\\b${num}\\b`, 'gi'), roman)
+      })
+      
+      // Try exact matches with all combinations
+      return normalizedClassWithNums === normalizedInputWithNums ||
+             normalizedClassWithRoman === normalizedInputWithRoman ||
+             normalizedClassWithNums === normalizedInput ||
+             normalizedClassWithRoman === normalizedInput ||
+             normalizedClass === normalizedInputWithNums ||
+             normalizedClass === normalizedInputWithRoman
+    })
+    
+    if (cls) {
+      console.log('✅ Found class (roman numeral conversion match):', cls.id, cls.name)
+      return cls.id
+    }
+    
+    // Step 4: NO partial matching - it's too risky
+    // If we haven't found an exact match by now, the class doesn't exist
+    // This prevents "III IT" from incorrectly matching "II IT"
+    
+    console.log('❌ Class NOT FOUND:', className)
+    console.log('💡 Available classes:', classes.map(c => c.name).join(', '))
+    return null
   }
 
   const handleImport = async () => {
@@ -102,6 +269,15 @@ const BulkStudentImport = ({ onImportComplete, streams, classes }) => {
     showInfo('Starting import process...')
 
     try {
+      // Get current authenticated user for created_by field
+      const { data: { user } } = await supabase.auth.getUser()
+
+      if (!user) {
+        showError('User not authenticated. Please sign in again and retry import.')
+        setImporting(false)
+        return
+      }
+
       const text = await file.text()
       const students = parseCSV(text)
 
@@ -124,16 +300,17 @@ const BulkStudentImport = ({ onImportComplete, streams, classes }) => {
         const rowNum = i + 2 // +2 because of header and 0-index
 
         // Required fields - check with flexible field names
-        const rollNumber = student.roll_number || student.rollnumber || student.roll
+        // Support both old format (roll_number, name, stream, class) and new format (register_number, name, department, class)
+        const rollNumber = student.register_number || student.roll_number || student.rollnumber || student.roll
         const name = student.name || student.student_name || student.studentname
-        const stream = student.stream || student.department || student.dept
+        const department = student.department || student.dept || student.stream
         const className = student.class || student.class_name || student.classname
         
-        if (!rollNumber || !name || !stream || !className) {
+        if (!rollNumber || !name || !department || !className) {
           const missing = []
-          if (!rollNumber) missing.push('roll_number')
+          if (!rollNumber) missing.push('register_number or roll_number')
           if (!name) missing.push('name')
-          if (!stream) missing.push('stream')
+          if (!department) missing.push('department')
           if (!className) missing.push('class')
           errors.push(`Row ${rowNum}: Missing required fields: ${missing.join(', ')}`)
           continue
@@ -142,19 +319,24 @@ const BulkStudentImport = ({ onImportComplete, streams, classes }) => {
         // Update student object with normalized field names
         student.roll_number = rollNumber
         student.name = name
-        student.stream = stream
+        student.department = department
         student.class = className
 
-        const streamId = findStreamId(student.stream)
-        const classId = findClassId(student.class)
+        // Map department to stream_id (IT -> CSE stream, etc.)
+        const streamId = getStreamIdFromDepartment(department)
+        const classId = findClassId(className)
+
+        console.log(`📝 Row ${rowNum}: ${name} - Department: ${department} -> Stream ID: ${streamId}, Class: ${className} -> Class ID: ${classId}`)
 
         if (!streamId) {
-          errors.push(`Row ${rowNum}: Stream '${student.stream}' not found`)
+          errors.push(`Row ${rowNum}: Department '${department}' could not be mapped to a stream. Valid departments: CSE, IT, AIML, AIDS, CYBER, ECE, EEE, MECH, CIVIL`)
           continue
         }
 
         if (!classId) {
-          errors.push(`Row ${rowNum}: Class '${student.class}' not found`)
+          const availableClasses = classes.map(c => c.name).join(', ')
+          errors.push(`Row ${rowNum}: Class '${className}' not found. Available classes: ${availableClasses || 'None'}`)
+          console.error(`❌ Class not found for row ${rowNum}: "${className}". Available classes:`, classes.map(c => c.name))
           continue
         }
 
@@ -165,7 +347,9 @@ const BulkStudentImport = ({ onImportComplete, streams, classes }) => {
           phone: null,
           stream_id: streamId,
           class_id: classId,
-          date_of_birth: null
+          date_of_birth: null,
+          status: 'active',
+          created_by: user.id
         })
       }
 
@@ -188,22 +372,38 @@ const BulkStudentImport = ({ onImportComplete, streams, classes }) => {
       const { data, error: insertError } = await supabase
         .from('students')
         .insert(validStudents)
-        .select()
+        .select(`
+          *,
+          classes (id, name),
+          departments (id, name)
+        `)
 
       if (insertError) {
         throw insertError
       }
 
-      showSuccess(`🎉 Successfully imported ${data.length} students!`, 5000)
+      // Verify imported students
+      console.log('✅ Imported students:', data)
+      const studentsWithoutClass = data.filter(s => !s.class_id)
+      if (studentsWithoutClass.length > 0) {
+        console.warn('⚠️ Some students were imported without class_id:', studentsWithoutClass)
+        showWarning(`${data.length} students imported, but ${studentsWithoutClass.length} are missing class assignments. Check console for details.`)
+      } else {
+        showSuccess(`🎉 Successfully imported ${data.length} students!`, 5000)
+      }
+      
       setFile(null)
       
       // Reset file input
       const fileInput = document.getElementById('csv-file-input')
       if (fileInput) fileInput.value = ''
 
-      // Call callback
+      // Call callback to refresh the student list
       if (onImportComplete) {
-        onImportComplete()
+        // Add a small delay to ensure database is updated
+        setTimeout(() => {
+          onImportComplete()
+        }, 500)
       }
     } catch (err) {
       console.error('Import error:', err)
@@ -214,9 +414,13 @@ const BulkStudentImport = ({ onImportComplete, streams, classes }) => {
   }
 
   const downloadTemplate = () => {
-    const template = 'roll_number,name,stream,class\n' +
-                     'CS001,John Doe,CSE,I YR CSE-A\n' +
-                     'CS002,Jane Smith,CSE,I YR CSE-A'
+    const template = 'register_number,name,department,class\n' +
+                     '267324104001,John Doe,CSE,II CSE A\n' +
+                     '267324104002,Jane Smith,IT,II IT\n' +
+                     '267324104003,Alice Brown,AIML,II AIML A\n' +
+                     '267324104004,Bob Johnson,AIDS,II AIDS A\n' +
+                     '267324104005,Charlie Wilson,CYBER,II CYBER A\n' +
+                     '267324104006,David Lee,ECE,II ECE A'
     
     const blob = new Blob([template], { type: 'text/csv' })
     const url = window.URL.createObjectURL(blob)
@@ -240,18 +444,21 @@ const BulkStudentImport = ({ onImportComplete, streams, classes }) => {
         </p>
         <div className="flex flex-wrap gap-2 mb-3">
           <span className="px-3 py-1 bg-white rounded-full text-xs font-semibold text-blue-600 shadow-sm">
-            ✓ roll_number
+            ✓ register_number
           </span>
           <span className="px-3 py-1 bg-white rounded-full text-xs font-semibold text-blue-600 shadow-sm">
             ✓ name
           </span>
           <span className="px-3 py-1 bg-white rounded-full text-xs font-semibold text-blue-600 shadow-sm">
-            ✓ stream
+            ✓ department
           </span>
           <span className="px-3 py-1 bg-white rounded-full text-xs font-semibold text-blue-600 shadow-sm">
             ✓ class
           </span>
         </div>
+        <p className="text-xs text-gray-600 mb-2">
+          <strong>Note:</strong> IT, AIML, AIDS, and CYBER departments are part of CSE stream. Valid departments: CSE, IT, AIML, AIDS, CYBER, ECE, EEE, MECH, CIVIL
+        </p>
         <button
           onClick={downloadTemplate}
           className="px-4 py-2 bg-gradient-blue text-white rounded-xl hover:shadow-lg hover:scale-105 transition-all font-semibold text-sm flex items-center gap-2"

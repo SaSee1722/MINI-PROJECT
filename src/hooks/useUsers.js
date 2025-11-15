@@ -158,28 +158,58 @@ export const useUsers = () => {
   // Track online status using a simpler approach with last_seen
   const trackOnlineStatus = async () => {
     try {
-      // Update current user's last_seen timestamp
-      const { data: { user } } = await supabase.auth.getUser()
-      if (user) {
-        await supabase
-          .from('users')
-          .update({ last_seen: new Date().toISOString() })
-          .eq('id', user.id)
-        
-        console.log('✅ Updated last_seen for current user')
+      // Get current user
+      const { data: { user: currentUser } } = await supabase.auth.getUser()
+      
+      // Update current user's last_seen timestamp (if column exists)
+      if (currentUser) {
+        try {
+          await supabase
+            .from('users')
+            .update({ last_seen: new Date().toISOString() })
+            .eq('id', currentUser.id)
+          
+          console.log('✅ Updated last_seen for current user')
+        } catch (updateError) {
+          // If last_seen column doesn't exist, that's okay - we'll use alternative method
+          console.log('⚠️ Could not update last_seen (column may not exist):', updateError.message)
+        }
       }
       
-      // Fetch users and determine who's online (last seen within 5 minutes)
+      // Fetch users and determine who's online
       const fetchOnlineStatus = async () => {
         try {
-          const { data: allUsers } = await supabase
-            .from('users')
-            .select('id, last_seen')
+          // Try to fetch with last_seen, but handle if column doesn't exist
+          let allUsers
+          try {
+            const { data, error } = await supabase
+              .from('users')
+              .select('id, last_seen')
+            
+            if (error && error.message.includes('column') && error.message.includes('last_seen')) {
+              // Column doesn't exist, fetch without it
+              const { data: usersData } = await supabase
+                .from('users')
+                .select('id')
+              allUsers = usersData
+            } else {
+              allUsers = data
+            }
+          } catch (err) {
+            // Fallback: fetch all users without last_seen
+            const { data: usersData } = await supabase
+              .from('users')
+              .select('id')
+            allUsers = usersData
+          }
           
           const now = new Date()
           const onlineThreshold = 5 * 60 * 1000 // 5 minutes in milliseconds
           const onlineUserIds = new Set()
           
+          // Use last_seen to determine online status
+          // If last_seen column exists, check timestamps
+          // If it doesn't exist, we'll only show current user as online
           allUsers?.forEach(user => {
             if (user.last_seen) {
               const lastSeen = new Date(user.last_seen)
@@ -188,48 +218,88 @@ export const useUsers = () => {
                 onlineUserIds.add(user.id)
               }
             }
+            // If last_seen is null/undefined, user is considered offline
           })
           
-          // Always mark current user as online for testing
-          const { data: { user: currentUser } } = await supabase.auth.getUser()
+          // Always mark current user as online (they're using the app right now)
           if (currentUser) {
             onlineUserIds.add(currentUser.id)
           }
           
-          // FOR TESTING: Mark all users as online to see the dots
-          allUsers?.forEach(user => {
-            onlineUserIds.add(user.id)
-          })
+          // Only mark other users as online if they have a recent last_seen timestamp
+          // Don't mark all users as online - only those who are actually active
           
           setOnlineUsers(onlineUserIds)
           console.log('🟢 Online users:', onlineUserIds.size, Array.from(onlineUserIds))
         } catch (error) {
           console.warn('Could not fetch online status:', error)
+          // Fallback: only mark current user as online if we can't determine status
+          const onlineUserIds = new Set()
+          if (currentUser) {
+            onlineUserIds.add(currentUser.id)
+          }
+          setOnlineUsers(onlineUserIds)
         }
       }
       
       // Initial fetch
       await fetchOnlineStatus()
       
-      // Update every 30 seconds
-      const interval = setInterval(() => {
-        // Update current user's timestamp
-        if (user) {
-          supabase
-            .from('users')
-            .update({ last_seen: new Date().toISOString() })
-            .eq('id', user.id)
+      // Track if page is visible
+      let isPageVisible = true
+      
+      // Handle page visibility changes (tab switch, minimize, close)
+      const handleVisibilityChange = () => {
+        isPageVisible = !document.hidden
+        if (!isPageVisible && currentUser) {
+          // Page is hidden - don't update last_seen anymore
+          console.log('📴 Page hidden - stopping online status updates')
+        }
+      }
+      
+      // Handle page unload (browser close)
+      const handleBeforeUnload = () => {
+        // When page is closing, we can't update last_seen
+        // The user will appear offline after 5 minutes
+        console.log('👋 Page unloading - user will appear offline soon')
+      }
+      
+      document.addEventListener('visibilitychange', handleVisibilityChange)
+      window.addEventListener('beforeunload', handleBeforeUnload)
+      
+      // Update every 30 seconds (only when page is visible)
+      const interval = setInterval(async () => {
+        // Only update if page is visible
+        if (isPageVisible && currentUser) {
+          try {
+            await supabase
+              .from('users')
+              .update({ last_seen: new Date().toISOString() })
+              .eq('id', currentUser.id)
+          } catch (err) {
+            // Ignore errors if column doesn't exist
+          }
         }
         
-        // Fetch online status
-        fetchOnlineStatus()
+        // Always fetch online status to update the display
+        await fetchOnlineStatus()
       }, 30000)
       
       return () => {
         clearInterval(interval)
+        document.removeEventListener('visibilitychange', handleVisibilityChange)
+        window.removeEventListener('beforeunload', handleBeforeUnload)
       }
     } catch (error) {
       console.warn('Error setting up online tracking:', error)
+      // Fallback: only mark current user as online
+      const { data: { user: currentUser } } = await supabase.auth.getUser()
+      const onlineUserIds = new Set()
+      if (currentUser) {
+        onlineUserIds.add(currentUser.id)
+      }
+      setOnlineUsers(onlineUserIds)
+      
       return () => {}
     }
   }

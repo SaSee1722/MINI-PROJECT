@@ -150,12 +150,6 @@ const AdminTimetableView = ({ classId, selectedDate }) => {
               Click on periods to view attendance reports or manage periods. You can add/delete periods but cannot mark attendance.
             </p>
           </div>
-          <button
-            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-semibold flex items-center gap-2"
-          >
-            <span>+</span> Add Period
-          </button>
         </div>
       </div>
 
