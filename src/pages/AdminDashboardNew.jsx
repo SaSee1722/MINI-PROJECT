@@ -1126,12 +1126,11 @@ const AdminDashboardNew = () => {
                              else if (v === 'on_duty') onDutyCount++
                              else if (v === 'absent') absentCount++
                            }
-                           const total = activeIds.size || 1
-                           
-                           const presentPercent = (presentCount / total) * 100
-                           const absentPercent = (absentCount / total) * 100
-                           const onDutyPercent = (onDutyCount / total) * 100
-                           const notMarkedPercent = (Math.max(0, total - presentCount - absentCount - onDutyCount) / total) * 100
+                          const total = activeIds.size
+                          const presentPercent = total > 0 ? (presentCount / total) * 100 : 0
+                          const absentPercent = total > 0 ? (absentCount / total) * 100 : 0
+                          const onDutyPercent = total > 0 ? (onDutyCount / total) * 100 : 0
+                          const notMarkedPercent = total > 0 ? (Math.max(0, total - presentCount - absentCount - onDutyCount) / total) * 100 : 0
                           
                           // Calculate arc paths
                           const radius = 70
@@ -1224,8 +1223,8 @@ const AdminDashboardNew = () => {
                            else if (v === 'on_duty') onDutyCount++
                            else if (v === 'absent') absentCount++
                          }
-                         const total = activeIds.size || 1
-                         const notMarkedCount = Math.max(0, total - presentCount - absentCount - onDutyCount)
+                         const total = activeIds.size
+                         const notMarkedCount = total > 0 ? Math.max(0, total - presentCount - absentCount - onDutyCount) : 0
                          
                          return (
                            <>
@@ -1237,7 +1236,7 @@ const AdminDashboardNew = () => {
                                <div className="flex items-center gap-2">
                                  <span className="text-sm font-bold text-white">{presentCount}</span>
                                  <span className="text-xs text-green-500 font-semibold">
-                                   {Math.round((presentCount / total) * 100)}%
+                                  {total > 0 ? Math.round((presentCount / total) * 100) : 0}%
                                  </span>
                                </div>
                              </div>
@@ -1250,7 +1249,7 @@ const AdminDashboardNew = () => {
                                <div className="flex items-center gap-2">
                                  <span className="text-sm font-bold text-white">{onDutyCount}</span>
                                  <span className="text-xs text-blue-500 font-semibold">
-                                   {Math.round((onDutyCount / total) * 100)}%
+                                   {total > 0 ? Math.round((onDutyCount / total) * 100) : 0}%
                                  </span>
                                </div>
                              </div>
@@ -1263,7 +1262,7 @@ const AdminDashboardNew = () => {
                                <div className="flex items-center gap-2">
                                  <span className="text-sm font-bold text-white">{absentCount}</span>
                                  <span className="text-xs text-red-500 font-semibold">
-                                   {Math.round((absentCount / total) * 100)}%
+                                   {total > 0 ? Math.round((absentCount / total) * 100) : 0}%
                                  </span>
                                </div>
                              </div>
@@ -1276,7 +1275,7 @@ const AdminDashboardNew = () => {
                                <div className="flex items-center gap-2">
                                  <span className="text-sm font-bold text-white">{notMarkedCount}</span>
                                  <span className="text-xs text-gray-400 font-semibold">
-                                   {Math.round((notMarkedCount / total) * 100)}%
+                                   {total > 0 ? Math.round((notMarkedCount / total) * 100) : 0}%
                                  </span>
                                </div>
                              </div>
