@@ -19,7 +19,24 @@ export default {
           800: '#075985',
           900: '#0c4a6e',
         },
+        neo: {
+          bg: '#0f131a',
+          surface: '#131722',
+          muted: '#1a1f2b',
+          border: '#202636',
+          text: '#e6e8ee',
+          subtext: '#9aa3b2',
+          lime: '#cbff4d',
+          violet: '#b084ff'
+        }
       },
+      borderRadius: {
+        xl: '1.25rem',
+        '2xl': '1.5rem'
+      },
+      boxShadow: {
+        neo: '0 20px 40px rgba(0,0,0,0.35)'
+      }
     },
   },
   plugins: [],

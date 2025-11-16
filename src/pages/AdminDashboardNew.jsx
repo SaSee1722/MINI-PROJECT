@@ -10,6 +10,9 @@ import { useTimetable } from '../hooks/useTimetable'
 import { useUsers } from '../hooks/useUsers'
 import { supabase } from '../services/supabase'
 import Navbar from '../components/Navbar'
+import NeoSidebar from '../components/NeoSidebar'
+import NeoCard from '../components/NeoCard'
+import NeoLineChart from '../components/NeoLineChart'
 import BulkStudentImport from '../components/BulkStudentImport'
 import InteractiveTimetable from '../components/InteractiveTimetable'
 import AdminTimetableView from '../components/AdminTimetableView'
@@ -1058,33 +1061,29 @@ const AdminDashboardNew = () => {
                   </div>
                 </div>
 
-                {/* Charts Section */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {/* Attendance Trend Chart */}
-                  {(() => {
-                    const streamClassIds = classes.filter(c => c.stream_id === userProfile?.stream_id).map(c => c.id)
-                    const activeIds = new Set(
-                      students
-                        .filter(s => s.status === 'active' && streamClassIds.includes(s.class_id))
-                        .map(s => s.id)
-                    )
-                    const filtered = periodStudentAttendance
-                      .filter(pa => activeIds.has(pa.students?.id))
-                      .map(pa => ({
-                        date: pa.period_attendance?.date,
-                        status: pa.status,
-                        student_id: pa.students?.id
-                      }))
-                    return (
-                      <AttendanceTrendChart 
-                        attendanceData={filtered} 
-                        totalStudents={activeIds.size} 
-                      />
-                    )
-                  })()}
+                {/* Dashboard Layout */}
+                <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
+                  <div className="xl:col-span-3 flex flex-col gap-6">
+                    {(() => {
+                      const streamClassIds = classes.filter(c => c.stream_id === userProfile?.stream_id).map(c => c.id)
+                      const activeIds = new Set(
+                        students
+                          .filter(s => s.status === 'active' && streamClassIds.includes(s.class_id))
+                          .map(s => s.id)
+                      )
+                      const filtered = periodStudentAttendance
+                        .filter(pa => activeIds.has(pa.students?.id))
+                        .map(pa => ({
+                          date: pa.period_attendance?.date,
+                          status: pa.status,
+                          student_id: pa.students?.id
+                        }))
+                      return (
+                        <NeoLineChart attendanceData={filtered} total={activeIds.size} />
+                      )
+                    })()}
 
-                  {/* Today's Attendance Pie Chart */}
-                  <div className="bg-gray-900 border border-white/20 rounded-xl p-6">
+                  <div className="bg-neo-surface border border-neo-border rounded-2xl p-6">
                     <h3 className="text-lg font-bold text-white mb-2">Today's Attendance Status</h3>
                     <p className="text-sm text-gray-400 mb-6">Real-time distribution of active students</p>
                     
@@ -1281,6 +1280,29 @@ const AdminDashboardNew = () => {
                          )
                        })()}
                      </div>
+                  </div>
+                  </div>
+                  <div>
+                    <NeoCard title="Participants" subtitle="Recent users in your stream">
+                      <div className="flex -space-x-3 mb-4">
+                        {users.slice(0, 6).map(u => (
+                          <div key={u.id} className={`w-10 h-10 rounded-full border-2 ${onlineUsers?.has(u.id) ? 'border-neo-lime' : 'border-neo-border'} bg-black/40 flex items-center justify-center text-white text-xs`}> 
+                            {String(u.name || 'U').slice(0,1).toUpperCase()}
+                          </div>
+                        ))}
+                      </div>
+                      <button className="px-3 py-2 rounded-xl bg-black/30 border border-neo-border text-white text-sm">View all</button>
+                    </NeoCard>
+                    <NeoCard title="Last actions" subtitle="Recent attendance entries">
+                      <div className="space-y-3">
+                        {periodStudentAttendance.slice(0, 6).map((r, i) => (
+                          <div key={i} className="flex items-center justify-between">
+                            <span className="text-neo-subtext text-sm">{new Date(r.period_attendance?.date).toLocaleDateString('en-GB')}</span>
+                            <span className="text-white text-sm font-semibold">{r.status}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </NeoCard>
                   </div>
                 </div>
 
