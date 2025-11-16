@@ -19,6 +19,7 @@ import AdminTimetableView from '../components/AdminTimetableView'
 import DepartmentOverview from '../components/DepartmentOverview'
 import Toast from '../components/Toast'
 import { generateAttendanceReport, generatePeriodAttendanceReport } from '../utils/pdfGenerator'
+import { useAdminTools } from '../hooks/useAdminTools'
 
 // Animated Hero Text Component (inspired by Dario.io)
 const AnimatedHeroText = ({ words, staticText }) => {
@@ -282,6 +283,7 @@ const AdminDashboardNew = () => {
   const { attendance: staffAttendance } = useAttendance()
   const { timetable, addTimetableEntry, deleteTimetableEntry } = useTimetable()
   const { users, onlineUsers, deleteUser, deleteMyAccount, updateUser, appointAsPC, removePC } = useUsers()
+  const { resetStreamData, resetAllData, loading: resetLoading, error: resetError } = useAdminTools()
 
   // Define the 6 streams
   const streams = [
@@ -301,6 +303,8 @@ const AdminDashboardNew = () => {
   const [periodStudentAttendance, setPeriodStudentAttendance] = useState([])
   const [studentSearchQuery, setStudentSearchQuery] = useState('')
   const [toast, setToast] = useState(null)
+  const [resetMode, setResetMode] = useState('stream')
+  const [resetConfirm, setResetConfirm] = useState('')
   const [selectedStudents, setSelectedStudents] = useState([])
   const [selectAll, setSelectAll] = useState(false)
 
@@ -1304,6 +1308,41 @@ const AdminDashboardNew = () => {
                             <span className="text-neo-subtext text-sm">{new Date(r.period_attendance?.date).toLocaleDateString('en-GB')}</span>
                           </div>
                         ))}
+                      </div>
+                    </NeoCard>
+                    <NeoCard title="Data Reset" subtitle="Clear classes and students">
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-3">
+                          <button onClick={() => setResetMode('stream')} className={`px-3 py-2 rounded-xl border ${resetMode==='stream'?'bg-black/30 border-neo-border text-white':'border-neo-border text-neo-subtext'}`}>This stream</button>
+                          <button onClick={() => setResetMode('all')} className={`px-3 py-2 rounded-xl border ${resetMode==='all'?'bg-black/30 border-neo-border text-white':'border-neo-border text-neo-subtext'}`}>Entire app</button>
+                        </div>
+                        <input value={resetConfirm} onChange={(e)=>setResetConfirm(e.target.value)} placeholder="Type RESET" className="w-full px-3 py-2 rounded-xl bg-black/30 border border-neo-border text-white" />
+                        <button
+                          disabled={resetLoading || resetConfirm!=='RESET'}
+                          onClick={async ()=>{
+                            try {
+                              if (resetMode==='all') {
+                                const r = await resetAllData()
+                                if (!r.success) throw new Error(r.error)
+                              } else {
+                                const r = await resetStreamData(userProfile?.stream_id)
+                                if (!r.success) throw new Error(r.error)
+                              }
+                              setToast({ message: 'Data reset successful', type: 'success' })
+                              await refetchClasses()
+                              await refetchStudents()
+                              await fetchPeriodStudentAttendance()
+                              await fetchPeriodAttendanceCount()
+                              setResetConfirm('')
+                            } catch (err) {
+                              setToast({ message: 'Reset failed: '+ err.message, type: 'error' })
+                            }
+                          }}
+                          className="px-4 py-2 rounded-xl bg-white text-black font-semibold disabled:opacity-50"
+                        >
+                          {resetLoading? 'Resetting...' : 'Reset Data'}
+                        </button>
+                        {resetError && <p className="text-red-400 text-xs">{resetError}</p>}
                       </div>
                     </NeoCard>
                   </div>
