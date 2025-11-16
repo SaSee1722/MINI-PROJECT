@@ -309,6 +309,7 @@ const AdminDashboardNew = () => {
   const [selectAll, setSelectAll] = useState(false)
   const [overviewDate, setOverviewDate] = useState(() => new Date().toISOString().split('T')[0])
   const [autoDateInitialized, setAutoDateInitialized] = useState(false)
+  const showOverviewCharts = false
 
   const hour = new Date().getHours()
   const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening'
@@ -1116,7 +1117,7 @@ const AdminDashboardNew = () => {
                 {/* Dashboard Layout */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                   <div className="lg:col-span-2 flex flex-col gap-6">
-                    {(() => {
+                    {showOverviewCharts && (() => {
                       const streamClassIds = classes.filter(c => c.stream_id === userProfile?.stream_id).map(c => c.id)
                       const activeIds = new Set(
                         students
@@ -1131,10 +1132,11 @@ const AdminDashboardNew = () => {
                           student_id: pa.students?.id
                         }))
                       return (
-                        <NeoLineChart attendanceData={filtered} total={activeIds.size} />
+                        <NeoLineChart attendanceData={filtered} total={activeIds.size} endDate={overviewDate} />
                       )
                     })()}
 
+                  {showOverviewCharts && (
                   <div className="bg-neo-surface border border-neo-border rounded-2xl p-6">
                     <div className="flex items-center justify-between mb-2">
                       <h3 className="text-lg font-bold text-white">Attendance Status</h3>
@@ -1340,6 +1342,7 @@ const AdminDashboardNew = () => {
                        })()}
                      </div>
                   </div>
+                  )}
                   </div>
                   <div>
                     <NeoCard title="Participants" subtitle="Recent users in your stream">
