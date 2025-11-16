@@ -1294,7 +1294,7 @@ const AdminDashboardNew = () => {
                           </div>
                         ))}
                       </div>
-                      <button className="px-3 py-2 rounded-xl bg-black/30 border border-neo-border text-white text-sm">View all</button>
+                      <button onClick={() => setActiveTab('users')} className="px-3 py-2 rounded-xl bg-black/30 border border-neo-border text-white text-sm">View all</button>
                     </NeoCard>
                     <NeoCard title="Last actions" subtitle="Recent attendance entries">
                       <div className="space-y-3">
