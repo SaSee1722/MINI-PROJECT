@@ -308,6 +308,7 @@ const AdminDashboardNew = () => {
   const [selectedStudents, setSelectedStudents] = useState([])
   const [selectAll, setSelectAll] = useState(false)
   const [overviewDate, setOverviewDate] = useState(() => new Date().toISOString().split('T')[0])
+  const [autoDateInitialized, setAutoDateInitialized] = useState(false)
 
   const hour = new Date().getHours()
   const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening'
@@ -512,9 +513,45 @@ const AdminDashboardNew = () => {
     }
   }
 
+  // Auto-select latest marked date for this stream (run once after profile loads)
+  const fetchLatestMarkedDate = async () => {
+    try {
+      if (!userProfile?.stream_id || autoDateInitialized) return
+      // Try latest student period attendance first
+      const { data: latestPeriod, error: latestPeriodError } = await supabase
+        .from('period_attendance')
+        .select('date, classes!inner(stream_id)')
+        .eq('is_marked', true)
+        .eq('classes.stream_id', userProfile.stream_id)
+        .order('date', { ascending: false })
+        .limit(1)
+      if (latestPeriodError) throw latestPeriodError
+      let latest = latestPeriod?.[0]?.date || null
+      if (!latest) {
+        // Fallback: check staff attendance
+        const { data: latestStaff, error: latestStaffError } = await supabase
+          .from('staff_attendance')
+          .select('date, users!inner(stream_id)')
+          .eq('users.stream_id', userProfile.stream_id)
+          .order('date', { ascending: false })
+          .limit(1)
+        if (latestStaffError) throw latestStaffError
+        latest = latestStaff?.[0]?.date || null
+      }
+      if (latest) {
+        setOverviewDate(latest)
+      }
+      setAutoDateInitialized(true)
+    } catch (err) {
+      console.error('Error fetching latest marked date:', err)
+      setAutoDateInitialized(true)
+    }
+  }
+
   // Fetch count when userProfile loads OR when attendance data changes
   useEffect(() => {
     if (userProfile?.stream_id) {
+      fetchLatestMarkedDate()
       fetchPeriodAttendanceCount()
       fetchPeriodStudentAttendance()
     }
@@ -1104,7 +1141,7 @@ const AdminDashboardNew = () => {
                       <input
                         type="date"
                         value={overviewDate}
-                        onChange={(e) => setOverviewDate(e.target.value)}
+                        onChange={(e) => { setOverviewDate(e.target.value); setAutoDateInitialized(true) }}
                         className="bg-black/40 border border-neo-border text-white text-sm rounded-lg px-3 py-2"
                       />
                     </div>
