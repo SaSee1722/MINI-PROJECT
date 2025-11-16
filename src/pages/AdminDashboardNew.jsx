@@ -1058,7 +1058,7 @@ const AdminDashboardNew = () => {
                        </div>
                      </div>
                      <h3 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent group-hover:from-blue-400 group-hover:to-cyan-400 transition-all duration-300 mb-1">{studentAttendanceCount}</h3>
-                     <p className="text-xs sm:text-sm text-gray-500">Today</p>
+                    <p className="text-xs sm:text-sm text-gray-500">{new Date(overviewDate).toLocaleDateString('en-GB')}</p>
                    </div>
 
                    {/* Staff Attendance Records */}
@@ -1072,7 +1072,7 @@ const AdminDashboardNew = () => {
                        </div>
                      </div>
                      <h3 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent group-hover:from-orange-400 group-hover:to-amber-400 transition-all duration-300 mb-1">{staffAttendanceCount}</h3>
-                     <p className="text-xs sm:text-sm text-gray-500">Today</p>
+                    <p className="text-xs sm:text-sm text-gray-500">{new Date(overviewDate).toLocaleDateString('en-GB')}</p>
                    </div>
                 </div>
 
