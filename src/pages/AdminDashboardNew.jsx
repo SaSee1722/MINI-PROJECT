@@ -528,6 +528,10 @@ const AdminDashboardNew = () => {
         fetchPeriodStudentAttendance()
         fetchPeriodAttendanceCount()
       })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'period_attendance' }, () => {
+        fetchPeriodStudentAttendance()
+        fetchPeriodAttendanceCount()
+      })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'students' }, () => {
         refetchStudents()
         fetchPeriodStudentAttendance()

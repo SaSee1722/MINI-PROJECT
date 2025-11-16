@@ -80,3 +80,6 @@ dist-ssr
 .DS_Store
 .AppleDouble
 .LSOverride
+
+# Trae IDE files
+.trae/
