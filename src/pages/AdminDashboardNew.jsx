@@ -505,6 +505,25 @@ const AdminDashboardNew = () => {
       fetchPeriodStudentAttendance()
     }
   }, [userProfile, studentAttendance, staffAttendance, classes, students, users])
+
+  useEffect(() => {
+    if (!userProfile?.stream_id) return
+    const channel = supabase
+      .channel('admin-dashboard-attendance')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'period_student_attendance' }, () => {
+        fetchPeriodStudentAttendance()
+        fetchPeriodAttendanceCount()
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'students' }, () => {
+        refetchStudents()
+        fetchPeriodStudentAttendance()
+        fetchPeriodAttendanceCount()
+      })
+      .subscribe()
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [userProfile])
   
   const [forms, setForms] = useState({
     stream: { name: '', code: '', description: '' },
@@ -1067,17 +1086,14 @@ const AdminDashboardNew = () => {
                         
                         {/* Calculate percentages */}
                          {(() => {
-                           const activeCount = students.filter(s => s.status === 'active').length
-                           const internCount = students.filter(s => s.status === 'intern').length
-                           const suspendedCount = students.filter(s => s.status === 'suspended').length
-                           
-                           // Calculate today's attendance status
+                           const streamClassIds = classes.filter(c => c.stream_id === userProfile?.stream_id).map(c => c.id)
+                           const activeIds = new Set(students.filter(s => s.status === 'active' && streamClassIds.includes(s.class_id)).map(s => s.id))
                            const today = new Date().toISOString().split('T')[0]
                            const todayAttendance = periodStudentAttendance.filter(pa => pa.period_attendance?.date === today)
                            const byStudent = new Map()
                            for (const r of todayAttendance) {
                              const id = r.students?.id
-                             if (!id) continue
+                             if (!id || !activeIds.has(id)) continue
                              const prev = byStudent.get(id) || 'unmarked'
                              const curr = r.status
                              let next = prev
@@ -1094,9 +1110,7 @@ const AdminDashboardNew = () => {
                              else if (v === 'on_duty') onDutyCount++
                              else if (v === 'absent') absentCount++
                            }
-                           
-                           const activeStudentsCount = students.filter(s => s.status === 'active').length
-                           const total = activeStudentsCount || 1
+                           const total = activeIds.size || 1
                            
                            const presentPercent = (presentCount / total) * 100
                            const absentPercent = (absentCount / total) * 100
@@ -1170,13 +1184,14 @@ const AdminDashboardNew = () => {
                     {/* Legend */}
                      <div className="space-y-3">
                        {(() => {
-                         const activeStudentsCount = students.filter(s => s.status === 'active').length
+                         const streamClassIds = classes.filter(c => c.stream_id === userProfile?.stream_id).map(c => c.id)
+                         const activeIds = new Set(students.filter(s => s.status === 'active' && streamClassIds.includes(s.class_id)).map(s => s.id))
                          const today = new Date().toISOString().split('T')[0]
                          const todayAttendance = periodStudentAttendance.filter(pa => pa.period_attendance?.date === today)
                          const agg = new Map()
                          for (const r of todayAttendance) {
                            const id = r.students?.id
-                           if (!id) continue
+                           if (!id || !activeIds.has(id)) continue
                            const prev = agg.get(id) || 'unmarked'
                            const curr = r.status
                            let next = prev
@@ -1193,8 +1208,8 @@ const AdminDashboardNew = () => {
                            else if (v === 'on_duty') onDutyCount++
                            else if (v === 'absent') absentCount++
                          }
-                         const notMarkedCount = Math.max(0, activeStudentsCount - presentCount - absentCount - onDutyCount)
-                         const total = activeStudentsCount || 1
+                         const total = activeIds.size || 1
+                         const notMarkedCount = Math.max(0, total - presentCount - absentCount - onDutyCount)
                          
                          return (
                            <>
