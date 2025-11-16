@@ -71,13 +71,12 @@ const NeoLineChart = ({ attendanceData = [], total = 1, className = '' }) => {
         <path d={pathPresent} stroke="url(#limeLine)" strokeWidth="3" fill="none" strokeLinecap="round" strokeLinejoin="round" />
         <path d={pathAbsent} stroke="url(#violetLine)" strokeWidth="3" fill="none" strokeLinecap="round" strokeLinejoin="round" />
         <circle cx={lastX} cy={lastY} r="22" fill="#0f131a" stroke="#cbff4d" strokeWidth="3" />
-        <text x={lastX} y={lastY + 3} textAnchor="middle" className="fill-white text-sm font-bold">{lastVal}%</text>
-      </svg>
-      <div className="flex justify-between mt-2 px-1 text-xs text-neo-subtext">
+        <text x={lastX} y={lastY} textAnchor="middle" dominantBaseline="middle" fill="#ffffff" fontSize="12" fontWeight="700">{lastVal}%</text>
         {chartData.map((d, i) => (
-          <span key={i} className="w-6 text-center">{d.day}</span>
+          <text key={i} x={pointsPresent[i].x} y={195} textAnchor="middle" fill="#9aa3b2" fontSize="10">{d.day}</text>
         ))}
-      </div>
+      </svg>
+      
     </div>
   )
 }
