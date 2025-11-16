@@ -71,9 +71,21 @@ const AttendanceTrendChart = ({ attendanceData, totalStudents }) => {
       date.setDate(date.getDate() - i)
       const dateStr = date.toISOString().split('T')[0]
       
-      // Calculate attendance percentage for this day
       const dayAttendance = attendanceData.filter(a => a.date === dateStr)
-      const presentCount = dayAttendance.filter(a => a.status === 'present').length
+      const agg = new Map()
+      for (const r of dayAttendance) {
+        const id = r.student_id
+        if (!id) continue
+        const prev = agg.get(id) || 'unmarked'
+        const curr = r.status
+        let next = prev
+        if (curr === 'present') next = 'present'
+        else if (curr === 'on_duty' && prev !== 'present') next = 'on_duty'
+        else if (curr === 'absent' && prev !== 'present' && prev !== 'on_duty') next = 'absent'
+        agg.set(id, next)
+      }
+      let presentCount = 0
+      for (const v of agg.values()) if (v === 'present') presentCount++
       const attendancePercent = totalStudents > 0 ? Math.round((presentCount / totalStudents) * 100) : 0
       
       days.push({
@@ -1033,7 +1045,8 @@ const AdminDashboardNew = () => {
                    <AttendanceTrendChart 
                      attendanceData={periodStudentAttendance.map(pa => ({
                        date: pa.period_attendance?.date,
-                       status: pa.status
+                       status: pa.status,
+                       student_id: pa.students?.id
                      }))} 
                      totalStudents={students.filter(s => s.status === 'active').length} 
                    />
@@ -1061,9 +1074,26 @@ const AdminDashboardNew = () => {
                            // Calculate today's attendance status
                            const today = new Date().toISOString().split('T')[0]
                            const todayAttendance = periodStudentAttendance.filter(pa => pa.period_attendance?.date === today)
-                           const presentCount = todayAttendance.filter(a => a.status === 'present').length
-                           const absentCount = todayAttendance.filter(a => a.status === 'absent').length
-                           const onDutyCount = todayAttendance.filter(a => a.status === 'on_duty').length
+                           const byStudent = new Map()
+                           for (const r of todayAttendance) {
+                             const id = r.students?.id
+                             if (!id) continue
+                             const prev = byStudent.get(id) || 'unmarked'
+                             const curr = r.status
+                             let next = prev
+                             if (curr === 'present') next = 'present'
+                             else if (curr === 'on_duty' && prev !== 'present') next = 'on_duty'
+                             else if (curr === 'absent' && prev !== 'present' && prev !== 'on_duty') next = 'absent'
+                             byStudent.set(id, next)
+                           }
+                           let presentCount = 0
+                           let absentCount = 0
+                           let onDutyCount = 0
+                           for (const v of byStudent.values()) {
+                             if (v === 'present') presentCount++
+                             else if (v === 'on_duty') onDutyCount++
+                             else if (v === 'absent') absentCount++
+                           }
                            
                            const activeStudentsCount = students.filter(s => s.status === 'active').length
                            const total = activeStudentsCount || 1
@@ -1071,7 +1101,7 @@ const AdminDashboardNew = () => {
                            const presentPercent = (presentCount / total) * 100
                            const absentPercent = (absentCount / total) * 100
                            const onDutyPercent = (onDutyCount / total) * 100
-                           const notMarkedPercent = ((total - presentCount - absentCount - onDutyCount) / total) * 100
+                           const notMarkedPercent = (Math.max(0, total - presentCount - absentCount - onDutyCount) / total) * 100
                           
                           // Calculate arc paths
                           const radius = 70
@@ -1143,10 +1173,27 @@ const AdminDashboardNew = () => {
                          const activeStudentsCount = students.filter(s => s.status === 'active').length
                          const today = new Date().toISOString().split('T')[0]
                          const todayAttendance = periodStudentAttendance.filter(pa => pa.period_attendance?.date === today)
-                         const presentCount = todayAttendance.filter(a => a.status === 'present').length
-                         const absentCount = todayAttendance.filter(a => a.status === 'absent').length
-                         const onDutyCount = todayAttendance.filter(a => a.status === 'on_duty').length
-                         const notMarkedCount = activeStudentsCount - presentCount - absentCount - onDutyCount
+                         const agg = new Map()
+                         for (const r of todayAttendance) {
+                           const id = r.students?.id
+                           if (!id) continue
+                           const prev = agg.get(id) || 'unmarked'
+                           const curr = r.status
+                           let next = prev
+                           if (curr === 'present') next = 'present'
+                           else if (curr === 'on_duty' && prev !== 'present') next = 'on_duty'
+                           else if (curr === 'absent' && prev !== 'present' && prev !== 'on_duty') next = 'absent'
+                           agg.set(id, next)
+                         }
+                         let presentCount = 0
+                         let absentCount = 0
+                         let onDutyCount = 0
+                         for (const v of agg.values()) {
+                           if (v === 'present') presentCount++
+                           else if (v === 'on_duty') onDutyCount++
+                           else if (v === 'absent') absentCount++
+                         }
+                         const notMarkedCount = Math.max(0, activeStudentsCount - presentCount - absentCount - onDutyCount)
                          const total = activeStudentsCount || 1
                          
                          return (

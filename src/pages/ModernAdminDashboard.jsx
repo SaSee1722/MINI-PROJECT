@@ -70,12 +70,27 @@ const ModernAdminDashboard = () => {
     const today = new Date().toISOString().split('T')[0]
     const { data, error } = await supabase
       .from('period_student_attendance')
-      .select(`status, period_attendance!inner(date)`) 
+      .select(`status, students(id), period_attendance!inner(date)`) 
       .eq('period_attendance.date', today)
     if (!error && data) {
-      const present = data.filter(r => r.status === 'present').length
-      const absent = data.filter(r => r.status === 'absent').length
-      const onLeave = data.filter(r => r.status === 'on_duty').length
+      const agg = new Map()
+      for (const r of data) {
+        const id = r.students?.id
+        if (!id) continue
+        const prev = agg.get(id) || 'unmarked'
+        const curr = r.status
+        let next = prev
+        if (curr === 'present') next = 'present'
+        else if (curr === 'on_duty' && prev !== 'present') next = 'on_duty'
+        else if (curr === 'absent' && prev !== 'present' && prev !== 'on_duty') next = 'absent'
+        agg.set(id, next)
+      }
+      let present = 0, absent = 0, onLeave = 0
+      for (const v of agg.values()) {
+        if (v === 'present') present++
+        else if (v === 'on_duty') onLeave++
+        else if (v === 'absent') absent++
+      }
       setTodayStats({ present, absent, onLeave })
     }
   }
@@ -89,11 +104,26 @@ const ModernAdminDashboard = () => {
       const dateStr = date.toISOString().split('T')[0]
       const { data: records } = await supabase
         .from('period_student_attendance')
-        .select(`status, period_attendance!inner(date)`) 
+        .select(`status, students(id), period_attendance!inner(date)`) 
         .eq('period_attendance.date', dateStr)
-      const present = records?.filter(r => r.status === 'present').length || 0
-      const absent = records?.filter(r => r.status === 'absent').length || 0
-      const onLeave = records?.filter(r => r.status === 'on_duty').length || 0
+      const agg = new Map()
+      for (const r of records || []) {
+        const id = r.students?.id
+        if (!id) continue
+        const prev = agg.get(id) || 'unmarked'
+        const curr = r.status
+        let next = prev
+        if (curr === 'present') next = 'present'
+        else if (curr === 'on_duty' && prev !== 'present') next = 'on_duty'
+        else if (curr === 'absent' && prev !== 'present' && prev !== 'on_duty') next = 'absent'
+        agg.set(id, next)
+      }
+      let present = 0, absent = 0, onLeave = 0
+      for (const v of agg.values()) {
+        if (v === 'present') present++
+        else if (v === 'on_duty') onLeave++
+        else if (v === 'absent') absent++
+      }
       data.push({
         day: days[date.getDay()],
         present,
