@@ -7,6 +7,7 @@ const NeoLineChart = ({ attendanceData = [], total = 1, className = '' }) => {
       const d = new Date()
       d.setDate(d.getDate() - i)
       const dateStr = d.toISOString().split('T')[0]
+      const dayName = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d.getDay()]
       const dayRecords = attendanceData.filter(a => a.date === dateStr)
       const agg = new Map()
       for (const r of dayRecords) {
@@ -28,7 +29,7 @@ const NeoLineChart = ({ attendanceData = [], total = 1, className = '' }) => {
       }
       const presentPct = total > 0 ? Math.round((present / total) * 100) : 0
       const absentPct = total > 0 ? Math.round((absent / total) * 100) : 0
-      days.push({ date: dateStr, present: presentPct, absent: absentPct })
+      days.push({ date: dateStr, day: dayName, present: presentPct, absent: absentPct })
     }
     return days
   }, [attendanceData, total])
@@ -73,8 +74,8 @@ const NeoLineChart = ({ attendanceData = [], total = 1, className = '' }) => {
         <text x={lastX} y={lastY + 3} textAnchor="middle" className="fill-white text-sm font-bold">{lastVal}%</text>
       </svg>
       <div className="flex justify-between mt-2 px-1 text-xs text-neo-subtext">
-        {chartData.map((_, i) => (
-          <span key={i}> </span>
+        {chartData.map((d, i) => (
+          <span key={i} className="w-6 text-center">{d.day}</span>
         ))}
       </div>
     </div>

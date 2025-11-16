@@ -487,7 +487,7 @@ const AdminDashboardNew = () => {
         .from('period_student_attendance')
         .select(`
           *,
-          students (class_id, status, id),
+          students (id, roll_number, name, class_id, status),
           period_attendance (date)
         `)
         .in('students.class_id', streamClassIds)
@@ -1062,8 +1062,8 @@ const AdminDashboardNew = () => {
                 </div>
 
                 {/* Dashboard Layout */}
-                <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
-                  <div className="xl:col-span-3 flex flex-col gap-6">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  <div className="lg:col-span-2 flex flex-col gap-6">
                     {(() => {
                       const streamClassIds = classes.filter(c => c.stream_id === userProfile?.stream_id).map(c => c.id)
                       const activeIds = new Set(
@@ -1285,7 +1285,7 @@ const AdminDashboardNew = () => {
                   <div>
                     <NeoCard title="Participants" subtitle="Recent users in your stream">
                       <div className="flex -space-x-3 mb-4">
-                        {users.slice(0, 6).map(u => (
+                        {users.filter(u => u.stream_id === userProfile?.stream_id).slice(0, 6).map(u => (
                           <div key={u.id} className={`w-10 h-10 rounded-full border-2 ${onlineUsers?.has(u.id) ? 'border-neo-lime' : 'border-neo-border'} bg-black/40 flex items-center justify-center text-white text-xs`}> 
                             {String(u.name || 'U').slice(0,1).toUpperCase()}
                           </div>
@@ -1297,8 +1297,11 @@ const AdminDashboardNew = () => {
                       <div className="space-y-3">
                         {periodStudentAttendance.slice(0, 6).map((r, i) => (
                           <div key={i} className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <span className={`w-2 h-2 rounded-full ${r.status === 'present' ? 'bg-neo-lime' : r.status === 'on_duty' ? 'bg-blue-500' : 'bg-red-500'}`}></span>
+                              <span className="text-white text-sm font-semibold">{r.students?.name || r.students?.roll_number || 'Student'}</span>
+                            </div>
                             <span className="text-neo-subtext text-sm">{new Date(r.period_attendance?.date).toLocaleDateString('en-GB')}</span>
-                            <span className="text-white text-sm font-semibold">{r.status}</span>
                           </div>
                         ))}
                       </div>
