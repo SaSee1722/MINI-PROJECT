@@ -1061,14 +1061,27 @@ const AdminDashboardNew = () => {
                 {/* Charts Section */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   {/* Attendance Trend Chart */}
-                   <AttendanceTrendChart 
-                     attendanceData={periodStudentAttendance.map(pa => ({
-                       date: pa.period_attendance?.date,
-                       status: pa.status,
-                       student_id: pa.students?.id
-                     }))} 
-                     totalStudents={students.filter(s => s.status === 'active').length} 
-                   />
+                  {(() => {
+                    const streamClassIds = classes.filter(c => c.stream_id === userProfile?.stream_id).map(c => c.id)
+                    const activeIds = new Set(
+                      students
+                        .filter(s => s.status === 'active' && streamClassIds.includes(s.class_id))
+                        .map(s => s.id)
+                    )
+                    const filtered = periodStudentAttendance
+                      .filter(pa => activeIds.has(pa.students?.id))
+                      .map(pa => ({
+                        date: pa.period_attendance?.date,
+                        status: pa.status,
+                        student_id: pa.students?.id
+                      }))
+                    return (
+                      <AttendanceTrendChart 
+                        attendanceData={filtered} 
+                        totalStudents={activeIds.size} 
+                      />
+                    )
+                  })()}
 
                   {/* Today's Attendance Pie Chart */}
                   <div className="bg-gray-900 border border-white/20 rounded-xl p-6">
