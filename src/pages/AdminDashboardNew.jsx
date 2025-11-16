@@ -30,7 +30,7 @@ const AnimatedHeroText = ({ words, staticText }) => {
   
   return (
     <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
-      <span className="text-2xl sm:text-4xl md:text-5xl font-bold tracking-tight text-white">
+      <span className="text-2xl sm:text-4xl md:text-5xl font-bold tracking-tight bg-gradient-to-r from-white via-gray-200 to-white bg-clip-text text-transparent">
         {staticText}
       </span>
       <div className="relative h-10 sm:h-14 md:h-16 overflow-hidden">
@@ -88,13 +88,13 @@ const AttendanceTrendChart = ({ attendanceData, totalStudents }) => {
   const chartData = getLast7Days()
   
   // Calculate positions for data points
-  const maxAttendance = 100
-  const minAttendance = 70
-  const range = maxAttendance - minAttendance
+  const maxAttendance = Math.max(100, ...chartData.map(d => d.attendance))
+  const minAttendance = Math.min(0, ...chartData.map(d => d.attendance))
+  const range = Math.max(1, maxAttendance - minAttendance)
   
   const getYPosition = (attendance) => {
-    const normalized = (attendance - minAttendance) / range
-    return 180 - (normalized * 160) // Invert Y axis
+    const normalized = Math.max(0, Math.min(1, (attendance - minAttendance) / range))
+    return 180 - (normalized * 160)
   }
   
   const dataPoints = chartData.map((data, index) => ({
@@ -288,6 +288,10 @@ const AdminDashboardNew = () => {
   const [toast, setToast] = useState(null)
   const [selectedStudents, setSelectedStudents] = useState([])
   const [selectAll, setSelectAll] = useState(false)
+
+  const hour = new Date().getHours()
+  const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening'
+  const stream = streams.find(s => s.id === userProfile?.stream_id)
 
   // Bulk delete functions
   const handleSelectAll = () => {
@@ -881,13 +885,24 @@ const AdminDashboardNew = () => {
         {/* Animated Hero Section */}
         <div className="mb-6 sm:mb-10 animate-fadeIn">
           <AnimatedHeroText 
-            staticText="Let's"
-            words={['TRACK', 'MANAGE', 'ANALYZE', 'IMPROVE', 'MONITOR']}
+            staticText={`${greeting},`}
+            words={["SMART PRESENCE", "Track", "Manage", "Analyze", "Visualize"]}
           />
-          <p className="text-gray-400 text-sm sm:text-lg mt-3 sm:mt-4 max-w-2xl">
-            Welcome back, <span className="text-white font-semibold">{userProfile?.name}</span>. 
-            Track attendance, manage students, and gain insights—all in one place.
+          <p className="text-gray-300 text-sm sm:text-lg mt-3 sm:mt-4 max-w-2xl">
+            Hey, <span className="bg-gradient-to-r from-green-400 via-emerald-500 to-teal-400 bg-clip-text text-transparent font-semibold">{userProfile?.name}</span> 👋 — track attendance, manage classes, and see insights in one place.
           </p>
+          <div className="mt-3 flex items-center gap-2">
+            {userProfile?.role && (
+              <span className="px-3 py-1 rounded-full bg-white/10 text-white text-xs sm:text-sm font-semibold tracking-wide">
+                {userProfile.role.toUpperCase()}
+              </span>
+            )}
+            {stream?.code && (
+              <span className="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-xs sm:text-sm font-semibold tracking-wide">
+                {stream.code}
+              </span>
+            )}
+          </div>
         </div>
 
         <div className="bg-gray-900 rounded-xl border border-white/10 mb-6 shadow-2xl">

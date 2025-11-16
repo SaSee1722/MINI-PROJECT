@@ -69,44 +69,38 @@ const ModernAdminDashboard = () => {
   const fetchTodayStats = async () => {
     const today = new Date().toISOString().split('T')[0]
     const { data, error } = await supabase
-      .from('attendance')
-      .select('status')
-      .eq('date', today)
-    
+      .from('period_student_attendance')
+      .select(`status, period_attendance!inner(date)`) 
+      .eq('period_attendance.date', today)
     if (!error && data) {
       const present = data.filter(r => r.status === 'present').length
       const absent = data.filter(r => r.status === 'absent').length
-      const onLeave = data.filter(r => r.status === 'on_leave').length
+      const onLeave = data.filter(r => r.status === 'on_duty').length
       setTodayStats({ present, absent, onLeave })
     }
   }
 
   const fetchWeeklyData = async () => {
-    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
     const data = []
-    
     for (let i = 6; i >= 0; i--) {
       const date = new Date()
       date.setDate(date.getDate() - i)
       const dateStr = date.toISOString().split('T')[0]
-      
       const { data: records } = await supabase
-        .from('attendance')
-        .select('status')
-        .eq('date', dateStr)
-      
+        .from('period_student_attendance')
+        .select(`status, period_attendance!inner(date)`) 
+        .eq('period_attendance.date', dateStr)
       const present = records?.filter(r => r.status === 'present').length || 0
       const absent = records?.filter(r => r.status === 'absent').length || 0
-      const onLeave = records?.filter(r => r.status === 'on_leave').length || 0
-      
+      const onLeave = records?.filter(r => r.status === 'on_duty').length || 0
       data.push({
-        day: days[date.getDay() === 0 ? 6 : date.getDay() - 1],
+        day: days[date.getDay()],
         present,
         absent,
         onLeave
       })
     }
-    
     setWeeklyData(data)
   }
 

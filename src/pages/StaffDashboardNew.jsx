@@ -48,6 +48,10 @@ const StaffDashboardNew = () => {
   const [loadingReport, setLoadingReport] = useState(false)
   const [shortReportSelectedClasses, setShortReportSelectedClasses] = useState([])
 
+  const hour = new Date().getHours()
+  const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening'
+  const currentStream = streams.find(s => s.id === userProfile?.stream_id)
+
   const handlePeriodToggle = (period) => {
     if (myAttendancePeriods.includes(period)) {
       setMyAttendancePeriods(myAttendancePeriods.filter(p => p !== period))
@@ -314,10 +318,29 @@ const StaffDashboardNew = () => {
       
       <div className="container mx-auto px-3 sm:px-6 py-4 sm:py-8 relative z-10 animate-fadeIn">
         <div className="mb-4 sm:mb-8">
-          <h1 className="text-2xl sm:text-4xl font-bold text-white mb-2 tracking-tight">
-            Staff Dashboard
-          </h1>
-          <p className="text-gray-400 text-sm sm:text-lg">Welcome back, {userProfile?.name}</p>
+          <h1 className="text-2xl sm:text-4xl font-bold text-white mb-2 tracking-tight">Staff Dashboard</h1>
+          <div className="flex items-baseline gap-2">
+            <span className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-white via-gray-200 to-white bg-clip-text text-transparent">
+              {greeting},
+            </span>
+            <span className="text-2xl sm:text-3xl font-extrabold bg-gradient-to-r from-green-400 via-emerald-500 to-teal-400 bg-clip-text text-transparent">
+              {userProfile?.name}
+            </span>
+            <span className="text-2xl sm:text-3xl">👋</span>
+          </div>
+          <p className="text-gray-300 text-sm sm:text-lg mt-2">Track attendance, manage classes, and see insights in one place.</p>
+          <div className="mt-3 flex items-center gap-2">
+            {userProfile?.role && (
+              <span className="px-3 py-1 rounded-full bg-white/10 text-white text-xs sm:text-sm font-semibold tracking-wide">
+                {userProfile.role.toUpperCase()}
+              </span>
+            )}
+            {currentStream?.code && (
+              <span className="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-xs sm:text-sm font-semibold tracking-wide">
+                {currentStream.code}
+              </span>
+            )}
+          </div>
         </div>
 
         <div className="bg-gray-900 rounded-xl border border-white/10 mb-6 shadow-2xl">
