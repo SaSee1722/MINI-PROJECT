@@ -1,10 +1,11 @@
 import React, { useMemo } from 'react'
 
-const NeoLineChart = ({ attendanceData = [], total = 1, className = '' }) => {
+const NeoLineChart = ({ attendanceData = [], total = 1, className = '', endDate }) => {
   const chartData = useMemo(() => {
     const days = []
+    const base = endDate ? new Date(`${endDate}T00:00:00`) : new Date()
     for (let i = 6; i >= 0; i--) {
-      const d = new Date()
+      const d = new Date(base)
       d.setDate(d.getDate() - i)
       const dateStr = d.toISOString().split('T')[0]
       const dayName = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d.getDay()]
@@ -32,7 +33,7 @@ const NeoLineChart = ({ attendanceData = [], total = 1, className = '' }) => {
       days.push({ date: dateStr, day: dayName, present: presentPct, absent: absentPct })
     }
     return days
-  }, [attendanceData, total])
+  }, [attendanceData, total, endDate])
 
   const pointsPresent = chartData.map((d, i) => ({ x: (i * 60) + 20, y: 180 - (d.present / 100) * 160 }))
   const pointsAbsent = chartData.map((d, i) => ({ x: (i * 60) + 20, y: 180 - (d.absent / 100) * 160 }))

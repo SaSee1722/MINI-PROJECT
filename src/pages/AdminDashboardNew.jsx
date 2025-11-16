@@ -1115,8 +1115,8 @@ const AdminDashboardNew = () => {
                 </div>
 
                 {/* Dashboard Layout */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                  <div className="lg:col-span-2 flex flex-col gap-6">
+                <div className={`grid gap-6 ${showOverviewCharts ? 'grid-cols-1 lg:grid-cols-3' : 'grid-cols-1'}`}>
+                  <div className={showOverviewCharts ? 'lg:col-span-2 flex flex-col gap-6' : 'hidden'}>
                     {showOverviewCharts && (() => {
                       const streamClassIds = classes.filter(c => c.stream_id === userProfile?.stream_id).map(c => c.id)
                       const activeIds = new Set(
