@@ -307,6 +307,7 @@ const AdminDashboardNew = () => {
   const [resetConfirm, setResetConfirm] = useState('')
   const [selectedStudents, setSelectedStudents] = useState([])
   const [selectAll, setSelectAll] = useState(false)
+  const [overviewDate, setOverviewDate] = useState(() => new Date().toISOString().split('T')[0])
 
   const hour = new Date().getHours()
   const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening'
@@ -434,7 +435,7 @@ const AdminDashboardNew = () => {
     return 'Select Class First'
   }
 
-  // Fetch today's period attendance count
+  // Fetch period attendance count for selected date
   const fetchPeriodAttendanceCount = async () => {
     try {
       // Wait for userProfile to load
@@ -444,22 +445,19 @@ const AdminDashboardNew = () => {
         return
       }
       
-      console.log('📊 Fetching today\'s attendance count for stream:', userProfile.stream_id)
-      
-      // Get today's date in YYYY-MM-DD format
-      const today = new Date().toISOString().split('T')[0]
+      console.log('📊 Fetching attendance count for stream:', userProfile.stream_id, 'date:', overviewDate)
       
       const { count: studentCount, error: studentError } = await supabase
         .from('period_attendance')
         .select('*, classes!inner(stream_id)', { count: 'exact', head: true })
         .eq('is_marked', true)
-        .eq('date', today)
+        .eq('date', overviewDate)
         .eq('classes.stream_id', userProfile.stream_id)
 
       const { count: staffCount, error: staffError } = await supabase
         .from('staff_attendance')
         .select('*, users!inner(stream_id)', { count: 'exact', head: true })
-        .eq('date', today)
+        .eq('date', overviewDate)
         .eq('users.stream_id', userProfile.stream_id)
 
       if (studentError) {
@@ -520,7 +518,7 @@ const AdminDashboardNew = () => {
       fetchPeriodAttendanceCount()
       fetchPeriodStudentAttendance()
     }
-  }, [userProfile, studentAttendance, staffAttendance, classes, students, users])
+  }, [userProfile, studentAttendance, staffAttendance, classes, students, users, overviewDate])
 
   useEffect(() => {
     if (!userProfile?.stream_id) return
@@ -1097,7 +1095,15 @@ const AdminDashboardNew = () => {
                     })()}
 
                   <div className="bg-neo-surface border border-neo-border rounded-2xl p-6">
-                    <h3 className="text-lg font-bold text-white mb-2">Today's Attendance Status</h3>
+                    <div className="flex items-center justify-between mb-2">
+                      <h3 className="text-lg font-bold text-white">Attendance Status</h3>
+                      <input
+                        type="date"
+                        value={overviewDate}
+                        onChange={(e) => setOverviewDate(e.target.value)}
+                        className="bg-black/40 border border-neo-border text-white text-sm rounded-lg px-3 py-2"
+                      />
+                    </div>
                     <p className="text-sm text-gray-400 mb-6">Real-time distribution of active students</p>
                     
                     <div className="flex items-center justify-center mb-6">
@@ -1113,8 +1119,8 @@ const AdminDashboardNew = () => {
                          {(() => {
                            const streamClassIds = classes.filter(c => c.stream_id === userProfile?.stream_id).map(c => c.id)
                            const activeIds = new Set(students.filter(s => s.status === 'active' && streamClassIds.includes(s.class_id)).map(s => s.id))
-                           const today = new Date().toISOString().split('T')[0]
-                           const todayAttendance = periodStudentAttendance.filter(pa => pa.period_attendance?.date === today)
+                           const selectedDate = overviewDate
+                           const todayAttendance = periodStudentAttendance.filter(pa => pa.period_attendance?.date === selectedDate)
                            const byStudent = new Map()
                            for (const r of todayAttendance) {
                              const id = r.students?.id
@@ -1210,8 +1216,8 @@ const AdminDashboardNew = () => {
                        {(() => {
                          const streamClassIds = classes.filter(c => c.stream_id === userProfile?.stream_id).map(c => c.id)
                          const activeIds = new Set(students.filter(s => s.status === 'active' && streamClassIds.includes(s.class_id)).map(s => s.id))
-                         const today = new Date().toISOString().split('T')[0]
-                         const todayAttendance = periodStudentAttendance.filter(pa => pa.period_attendance?.date === today)
+                         const selectedDate = overviewDate
+                         const todayAttendance = periodStudentAttendance.filter(pa => pa.period_attendance?.date === selectedDate)
                          const agg = new Map()
                          for (const r of todayAttendance) {
                            const id = r.students?.id
