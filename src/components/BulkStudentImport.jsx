@@ -77,9 +77,9 @@ const BulkStudentImport = ({ onImportComplete, streams, classes }) => {
       return 'cse'
     }
     
-    // IT department maps to CSE stream
+    // IT maps to IT stream
     if (dept === 'it' || dept === 'information technology') {
-      return 'cse'
+      return 'it'
     }
     
     // AIML department maps to CSE stream
@@ -323,13 +323,15 @@ const BulkStudentImport = ({ onImportComplete, streams, classes }) => {
         student.class = className
 
         // Map department to stream_id (IT -> CSE stream, etc.)
-        const streamId = getStreamIdFromDepartment(department)
         const classId = findClassId(className)
+        const classObj = classes.find(c => c.id === classId)
+        const streamIdFromDept = getStreamIdFromDepartment(department)
+        const streamId = classObj?.stream_id || streamIdFromDept
 
         console.log(`📝 Row ${rowNum}: ${name} - Department: ${department} -> Stream ID: ${streamId}, Class: ${className} -> Class ID: ${classId}`)
 
         if (!streamId) {
-          errors.push(`Row ${rowNum}: Department '${department}' could not be mapped to a stream. Valid departments: CSE, IT, AIML, AIDS, CYBER, ECE, EEE, MECH, CIVIL`)
+          errors.push(`Row ${rowNum}: Could not determine stream. Department '${department}' did not map and class '${className}' has no stream.`)
           continue
         }
 

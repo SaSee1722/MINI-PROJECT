@@ -2298,7 +2298,7 @@ Saturday,6,DPSD(301),Digital Principles,Ms.Sree Arthi D,DSA,R106,true`
                           </td>
                           <td className="px-4 py-3 font-medium">{student.roll_number}</td>
                           <td className="px-4 py-3">{student.name}</td>
-                          <td className="px-4 py-3">{student.departments?.name}</td>
+                          <td className="px-4 py-3">{getDepartmentForClass(student.class_id)}</td>
                           <td className="px-4 py-3">{student.classes?.name}</td>
                           <td className="px-4 py-3">
                             <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
