@@ -397,6 +397,15 @@ const AdminDashboardNew = () => {
       // Determine department based on class name patterns
       const className = selectedClass.name.toUpperCase()
       
+      if (className.includes('AIML') || className.includes('AI ML') || className.includes('AI/ML') || className.includes('AI & ML')) {
+        return 'Artificial Intelligence and Machine Learning'
+      }
+      if (className.includes('AIDS') || className.includes('AI DS') || className.includes('AI/DS') || className.includes('AI & DS')) {
+        return 'Artificial Intelligence and Data Science'
+      }
+      if (className.includes('CYBER') || className.includes('CYBERSECURITY') || className.includes('CYBER SECURITY')) {
+        return 'Cyber Security'
+      }
       if (className.includes('IT')) {
         console.log('🏢 Department: Information Technology')
         return 'Information Technology'
