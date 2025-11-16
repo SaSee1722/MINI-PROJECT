@@ -26,7 +26,7 @@ const StaffDashboardNew = () => {
   const { students } = useStudents()
   const { classes } = useClasses()
   const { sessions } = useSessions()
-  const { attendance, markAttendance: markMyAttendance } = useAttendance()
+  const { attendance, markAttendance: markMyAttendance, refetch: refetchStaffAttendance } = useAttendance()
   const { attendance: studentAttendance, markAttendance: markStudentAttendance } = useStudentAttendance()
 
   const [activeTab, setActiveTab] = useState('timetable')
@@ -100,8 +100,8 @@ const StaffDashboardNew = () => {
       setToast({ message: `Attendance marked successfully for periods: ${periodString}`, type: 'success' })
       setMyAttendancePeriods([])
       
-      // Refresh attendance records
-      window.location.reload()
+      // Refresh attendance records without reloading the page
+      await refetchStaffAttendance()
     } catch (err) {
       console.error('Error marking attendance:', err)
       setToast({ message: `Error marking attendance: ${err.message}`, type: 'error' })
