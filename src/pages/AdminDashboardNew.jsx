@@ -501,9 +501,10 @@ const AdminDashboardNew = () => {
         .from('period_student_attendance')
         .select(`
           *,
-          students (id, roll_number, name, class_id, status),
-          period_attendance (date)
+          students(id, roll_number, name, class_id, status),
+          period_attendance!inner(date)
         `)
+        .eq('period_attendance.date', overviewDate)
         .order('created_at', { ascending: false })
       
       if (error) throw error
