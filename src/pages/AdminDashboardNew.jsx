@@ -558,7 +558,6 @@ const AdminDashboardNew = () => {
   // Fetch count when userProfile loads OR when attendance data changes
   useEffect(() => {
     if (userProfile?.stream_id) {
-      fetchLatestMarkedDate()
       fetchPeriodAttendanceCount()
       fetchPeriodStudentAttendance()
     }
@@ -580,7 +579,7 @@ const AdminDashboardNew = () => {
           const dateStr = payload?.new?.date || payload?.old?.date
           if (dateStr) {
             // If user hasn’t manually chosen a date (auto mode) OR the new date is more recent, switch overview
-            if (!autoDateInitialized || new Date(dateStr) > new Date(overviewDate)) {
+            if (new Date(dateStr) > new Date(overviewDate)) {
               setOverviewDate(dateStr)
             }
           }
@@ -1033,7 +1032,7 @@ const AdminDashboardNew = () => {
                 {/* Header */}
                 <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
                   <h2 className="text-xl sm:text-3xl font-bold text-white">Attendance Overview</h2>
-                  <p className="text-gray-400 text-xs sm:text-base">Today: {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                  <p className="text-gray-400 text-xs sm:text-base">Date: {new Date(overviewDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
                 </div>
 
                 {/* Statistics Cards */}
