@@ -12,7 +12,7 @@ const NeoLineChart = ({ attendanceData = [], total = 1, className = '', endDate 
       const dayRecords = attendanceData.filter(a => a.date === dateStr)
       const agg = new Map()
       for (const r of dayRecords) {
-        const id = r.student_id
+        const id = r.student_id || r.students?.id
         if (!id) continue
         const prev = agg.get(id) || 'unmarked'
         const curr = r.status

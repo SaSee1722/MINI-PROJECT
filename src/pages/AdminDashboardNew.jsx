@@ -1260,7 +1260,7 @@ const AdminDashboardNew = () => {
                           const todayAttendance = periodStudentAttendance.filter(pa => pa.period_attendance?.date === overviewDate)
                           const byStudent = new Map()
                           for (const r of todayAttendance) {
-                            const id = r.students?.id
+                            const id = (r.student_id || r.students?.id)
                             if (!id || !activeIds.has(id)) continue
                             const prev = byStudent.get(id) || 'unmarked'
                             const curr = r.status
@@ -1334,7 +1334,7 @@ const AdminDashboardNew = () => {
                            const todayAttendance = periodStudentAttendance.filter(pa => pa.period_attendance?.date === selectedDate)
                            const byStudent = new Map()
                            for (const r of todayAttendance) {
-                             const id = r.students?.id
+                             const id = (r.student_id || r.students?.id)
                              if (!id || !activeIds.has(id)) continue
                              const prev = byStudent.get(id) || 'unmarked'
                              const curr = r.status
@@ -1431,7 +1431,7 @@ const AdminDashboardNew = () => {
                          const todayAttendance = periodStudentAttendance.filter(pa => pa.period_attendance?.date === selectedDate)
                          const agg = new Map()
                          for (const r of todayAttendance) {
-                           const id = r.students?.id
+                           const id = (r.student_id || r.students?.id)
                            if (!id || !activeIds.has(id)) continue
                            const prev = agg.get(id) || 'unmarked'
                            const curr = r.status
