@@ -1216,8 +1216,8 @@ const AdminDashboardNew = () => {
                   </div>
                 </div>
 
-                {/* Stream Information Card */}
-                <div className="bg-gradient-to-br from-gray-900 to-gray-800 border border-white/20 rounded-xl p-6">
+                {/* Stream Information Card removed */}
+                <div className="hidden">
                   <div className="flex items-start justify-between mb-6">
                     <div>
                       <h3 className="text-2xl font-bold text-white mb-2">
@@ -1232,7 +1232,7 @@ const AdminDashboardNew = () => {
                     </div>
                   </div>
                   
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                     <div className="bg-black/30 rounded-lg p-4 border border-white/10">
                       <p className="text-gray-400 text-xs mb-1 uppercase tracking-wide">Total Classes</p>
                       <p className="text-2xl font-bold text-white">{classes.filter(c => c.stream_id === userProfile?.stream_id).length}</p>
@@ -1252,8 +1252,7 @@ const AdminDashboardNew = () => {
                         {users.filter(u => u.role === 'staff' && u.stream_id === userProfile?.stream_id).length}
                       </p>
                     </div>
-                    <div className="bg-black/30 rounded-lg p-4 border border-white/10">
-                      <p className="text-gray-400 text-xs mb-1 uppercase tracking-wide">Attendance %</p>
+                    <div className="hidden">
                       <p className="text-2xl font-bold text-white">
                         {(() => {
                           const streamClassIds = classes.filter(c => c.stream_id === userProfile?.stream_id).map(c => c.id)
