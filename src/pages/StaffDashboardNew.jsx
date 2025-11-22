@@ -11,6 +11,7 @@ import AttendanceCheckbox from '../components/AttendanceCheckbox'
 import InteractiveTimetable from '../components/InteractiveTimetable'
 import Toast from '../components/Toast'
 import { generatePeriodAttendanceReport } from '../utils/pdfGenerator'
+import { useUsers } from '../hooks/useUsers'
 
 const streams = [
   { id: 'cse', name: 'Computer Science and Engineering', code: 'CSE' },
@@ -28,6 +29,8 @@ const StaffDashboardNew = () => {
   const { sessions } = useSessions()
   const { attendance, markAttendance: markMyAttendance, refetch: refetchStaffAttendance } = useAttendance()
   const { attendance: studentAttendance, markAttendance: markStudentAttendance } = useStudentAttendance()
+
+  useUsers()
 
   const [activeTab, setActiveTab] = useState('timetable')
   const [myAttendanceDate, setMyAttendanceDate] = useState(new Date().toISOString().split('T')[0])

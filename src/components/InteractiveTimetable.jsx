@@ -396,91 +396,99 @@ const InteractiveTimetable = ({ classId, selectedDate }) => {
         </div>
       </div>
 
-      {/* Add Period Modal */}
+      {/* Add Period Modal - NEW VERSION */}
       {showAddPeriodModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-2xl max-w-2xl w-full">
-            <div className="p-6 bg-gradient-to-r from-primary-600 to-primary-700 text-white">
-              <h3 className="text-2xl font-bold">Add New Period</h3>
-              <p className="text-primary-100 mt-1">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-6 rounded-t-xl">
+              <h3 className="text-xl font-bold">Add Period to Timetable</h3>
+              <p className="text-blue-100 text-sm mt-2">
                 {days[newPeriodData.dayOfWeek - 1]} - Period {newPeriodData.periodNumber}
               </p>
             </div>
 
-            <form onSubmit={handleAddPeriodSubmit} className="p-6 space-y-4">
-              <div className="grid md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Subject Code *</label>
-                  <input
-                    type="text"
-                    placeholder="e.g., CA(302)"
-                    value={newPeriodData.subjectCode}
-                    onChange={(e) => setNewPeriodData({ ...newPeriodData, subjectCode: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-gray-900"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Subject Name *</label>
-                  <input
-                    type="text"
-                    placeholder="e.g., Computer Architecture"
-                    value={newPeriodData.subjectName}
-                    onChange={(e) => setNewPeriodData({ ...newPeriodData, subjectName: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-gray-900"
-                    required
-                  />
-                </div>
+            {/* Form */}
+            <form onSubmit={handleAddPeriodSubmit} className="p-6 space-y-5">
+              {/* Subject Code */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-800 mb-2">Subject Code *</label>
+                <input
+                  type="text"
+                  placeholder="e.g., CS101"
+                  value={newPeriodData.subjectCode}
+                  onChange={(e) => setNewPeriodData({ ...newPeriodData, subjectCode: e.target.value })}
+                  style={{ backgroundColor: '#ffffff', color: '#1f2937', borderColor: '#d1d5db' }}
+                  className="w-full px-4 py-2.5 border-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
+                  required
+                />
               </div>
 
-              <div className="grid md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Faculty Name *</label>
-                  <input
-                    type="text"
-                    placeholder="e.g., Mrs.I.Roshini"
-                    value={newPeriodData.facultyName}
-                    onChange={(e) => setNewPeriodData({ ...newPeriodData, facultyName: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-gray-900"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Faculty Code</label>
-                  <input
-                    type="text"
-                    placeholder="e.g., IR"
-                    value={newPeriodData.facultyCode}
-                    onChange={(e) => setNewPeriodData({ ...newPeriodData, facultyCode: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-gray-900"
-                  />
-                </div>
+              {/* Subject Name */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-800 mb-2">Subject Name *</label>
+                <input
+                  type="text"
+                  placeholder="e.g., Data Structures"
+                  value={newPeriodData.subjectName}
+                  onChange={(e) => setNewPeriodData({ ...newPeriodData, subjectName: e.target.value })}
+                  style={{ backgroundColor: '#ffffff', color: '#1f2937', borderColor: '#d1d5db' }}
+                  className="w-full px-4 py-2.5 border-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
+                  required
+                />
               </div>
 
-              <div className="flex items-center gap-2">
+              {/* Faculty Name */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-800 mb-2">Faculty Name *</label>
+                <input
+                  type="text"
+                  placeholder="e.g., Dr. Smith"
+                  value={newPeriodData.facultyName}
+                  onChange={(e) => setNewPeriodData({ ...newPeriodData, facultyName: e.target.value })}
+                  style={{ backgroundColor: '#ffffff', color: '#1f2937', borderColor: '#d1d5db' }}
+                  className="w-full px-4 py-2.5 border-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
+                  required
+                />
+              </div>
+
+              {/* Faculty Code */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-800 mb-2">Faculty Code</label>
+                <input
+                  type="text"
+                  placeholder="e.g., DS"
+                  value={newPeriodData.facultyCode}
+                  onChange={(e) => setNewPeriodData({ ...newPeriodData, facultyCode: e.target.value })}
+                  style={{ backgroundColor: '#ffffff', color: '#1f2937', borderColor: '#d1d5db' }}
+                  className="w-full px-4 py-2.5 border-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
+                />
+              </div>
+
+              {/* Lab Session Checkbox */}
+              <div className="flex items-center gap-3 bg-gray-50 p-3 rounded-lg">
                 <input
                   type="checkbox"
                   id="isLab"
                   checked={newPeriodData.isLab}
                   onChange={(e) => setNewPeriodData({ ...newPeriodData, isLab: e.target.checked })}
-                  className="w-5 h-5 text-primary-600 rounded"
+                  className="w-5 h-5 text-blue-600 rounded cursor-pointer"
                 />
-                <label htmlFor="isLab" className="text-sm font-medium text-gray-700">Lab Session</label>
+                <label htmlFor="isLab" className="text-sm font-semibold text-gray-800 cursor-pointer">This is a Lab Session</label>
               </div>
 
-              <div className="flex gap-3 pt-4">
+              {/* Buttons */}
+              <div className="flex gap-3 pt-4 border-t border-gray-200">
                 <button
                   type="submit"
-                  className="flex-1 px-6 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition-colors"
+                  className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors duration-200"
                 >
                   Add Period
                 </button>
                 <button
                   type="button"
                   onClick={() => setShowAddPeriodModal(false)}
-                  className="px-6 py-3 bg-gray-400 text-white rounded-lg font-semibold hover:bg-gray-500 transition-colors"
+                  className="flex-1 px-4 py-2.5 bg-gray-300 text-gray-800 rounded-lg font-semibold hover:bg-gray-400 transition-colors duration-200"
                 >
                   Cancel
                 </button>

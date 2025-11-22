@@ -19,7 +19,6 @@ import AdminTimetableView from '../components/AdminTimetableView'
 import DepartmentOverview from '../components/DepartmentOverview'
 import Toast from '../components/Toast'
 import { generateAttendanceReport, generatePeriodAttendanceReport } from '../utils/pdfGenerator'
-import { useAdminTools } from '../hooks/useAdminTools'
 
 // Animated Hero Text Component (inspired by Dario.io)
 const AnimatedHeroText = ({ words, staticText }) => {
@@ -283,7 +282,7 @@ const AdminDashboardNew = () => {
   const { attendance: staffAttendance } = useAttendance()
   const { timetable, addTimetableEntry, deleteTimetableEntry } = useTimetable()
   const { users, onlineUsers, deleteUser, deleteMyAccount, updateUser, appointAsPC, removePC } = useUsers()
-  const { resetStreamData, resetAllData, loading: resetLoading, error: resetError } = useAdminTools()
+
 
   // Define the 6 streams
   const streams = [
@@ -303,8 +302,7 @@ const AdminDashboardNew = () => {
   const [periodStudentAttendance, setPeriodStudentAttendance] = useState([])
   const [studentSearchQuery, setStudentSearchQuery] = useState('')
   const [toast, setToast] = useState(null)
-  const [resetMode, setResetMode] = useState('stream')
-  const [resetConfirm, setResetConfirm] = useState('')
+
   const [selectedStudents, setSelectedStudents] = useState([])
   const [selectAll, setSelectAll] = useState(false)
   const [overviewDate, setOverviewDate] = useState(() => new Date().toISOString().split('T')[0])
@@ -493,9 +491,12 @@ const AdminDashboardNew = () => {
         .filter(c => c.stream_id === userProfile.stream_id)
         .map(c => c.id)
       
-      if (streamClassIds.length === 0) return
+      if (streamClassIds.length === 0) {
+        setPeriodStudentAttendance([])
+        return
+      }
       
-      // Fetch attendance data for all classes in this stream
+      // Fetch all attendance data first, then filter client-side
       const { data, error } = await supabase
         .from('period_student_attendance')
         .select(`
@@ -503,11 +504,16 @@ const AdminDashboardNew = () => {
           students (id, roll_number, name, class_id, status),
           period_attendance (date)
         `)
-        .in('students.class_id', streamClassIds)
         .order('created_at', { ascending: false })
       
       if (error) throw error
-      setPeriodStudentAttendance(data || [])
+      
+      // Filter by stream classes on client side
+      const filteredData = (data || []).filter(item => 
+        streamClassIds.includes(item.students?.class_id)
+      )
+      
+      setPeriodStudentAttendance(filteredData)
     } catch (err) {
       console.error('Error fetching period student attendance:', err)
       setPeriodStudentAttendance([])
@@ -566,10 +572,22 @@ const AdminDashboardNew = () => {
         fetchPeriodStudentAttendance()
         fetchPeriodAttendanceCount()
       })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'period_attendance' }, () => {
-        fetchPeriodStudentAttendance()
-        fetchPeriodAttendanceCount()
-      })
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'period_attendance' },
+        (payload) => {
+          // Extract the date from the new/old row
+          const dateStr = payload?.new?.date || payload?.old?.date
+          if (dateStr) {
+            // If user hasn’t manually chosen a date (auto mode) OR the new date is more recent, switch overview
+            if (!autoDateInitialized || new Date(dateStr) > new Date(overviewDate)) {
+              setOverviewDate(dateStr)
+            }
+          }
+          fetchPeriodStudentAttendance()
+          fetchPeriodAttendanceCount()
+        }
+      )
       .on('postgres_changes', { event: '*', schema: 'public', table: 'students' }, () => {
         refetchStudents()
         fetchPeriodStudentAttendance()
@@ -579,7 +597,7 @@ const AdminDashboardNew = () => {
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [userProfile])
+  }, [userProfile, overviewDate, autoDateInitialized])
   
   const [forms, setForms] = useState({
     stream: { name: '', code: '', description: '' },
@@ -1019,7 +1037,7 @@ const AdminDashboardNew = () => {
                 </div>
 
                 {/* Statistics Cards */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
                   {/* Total Students */}
                   <div className="group bg-gradient-to-br from-gray-900 to-gray-800 border border-white/20 rounded-xl p-3 sm:p-6 hover:border-green-500/50 hover:shadow-lg hover:shadow-green-500/20 transition-all duration-500 hover:scale-105 cursor-pointer">
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">
@@ -1075,10 +1093,77 @@ const AdminDashboardNew = () => {
                      <h3 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent group-hover:from-orange-400 group-hover:to-amber-400 transition-all duration-300 mb-1">{staffAttendanceCount}</h3>
                     <p className="text-xs sm:text-sm text-gray-500">{new Date(overviewDate).toLocaleDateString('en-GB')}</p>
                    </div>
+
+                  {/* Active Staff Count */}
+                  <div className="group bg-gradient-to-br from-gray-900 to-gray-800 border border-white/20 rounded-xl p-3 sm:p-6 hover:border-teal-500/50 hover:shadow-lg hover:shadow-teal-500/20 transition-all duration-500 hover:scale-105 cursor-pointer">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">
+                      <p className="text-gray-400 text-xs sm:text-sm font-semibold uppercase tracking-wide">Active Staff</p>
+                      <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-teal-500/20 to-cyan-500/20 group-hover:from-teal-500/30 group-hover:to-cyan-500/30 rounded-lg flex items-center justify-center transition-all duration-300">
+                        <svg className="w-4 h-4 sm:w-5 sm:h-5 text-white group-hover:text-teal-400 transition-colors duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                        </svg>
+                      </div>
+                    </div>
+                    <h3 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent group-hover:from-teal-400 group-hover:to-cyan-400 transition-all duration-300 mb-1">
+                      {users.filter(u => u.role === 'staff' && u.stream_id === userProfile?.stream_id).length}
+                    </h3>
+                    <p className="text-xs sm:text-sm text-gray-500">Total</p>
+                  </div>
+
+                  {/* Online Users */}
+                  <div className="group bg-gradient-to-br from-gray-900 to-gray-800 border border-white/20 rounded-xl p-3 sm:p-6 hover:border-emerald-500/50 hover:shadow-lg hover:shadow-emerald-500/20 transition-all duration-500 hover:scale-105 cursor-pointer">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">
+                      <p className="text-gray-400 text-xs sm:text-sm font-semibold uppercase tracking-wide">Online Now</p>
+                      <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-emerald-500/20 to-green-500/20 group-hover:from-emerald-500/30 group-hover:to-green-500/30 rounded-lg flex items-center justify-center transition-all duration-300">
+                        <div className="relative">
+                          <svg className="w-4 h-4 sm:w-5 sm:h-5 text-white group-hover:text-emerald-400 transition-colors duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.636 18.364a9 9 0 010-12.728m12.728 0a9 9 0 010 12.728m-9.9-2.829a5 5 0 010-7.07m7.072 0a5 5 0 010 7.07M13 12a1 1 0 11-2 0 1 1 0 012 0z" />
+                          </svg>
+                          <span className="absolute top-0 right-0 w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></span>
+                        </div>
+                      </div>
+                    </div>
+                    <h3 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent group-hover:from-emerald-400 group-hover:to-green-400 transition-all duration-300 mb-1">
+                      {onlineUsers ? onlineUsers.size : 0}
+                    </h3>
+                    <p className="text-xs sm:text-sm text-gray-500">Users</p>
+                  </div>
+
+                  {/* Suspended Students */}
+                  <div className="group bg-gradient-to-br from-gray-900 to-gray-800 border border-white/20 rounded-xl p-3 sm:p-6 hover:border-red-500/50 hover:shadow-lg hover:shadow-red-500/20 transition-all duration-500 hover:scale-105 cursor-pointer">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">
+                      <p className="text-gray-400 text-xs sm:text-sm font-semibold uppercase tracking-wide">Suspended</p>
+                      <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-red-500/20 to-pink-500/20 group-hover:from-red-500/30 group-hover:to-pink-500/30 rounded-lg flex items-center justify-center transition-all duration-300">
+                        <svg className="w-4 h-4 sm:w-5 sm:h-5 text-white group-hover:text-red-400 transition-colors duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                        </svg>
+                      </div>
+                    </div>
+                    <h3 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent group-hover:from-red-400 group-hover:to-pink-400 transition-all duration-300 mb-1">
+                      {students.filter(s => s.status === 'suspended').length}
+                    </h3>
+                    <p className="text-xs sm:text-sm text-gray-500">Students</p>
+                  </div>
+
+                  {/* Interns */}
+                  <div className="group bg-gradient-to-br from-gray-900 to-gray-800 border border-white/20 rounded-xl p-3 sm:p-6 hover:border-indigo-500/50 hover:shadow-lg hover:shadow-indigo-500/20 transition-all duration-500 hover:scale-105 cursor-pointer">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">
+                      <p className="text-gray-400 text-xs sm:text-sm font-semibold uppercase tracking-wide">Interns</p>
+                      <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-indigo-500/20 to-purple-500/20 group-hover:from-indigo-500/30 group-hover:to-purple-500/30 rounded-lg flex items-center justify-center transition-all duration-300">
+                        <svg className="w-4 h-4 sm:w-5 sm:h-5 text-white group-hover:text-indigo-400 transition-colors duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                        </svg>
+                      </div>
+                    </div>
+                    <h3 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent group-hover:from-indigo-400 group-hover:to-purple-400 transition-all duration-300 mb-1">
+                      {students.filter(s => s.status === 'intern').length}
+                    </h3>
+                    <p className="text-xs sm:text-sm text-gray-500">Students</p>
+                  </div>
                 </div>
 
                 {/* Quick Actions */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div className="bg-gray-900 border border-white/20 rounded-xl p-6">
                     <div className="flex items-start gap-4">
                       <div className="w-12 h-12 bg-white/10 rounded-lg flex items-center justify-center flex-shrink-0">
@@ -1110,6 +1195,90 @@ const AdminDashboardNew = () => {
                           Manage Students
                         </button>
                       </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-gray-900 border border-white/20 rounded-xl p-6">
+                    <div className="flex items-start gap-4">
+                      <div className="w-12 h-12 bg-white/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="text-lg font-bold text-white mb-2">Manage Timetable</h3>
+                        <p className="text-sm text-gray-400 mb-4">Configure class schedules and period timings for the semester.</p>
+                        <button onClick={() => setActiveTab('timetable')} className="px-4 py-2 bg-white text-black rounded-lg hover:bg-gray-200 transition-all duration-300 font-semibold text-sm uppercase tracking-wide">
+                          View Timetable
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Stream Information Card */}
+                <div className="bg-gradient-to-br from-gray-900 to-gray-800 border border-white/20 rounded-xl p-6">
+                  <div className="flex items-start justify-between mb-6">
+                    <div>
+                      <h3 className="text-2xl font-bold text-white mb-2">
+                        {stream?.name || 'Your Stream'}
+                      </h3>
+                      <p className="text-gray-400">Stream Code: <span className="text-white font-semibold">{stream?.code || 'N/A'}</span></p>
+                    </div>
+                    <div className="px-4 py-2 bg-white/10 rounded-lg">
+                      <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                      </svg>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="bg-black/30 rounded-lg p-4 border border-white/10">
+                      <p className="text-gray-400 text-xs mb-1 uppercase tracking-wide">Total Classes</p>
+                      <p className="text-2xl font-bold text-white">{classes.filter(c => c.stream_id === userProfile?.stream_id).length}</p>
+                    </div>
+                    <div className="bg-black/30 rounded-lg p-4 border border-white/10">
+                      <p className="text-gray-400 text-xs mb-1 uppercase tracking-wide">Total Students</p>
+                      <p className="text-2xl font-bold text-white">
+                        {students.filter(s => {
+                          const studentClass = classes.find(c => c.id === s.class_id)
+                          return studentClass?.stream_id === userProfile?.stream_id
+                        }).length}
+                      </p>
+                    </div>
+                    <div className="bg-black/30 rounded-lg p-4 border border-white/10">
+                      <p className="text-gray-400 text-xs mb-1 uppercase tracking-wide">Staff Members</p>
+                      <p className="text-2xl font-bold text-white">
+                        {users.filter(u => u.role === 'staff' && u.stream_id === userProfile?.stream_id).length}
+                      </p>
+                    </div>
+                    <div className="bg-black/30 rounded-lg p-4 border border-white/10">
+                      <p className="text-gray-400 text-xs mb-1 uppercase tracking-wide">Attendance %</p>
+                      <p className="text-2xl font-bold text-white">
+                        {(() => {
+                          const streamClassIds = classes.filter(c => c.stream_id === userProfile?.stream_id).map(c => c.id)
+                          const activeIds = new Set(students.filter(s => s.status === 'active' && streamClassIds.includes(s.class_id)).map(s => s.id))
+                          const todayAttendance = periodStudentAttendance.filter(pa => pa.period_attendance?.date === overviewDate)
+                          const byStudent = new Map()
+                          for (const r of todayAttendance) {
+                            const id = r.students?.id
+                            if (!id || !activeIds.has(id)) continue
+                            const prev = byStudent.get(id) || 'unmarked'
+                            const curr = r.status
+                            let next = prev
+                            if (curr === 'present') next = 'present'
+                            else if (curr === 'on_duty' && prev !== 'present') next = 'on_duty'
+                            else if (curr === 'absent' && prev !== 'present' && prev !== 'on_duty') next = 'absent'
+                            byStudent.set(id, next)
+                          }
+                          let presentCount = 0
+                          for (const v of byStudent.values()) {
+                            if (v === 'present') presentCount++
+                          }
+                          const total = activeIds.size
+                          return total > 0 ? Math.round((presentCount / total) * 100) : 0
+                        })()}%
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -1368,41 +1537,7 @@ const AdminDashboardNew = () => {
                         ))}
                       </div>
                     </NeoCard>
-                    <NeoCard title="Data Reset" subtitle="Clear classes and students">
-                      <div className="space-y-3">
-                        <div className="flex items-center gap-3">
-                          <button onClick={() => setResetMode('stream')} className={`px-3 py-2 rounded-xl border ${resetMode==='stream'?'bg-black/30 border-neo-border text-white':'border-neo-border text-neo-subtext'}`}>This stream</button>
-                          <button onClick={() => setResetMode('all')} className={`px-3 py-2 rounded-xl border ${resetMode==='all'?'bg-black/30 border-neo-border text-white':'border-neo-border text-neo-subtext'}`}>Entire app</button>
-                        </div>
-                        <input value={resetConfirm} onChange={(e)=>setResetConfirm(e.target.value)} placeholder="Type RESET" className="w-full px-3 py-2 rounded-xl bg-black/30 border border-neo-border text-white" />
-                        <button
-                          disabled={resetLoading || resetConfirm!=='RESET'}
-                          onClick={async ()=>{
-                            try {
-                              if (resetMode==='all') {
-                                const r = await resetAllData()
-                                if (!r.success) throw new Error(r.error)
-                              } else {
-                                const r = await resetStreamData(userProfile?.stream_id)
-                                if (!r.success) throw new Error(r.error)
-                              }
-                              setToast({ message: 'Data reset successful', type: 'success' })
-                              await refetchClasses()
-                              await refetchStudents()
-                              await fetchPeriodStudentAttendance()
-                              await fetchPeriodAttendanceCount()
-                              setResetConfirm('')
-                            } catch (err) {
-                              setToast({ message: 'Reset failed: '+ err.message, type: 'error' })
-                            }
-                          }}
-                          className="px-4 py-2 rounded-xl bg-white text-black font-semibold disabled:opacity-50"
-                        >
-                          {resetLoading? 'Resetting...' : 'Reset Data'}
-                        </button>
-                        {resetError && <p className="text-red-400 text-xs">{resetError}</p>}
-                      </div>
-                    </NeoCard>
+
                   </div>
                 </div>
 
@@ -1536,7 +1671,13 @@ const AdminDashboardNew = () => {
                       <button
                         onClick={() => {
                           const reportText = `☀️Stream: ${shortReportData.stream?.name}\n☀️Date: ${new Date(shortReportData.date).toLocaleDateString('en-GB')}\n\n${shortReportData.classes.map(cls => 
-                            `➕${cls.name}: ${shortReportData.stream?.code}  ${cls.present}/${cls.total}\n${cls.approved > 0 ? `📍Approved: ${String(cls.approved).padStart(2, '0')}\n` : ''}${cls.unapproved > 0 ? `📍Unapproved: ${String(cls.unapproved).padStart(2, '0')}\n` : ''}${cls.onDuty > 0 ? `📍OD: ${String(cls.onDuty).padStart(2, '0')}\n` : ''}${cls.suspended > 0 ? `📍Suspend: ${String(cls.suspended).padStart(2, '0')}\n` : ''}${cls.intern > 0 ? `📍Intern: ${String(cls.intern).padStart(2, '0')}\n` : ''}`
+                            `➕${cls.name}: ${shortReportData.stream?.code}  ${cls.present}/${cls.total}
+${cls.approved > 0 ? `📍Approved: ${String(cls.approved).padStart(2, '0')}
+` : ''}${cls.unapproved > 0 ? `📍Unapproved: ${String(cls.unapproved).padStart(2, '0')}
+` : ''}${cls.onDuty > 0 ? `📍OD: ${String(cls.onDuty).padStart(2, '0')}
+` : ''}${cls.suspended > 0 ? `📍Suspend: ${String(cls.suspended).padStart(2, '0')}
+` : ''}${cls.intern > 0 ? `📍Intern: ${String(cls.intern).padStart(2, '0')}
+` : ''}`
                           ).join('\n')}\n\nReported by: Dean, ${shortReportData.stream?.code}`
                           
                           navigator.clipboard.writeText(reportText)
@@ -1674,15 +1815,15 @@ const AdminDashboardNew = () => {
 
 
                 {showForm.timetable && (
-                  <form onSubmit={(e) => handleSubmit('timetable', e)} className="bg-gray-50 p-6 rounded-lg mb-6 border-2 border-primary-200">
-                    <h3 className="text-lg font-semibold mb-4">Add Timetable Entry</h3>
+                  <form onSubmit={(e) => handleSubmit('timetable', e)} className="bg-gray-50 text-gray-900 p-6 rounded-lg mb-6 border-2 border-primary-200">
+                    <h3 className="text-lg font-semibold mb-4 text-gray-900">Add Timetable Entry</h3>
                     <div className="grid md:grid-cols-3 gap-4 mb-4">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Class *</label>
+                        <label className="block text-sm font-medium text-gray-800 mb-2">Class *</label>
                         <select
                           value={forms.timetable.classId}
                           onChange={(e) => setForms({ ...forms, timetable: { ...forms.timetable, classId: e.target.value }})}
-                          className="w-full px-4 py-2 border rounded-lg"
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-900"
                           required
                         >
                           <option value="">Select Class</option>
@@ -1695,11 +1836,11 @@ const AdminDashboardNew = () => {
                       </div>
                       
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Day *</label>
+                        <label className="block text-sm font-medium text-gray-800 mb-2">Day *</label>
                         <select
                           value={forms.timetable.dayOfWeek}
                           onChange={(e) => setForms({ ...forms, timetable: { ...forms.timetable, dayOfWeek: e.target.value }})}
-                          className="w-full px-4 py-2 border rounded-lg"
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-900"
                           required
                         >
                           <option value="1">Monday</option>
@@ -1712,11 +1853,11 @@ const AdminDashboardNew = () => {
                       </div>
                       
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Period *</label>
+                        <label className="block text-sm font-medium text-gray-800 mb-2">Period *</label>
                         <select
                           value={forms.timetable.periodNumber}
                           onChange={(e) => setForms({ ...forms, timetable: { ...forms.timetable, periodNumber: e.target.value }})}
-                          className="w-full px-4 py-2 border rounded-lg"
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-900"
                           required
                         >
                           <option value="1">Period 1 (08:30-09:20)</option>
@@ -1731,25 +1872,25 @@ const AdminDashboardNew = () => {
                     
                     <div className="grid md:grid-cols-2 gap-4 mb-4">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Subject Code *</label>
+                        <label className="block text-sm font-medium text-gray-800 mb-2">Subject Code *</label>
                         <input
                           type="text"
                           placeholder="e.g., CA(302)"
                           value={forms.timetable.subjectCode}
                           onChange={(e) => setForms({ ...forms, timetable: { ...forms.timetable, subjectCode: e.target.value }})}
-                          className="w-full px-4 py-2 border rounded-lg"
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 placeholder:text-gray-400"
                           required
                         />
                       </div>
                       
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Subject Name *</label>
+                        <label className="block text-sm font-medium text-gray-800 mb-2">Subject Name *</label>
                         <input
                           type="text"
                           placeholder="e.g., Computer Architecture"
                           value={forms.timetable.subjectName}
                           onChange={(e) => setForms({ ...forms, timetable: { ...forms.timetable, subjectName: e.target.value }})}
-                          className="w-full px-4 py-2 border rounded-lg"
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 placeholder:text-gray-400"
                           required
                         />
                       </div>
@@ -1757,25 +1898,25 @@ const AdminDashboardNew = () => {
                     
                     <div className="grid md:grid-cols-3 gap-4 mb-4">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Faculty Name *</label>
+                        <label className="block text-sm font-medium text-gray-800 mb-2">Faculty Name *</label>
                         <input
                           type="text"
                           placeholder="e.g., Mrs.I.Roshini"
                           value={forms.timetable.facultyName}
                           onChange={(e) => setForms({ ...forms, timetable: { ...forms.timetable, facultyName: e.target.value }})}
-                          className="w-full px-4 py-2 border rounded-lg"
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 placeholder:text-gray-400"
                           required
                         />
                       </div>
                       
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Faculty Code</label>
+                        <label className="block text-sm font-medium text-gray-800 mb-2">Faculty Code</label>
                         <input
                           type="text"
                           placeholder="e.g., IR"
                           value={forms.timetable.facultyCode}
                           onChange={(e) => setForms({ ...forms, timetable: { ...forms.timetable, facultyCode: e.target.value }})}
-                          className="w-full px-4 py-2 border rounded-lg"
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 placeholder:text-gray-400"
                         />
                       </div>
                       
@@ -1787,7 +1928,7 @@ const AdminDashboardNew = () => {
                             onChange={(e) => setForms({ ...forms, timetable: { ...forms.timetable, isLab: e.target.checked }})}
                             className="w-5 h-5 text-primary-600 rounded"
                           />
-                          <span className="text-sm font-medium text-gray-700">Lab Session</span>
+                          <span className="text-sm font-medium text-gray-800">Lab Session</span>
                         </label>
                       </div>
                     </div>
@@ -2461,14 +2602,27 @@ Saturday,6,DPSD(301),Digital Principles,Ms.Sree Arthi D,DSA,R106,true`
                             <td className="px-4 py-3 text-gray-300">{user.email}</td>
                             <td className="px-4 py-3">
                               <div className="flex flex-col gap-1">
-                                <span className={`px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1.5 w-fit ${
-                                  user.role === 'admin' 
-                                    ? 'bg-red-900/40 text-red-100 border border-red-700' 
-                                    : 'bg-blue-900/40 text-blue-100 border border-blue-700'
-                                }`}>
-                                  <div className={`w-2 h-2 rounded-full ${user.role === 'admin' ? 'bg-red-400' : 'bg-blue-400'}`}></div>
-                                  {user.role === 'admin' ? 'Administrator' : 'Staff'}
-                                </span>
+                                <select
+                                  value={user.role}
+                                  onChange={async (e) => {
+                                    if (window.confirm(`Change ${user.name}'s role to ${e.target.value}?`)) {
+                                      const result = await updateUser(user.id, { role: e.target.value })
+                                      if (result.success) {
+                                        setToast({ message: `Updated ${user.name}'s role to ${e.target.value}`, type: 'success' })
+                                      } else {
+                                        setToast({ message: 'Error updating role: ' + result.error, type: 'error' })
+                                      }
+                                    }
+                                  }}
+                                  className={`px-2 py-1 rounded text-xs font-semibold w-full ${
+                                    user.role === 'admin' 
+                                      ? 'bg-red-900/40 text-red-100 border border-red-700 hover:bg-red-800/60' 
+                                      : 'bg-blue-900/40 text-blue-100 border border-blue-700 hover:bg-blue-800/60'
+                                  }`}
+                                >
+                                  <option value="staff">Staff</option>
+                                  <option value="admin">Administrator</option>
+                                </select>
                                 {user.is_pc && (
                                   <span className="px-3 py-1 bg-purple-900/40 text-purple-100 rounded-full text-xs font-semibold border border-purple-700 flex items-center gap-1.5 w-fit">
                                     <div className="w-2 h-2 rounded-full bg-purple-400"></div>
@@ -2478,9 +2632,16 @@ Saturday,6,DPSD(301),Digital Principles,Ms.Sree Arthi D,DSA,R106,true`
                               </div>
                             </td>
                             <td className="px-4 py-3">
-                              <span className="px-2 py-1 bg-gray-700 text-gray-300 rounded text-xs font-semibold">
-                                {streams.find(s => s.id === user.stream_id)?.code || 'N/A'}
-                              </span>
+                              <div className="flex flex-col gap-1">
+                                <span className="px-2 py-1 bg-gray-700 text-gray-300 rounded text-xs font-semibold">
+                                  {streams.find(s => s.id === user.stream_id)?.code || 'N/A'}
+                                </span>
+                                {user.status === 'suspended' && (
+                                  <span className="px-2 py-0.5 bg-yellow-900/40 text-yellow-100 rounded-full text-[10px] font-semibold border border-yellow-700 text-center">
+                                    Suspended
+                                  </span>
+                                )}
+                              </div>
                             </td>
                             <td className="px-4 py-3 text-gray-400 text-sm">
                               {new Date(user.created_at).toLocaleDateString('en-GB')}
@@ -2525,6 +2686,28 @@ Saturday,6,DPSD(301),Digital Principles,Ms.Sree Arthi D,DSA,R106,true`
                                          {user.is_pc ? 'Remove PC' : 'Make PC'}
                                         </button>
                                     )}
+                                    <button
+                                      onClick={async () => {
+                                        const newStatus = user.status === 'active' ? 'suspended' : 'active';
+                                        const action = newStatus === 'suspended' ? 'suspend' : 'activate';
+                                        if (window.confirm(`Are you sure you want to ${action} ${user.name}'s account?`)) {
+                                          const result = await updateUser(user.id, { status: newStatus })
+                                          if (result.success) {
+                                            setToast({ message: `User ${user.name} ${action}ed successfully`, type: 'success' })
+                                            fetchPeriodAttendanceCount() // Refresh count after status update
+                                          } else {
+                                            setToast({ message: `Error ${action}ing user: ` + result.error, type: 'error' })
+                                          }
+                                        }
+                                      }}
+                                      className={`px-3 py-1 rounded text-xs font-semibold transition-colors ${
+                                        user.status === 'suspended'
+                                          ? 'bg-green-600 hover:bg-green-700 text-white'
+                                          : 'bg-yellow-600 hover:bg-yellow-700 text-white'
+                                      }`}
+                                    >
+                                      {user.status === 'suspended' ? 'Activate' : 'Suspend'}
+                                    </button>
                                     <button
                                       onClick={async () => {
                                         if (window.confirm(`Are you sure you want to delete ${user.name}'s account? This action cannot be undone!`)) {

@@ -7,13 +7,23 @@ import { supabase } from '../services/supabase'
 
 const AdminTimetableView = ({ classId, selectedDate }) => {
   const { userProfile } = useAuth()
-  const { timetable, periodTimes, loading, deleteTimetableEntry, refetch: refetchTimetable } = useTimetable(classId)
+  const { timetable, periodTimes, loading, addTimetableEntry, deleteTimetableEntry, refetch: refetchTimetable } = useTimetable(classId)
   const { periodAttendance, getPeriodStudentAttendance } = usePeriodAttendance(classId, selectedDate)
   const { students } = useStudents()
   const [selectedPeriod, setSelectedPeriod] = useState(null)
   const [attendanceReport, setAttendanceReport] = useState(null)
   const [showAttendanceModal, setShowAttendanceModal] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(null)
+  const [showAddPeriodModal, setShowAddPeriodModal] = useState(false)
+  const [newPeriodData, setNewPeriodData] = useState({
+    dayOfWeek: 1,
+    periodNumber: 1,
+    subjectCode: '',
+    subjectName: '',
+    facultyName: '',
+    facultyCode: '',
+    isLab: false
+  })
 
   const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
   const periods = [1, 2, 3, 4, 5, 6]
@@ -93,7 +103,55 @@ const AdminTimetableView = ({ classId, selectedDate }) => {
     }
   }
 
-  // Delete period
+  // Handle add period click
+  const handleAddPeriodClick = (dayIndex, periodNum) => {
+    setNewPeriodData({
+      dayOfWeek: dayIndex + 1,
+      periodNumber: periodNum,
+      subjectCode: '',
+      subjectName: '',
+      facultyName: '',
+      facultyCode: '',
+      isLab: false
+    })
+    setShowAddPeriodModal(true)
+  }
+
+  // Handle add period submit
+  const handleAddPeriodSubmit = async (e) => {
+    e.preventDefault()
+    try {
+      const result = await addTimetableEntry({
+        class_id: classId,
+        day_of_week: newPeriodData.dayOfWeek,
+        period_number: newPeriodData.periodNumber,
+        subject_code: newPeriodData.subjectCode,
+        subject_name: newPeriodData.subjectName,
+        faculty_name: newPeriodData.facultyName,
+        faculty_code: newPeriodData.facultyCode,
+        is_lab: newPeriodData.isLab
+      })
+      if (result.success) {
+        await refetchTimetable(classId)
+        setShowAddPeriodModal(false)
+        setNewPeriodData({
+          dayOfWeek: 1,
+          periodNumber: 1,
+          subjectCode: '',
+          subjectName: '',
+          facultyName: '',
+          facultyCode: '',
+          isLab: false
+        })
+        alert('Period added successfully!')
+      }
+    } catch (error) {
+      console.error('Error adding period:', error)
+      alert('Error adding period')
+    }
+  }
+
+  // ... existing code ...
   const handleDeletePeriod = async (periodId) => {
     try {
       await deleteTimetableEntry(periodId)
@@ -231,9 +289,20 @@ const AdminTimetableView = ({ classId, selectedDate }) => {
                             )}
                           </div>
                         ) : (
-                          <div className="text-center text-gray-500 text-sm py-4">
-                            No Period
-                          </div>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleAddPeriodClick(dayIndex, period)
+                            }}
+                            className="w-full h-full flex items-center justify-center text-gray-400 hover:text-blue-400 hover:bg-blue-900/30 transition-all rounded group"
+                          >
+                            <div className="flex flex-col items-center gap-1">
+                              <svg className="w-8 h-8 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                              </svg>
+                              <span className="text-xs font-medium">Add Period</span>
+                            </div>
+                          </button>
                         )}
                       </td>
                     )
@@ -372,6 +441,108 @@ const AdminTimetableView = ({ classId, selectedDate }) => {
                 </div>
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add Period Modal */}
+      {showAddPeriodModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-6 rounded-t-xl">
+              <h3 className="text-xl font-bold">Add Period to Timetable</h3>
+              <p className="text-blue-100 text-sm mt-2">
+                {days[newPeriodData.dayOfWeek - 1]} - Period {newPeriodData.periodNumber}
+              </p>
+            </div>
+
+            {/* Form */}
+            <form onSubmit={handleAddPeriodSubmit} className="p-6 space-y-5">
+              {/* Subject Code */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-800 mb-2">Subject Code *</label>
+                <input
+                  type="text"
+                  placeholder="e.g., CS101"
+                  value={newPeriodData.subjectCode}
+                  onChange={(e) => setNewPeriodData({ ...newPeriodData, subjectCode: e.target.value })}
+                  style={{ backgroundColor: '#ffffff', color: '#1f2937', borderColor: '#d1d5db' }}
+                  className="w-full px-4 py-2.5 border-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
+                  required
+                />
+              </div>
+
+              {/* Subject Name */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-800 mb-2">Subject Name *</label>
+                <input
+                  type="text"
+                  placeholder="e.g., Data Structures"
+                  value={newPeriodData.subjectName}
+                  onChange={(e) => setNewPeriodData({ ...newPeriodData, subjectName: e.target.value })}
+                  style={{ backgroundColor: '#ffffff', color: '#1f2937', borderColor: '#d1d5db' }}
+                  className="w-full px-4 py-2.5 border-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
+                  required
+                />
+              </div>
+
+              {/* Faculty Name */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-800 mb-2">Faculty Name *</label>
+                <input
+                  type="text"
+                  placeholder="e.g., Dr. Smith"
+                  value={newPeriodData.facultyName}
+                  onChange={(e) => setNewPeriodData({ ...newPeriodData, facultyName: e.target.value })}
+                  style={{ backgroundColor: '#ffffff', color: '#1f2937', borderColor: '#d1d5db' }}
+                  className="w-full px-4 py-2.5 border-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
+                  required
+                />
+              </div>
+
+              {/* Faculty Code */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-800 mb-2">Faculty Code</label>
+                <input
+                  type="text"
+                  placeholder="e.g., DS"
+                  value={newPeriodData.facultyCode}
+                  onChange={(e) => setNewPeriodData({ ...newPeriodData, facultyCode: e.target.value })}
+                  style={{ backgroundColor: '#ffffff', color: '#1f2937', borderColor: '#d1d5db' }}
+                  className="w-full px-4 py-2.5 border-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
+                />
+              </div>
+
+              {/* Lab Session Checkbox */}
+              <div className="flex items-center gap-3 bg-gray-50 p-3 rounded-lg">
+                <input
+                  type="checkbox"
+                  id="isLab"
+                  checked={newPeriodData.isLab}
+                  onChange={(e) => setNewPeriodData({ ...newPeriodData, isLab: e.target.checked })}
+                  className="w-5 h-5 text-blue-600 rounded cursor-pointer"
+                />
+                <label htmlFor="isLab" className="text-sm font-semibold text-gray-800 cursor-pointer">This is a Lab Session</label>
+              </div>
+
+              {/* Buttons */}
+              <div className="flex gap-3 pt-4 border-t border-gray-200">
+                <button
+                  type="submit"
+                  className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors duration-200"
+                >
+                  Add Period
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowAddPeriodModal(false)}
+                  className="flex-1 px-4 py-2.5 bg-gray-300 text-gray-800 rounded-lg font-semibold hover:bg-gray-400 transition-colors duration-200"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
