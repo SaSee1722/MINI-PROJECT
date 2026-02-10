@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { Suspense, lazy } from 'react'
 import { AuthProvider, useAuth } from './context/AuthContext'
+import { LogoPremium } from './components/Logo'
 
 // Lazy load components to reduce initial bundle size
 const LandingPage = lazy(() => import('./pages/LandingPage'))
@@ -13,19 +14,28 @@ const StaffDashboardNew = lazy(() => import('./pages/StaffDashboardNew'))
 
 // Loading component for Suspense fallback
 const LoadingSpinner = () => (
-  <div className="min-h-screen bg-black flex items-center justify-center relative overflow-hidden">
-    <div className="absolute inset-0 opacity-5">
+  <div className="min-h-screen bg-[#050505] flex items-center justify-center relative overflow-hidden">
+    <div className="absolute inset-0 opacity-[0.03]">
       <div className="absolute top-0 left-0 w-full h-full" style={{backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)', backgroundSize: '40px 40px'}}></div>
     </div>
+    
+    {/* Animated Background Orbs */}
+    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] bg-emerald-500/10 rounded-full blur-[100px] animate-pulse"></div>
+    
     <div className="relative z-10 text-center">
-      <div className="mb-6">
-        <div className="w-20 h-20 bg-white rounded-lg flex items-center justify-center shadow-2xl mx-auto mb-4 animate-pulse">
-          <div className="w-14 h-14 bg-black rounded"></div>
+      <div className="mb-8 flex flex-col items-center">
+        <div className="relative mb-6">
+          <LogoPremium size="huge" className="animate-bounce" />
+          <div className="absolute inset-0 bg-emerald-500/20 blur-2xl rounded-full -z-10 animate-pulse"></div>
         </div>
-        <h1 className="text-4xl font-bold text-white tracking-tight mb-2">SMART PRESENCE</h1>
-        <div className="h-1 w-32 bg-white mx-auto"></div>
+        <h1 className="text-4xl font-black text-white tracking-tighter mb-1">SMART PRESENCE</h1>
+        <div className="h-1 w-24 bg-gradient-to-r from-transparent via-emerald-500 to-transparent"></div>
       </div>
-      <div className="text-white text-lg font-semibold uppercase tracking-wider animate-pulse">Loading...</div>
+      <div className="flex items-center justify-center gap-3">
+        <div className="w-2 h-2 bg-emerald-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+        <div className="w-2 h-2 bg-emerald-500 rounded-full animate-bounce" style={{ animationDelay: '200ms' }}></div>
+        <div className="w-2 h-2 bg-emerald-500 rounded-full animate-bounce" style={{ animationDelay: '400ms' }}></div>
+      </div>
     </div>
   </div>
 )

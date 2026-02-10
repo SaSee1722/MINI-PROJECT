@@ -44,20 +44,20 @@ const AttendanceCheckbox = ({ studentId, studentName, initialStatus, initialAppr
   }
 
   const statuses = [
-    { value: 'present', label: 'Present', color: 'bg-green-500', icon: '✓' },
-    { value: 'absent', label: 'Absent', color: 'bg-red-500', icon: '✗' },
-    { value: 'on_duty', label: 'On Duty', color: 'bg-blue-500', icon: '◉' }
+    { value: 'present', label: 'Present', color: 'bg-emerald-500 shadow-emerald-500/20', icon: '✓', unselected: 'bg-white/5 text-gray-400 hover:bg-white/10' },
+    { value: 'absent', label: 'Absent', color: 'bg-red-500 shadow-red-500/20', icon: '✗', unselected: 'bg-white/5 text-gray-400 hover:bg-white/10' },
+    { value: 'on_duty', label: 'On Duty', color: 'bg-blue-500 shadow-blue-500/20', icon: '◉', unselected: 'bg-white/5 text-gray-400 hover:bg-white/10' }
   ]
 
   return (
-    <div className="flex flex-col gap-3 p-4 bg-white rounded-lg border border-gray-200 hover:border-gray-300 transition-all">
+    <div className="flex flex-col gap-4 p-4 bg-white/[0.02] rounded-xl border border-white/5 hover:border-white/10 transition-all">
       {/* Student Info */}
       <div className="flex-shrink-0">
-        <div className="font-medium text-gray-900 text-base">{studentName}</div>
+        <div className="font-bold text-gray-200 text-sm tracking-tight">{studentName}</div>
       </div>
       
       {/* Attendance and Approval Options Container */}
-      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-4">
         {/* Attendance Options */}
         <div className="flex gap-2">
           {statuses.map((status) => (
@@ -65,21 +65,21 @@ const AttendanceCheckbox = ({ studentId, studentName, initialStatus, initialAppr
               key={status.value}
               onClick={() => handleStatusChange(status.value)}
               className={`
-                relative px-4 py-2 rounded-lg font-semibold text-white transition-all duration-300 text-sm
+                relative px-4 py-2 rounded-lg font-black text-xs uppercase tracking-widest transition-all duration-300
                 ${selectedStatus === status.value 
-                  ? `${status.color} shadow-lg` 
-                  : 'bg-gray-300 hover:bg-gray-400'
+                  ? `${status.color} text-white shadow-xl scale-105` 
+                  : status.unselected
                 }
               `}
             >
-              <span className="flex items-center gap-1">
-                <span className="text-base">{status.icon}</span>
+              <span className="flex items-center gap-2">
+                <span className="text-sm">{status.icon}</span>
                 <span>{status.label}</span>
               </span>
               {selectedStatus === status.value && (
-                <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                <span className="absolute -top-1 -right-1 flex h-2 w-2">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-3 w-3 bg-white"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-white"></span>
                 </span>
               )}
             </button>
@@ -88,38 +88,38 @@ const AttendanceCheckbox = ({ studentId, studentName, initialStatus, initialAppr
 
         {/* Approval Status Options - Show only when Absent is selected */}
         {showApprovalOptions && (
-          <div className="flex items-center gap-2 animate-fadeIn">
-            <span className="text-sm font-semibold text-gray-600 whitespace-nowrap">Absence Status:</span>
+          <div className="flex items-center gap-3 animate-fadeIn pl-2 sm:border-l sm:border-white/10">
+            <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest whitespace-nowrap">Status:</span>
             <div className="flex gap-2">
               <button
                 onClick={() => handleApprovalChange('approved')}
                 className={`
-                  px-4 py-2 rounded-lg font-semibold transition-all duration-300 text-sm whitespace-nowrap
+                  px-3 py-1.5 rounded-lg font-black text-[10px] uppercase tracking-widest transition-all duration-300 whitespace-nowrap border
                   ${approvalStatus === 'approved'
-                    ? 'bg-green-500 text-white shadow-lg'
-                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/50 shadow-lg shadow-emerald-500/10'
+                    : 'bg-white/5 text-gray-500 border-transparent hover:bg-white/10'
                   }
                 `}
               >
-                <span className="flex items-center gap-1">
+                <div className="flex items-center gap-1.5">
                   <span>✓</span>
                   <span>Approved</span>
-                </span>
+                </div>
               </button>
               <button
                 onClick={() => handleApprovalChange('unapproved')}
                 className={`
-                  px-4 py-2 rounded-lg font-semibold transition-all duration-300 text-sm whitespace-nowrap
+                  px-3 py-1.5 rounded-lg font-black text-[10px] uppercase tracking-widest transition-all duration-300 whitespace-nowrap border
                   ${approvalStatus === 'unapproved'
-                    ? 'bg-orange-500 text-white shadow-lg'
-                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    ? 'bg-orange-500/20 text-orange-400 border-orange-500/50 shadow-lg shadow-orange-500/10'
+                    : 'bg-white/5 text-gray-500 border-transparent hover:bg-white/10'
                   }
                 `}
               >
-                <span className="flex items-center gap-1">
+                <div className="flex items-center gap-1.5">
                   <span>⚠</span>
                   <span>Unapproved</span>
-                </span>
+                </div>
               </button>
             </div>
           </div>

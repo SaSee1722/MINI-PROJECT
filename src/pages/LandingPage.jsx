@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import Logo from '../components/Logo'
+import { LogoPremium } from '../components/Logo'
 
 // Animated Hero Text Component - Dario.io Style
 const AnimatedHeroText = () => {
@@ -112,9 +112,12 @@ const LandingPage = () => {
       }`}>
         <div className="container mx-auto px-4 sm:px-6 py-4 sm:py-6">
           <div className="flex items-center justify-between">
-            <Link to="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity duration-300">
-              <Logo size="default" variant="icon" />
-              <span className="text-lg sm:text-xl font-bold tracking-tight">SMART PRESENCE</span>
+            <Link to="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity duration-300 group">
+              <LogoPremium size="default" />
+              <div className="flex flex-col leading-none">
+                <span className="text-lg sm:text-xl font-black tracking-tighter group-hover:text-emerald-400 transition-colors">SMART</span>
+                <span className="text-xs sm:text-sm font-bold tracking-widest text-gray-500 group-hover:text-white transition-colors">PRESENCE</span>
+              </div>
             </Link>
             <div className="flex items-center gap-3 sm:gap-4">
               <Link 
@@ -393,7 +396,7 @@ const LandingPage = () => {
         <div className="container mx-auto max-w-7xl">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              <Logo size="default" variant="icon" />
+              <LogoPremium size="default" />
               <span className="text-lg font-bold">SMART PRESENCE</span>
             </div>
             <div className="text-gray-400 text-sm sm:text-base text-center md:text-left">

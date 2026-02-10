@@ -1,5 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { LogoPremium } from './Logo'
+import { LogOut, LayoutDashboard, Settings, User as UserIcon } from 'lucide-react'
 
 const Navbar = () => {
   const navigate = useNavigate()
@@ -11,54 +13,63 @@ const Navbar = () => {
   }
 
   return (
-    <nav className="bg-gray-900 border-b border-white/10 sticky top-0 z-50 backdrop-blur-lg bg-opacity-95">
-      <div className="container mx-auto px-6">
-        <div className="flex justify-between items-center h-20">
-          {/* Logo */}
-          <div className="flex items-center space-x-3 cursor-pointer transition-all duration-300 hover:opacity-80" onClick={() => navigate('/')}>
-            <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center shadow-lg">
-              <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-              </svg>
+    <nav className="sticky top-0 z-[100] w-full bg-[#050505]/80 backdrop-blur-xl border-b border-white/5 px-4 sm:px-8 py-4">
+      <div className="max-w-[1600px] mx-auto flex items-center justify-between">
+        {/* Left: Brand */}
+        <div 
+          className="flex items-center gap-4 cursor-pointer group transition-all duration-500"
+          onClick={() => navigate('/')}
+        >
+          <div className="relative">
+            <LogoPremium size="default" className="group-hover:scale-110 group-hover:rotate-[10deg] transition-all duration-500" />
+            <div className="absolute inset-0 bg-emerald-500/20 blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity"></div>
+          </div>
+          <div className="flex flex-col leading-none">
+            <span className="text-xl font-black tracking-tighter text-white">SMART</span>
+            <span className="text-sm font-bold tracking-[0.2em] text-emerald-400 uppercase">Presence</span>
+          </div>
+        </div>
+
+        {/* Right: Actions */}
+        <div className="flex items-center gap-4 sm:gap-6">
+          {/* User Profile Summary */}
+          <div className="hidden md:flex items-center gap-3 bg-white/[0.03] border border-white/10 px-4 py-2 rounded-2xl hover:bg-white/[0.05] transition-all cursor-default">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500/20 to-cyan-500/20 flex items-center justify-center border border-emerald-500/30">
+              <UserIcon className="text-emerald-400" size={18} />
             </div>
-            <span className="text-2xl font-bold text-white tracking-tight">SMART PRESENCE</span>
+            <div className="flex flex-col text-left">
+              <span className="text-sm font-bold text-white leading-none mb-1">{userProfile?.name}</span>
+              <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">{userProfile?.role}</span>
+            </div>
           </div>
 
-          {/* User Info & Actions */}
-          <div className="flex items-center space-x-6">
-            <div className="hidden sm:block text-right bg-gray-800 border border-white/20 px-4 py-2.5 rounded-lg hover:border-white/40 transition-all duration-300">
-              <div className="font-bold text-white text-base tracking-wide">
-                {userProfile?.name}
-              </div>
-              <div className="text-xs text-gray-400 capitalize font-medium mt-0.5">
-                {userProfile?.role}
-              </div>
-            </div>
-            
-            <div className="flex items-center space-x-3">
-              {userProfile?.role === 'admin' && (
-                <button
-                  onClick={() => navigate('/admin')}
-                  className="px-5 py-2.5 bg-white text-black rounded-lg hover:bg-gray-200 hover:scale-105 transition-all duration-300 font-semibold uppercase tracking-wide"
-                >
-                  Admin
-                </button>
-              )}
-              {userProfile?.role === 'staff' && (
-                <button
-                  onClick={() => navigate('/staff')}
-                  className="px-5 py-2.5 bg-white text-black rounded-lg hover:bg-gray-200 hover:scale-105 transition-all duration-300 font-semibold uppercase tracking-wide"
-                >
-                  Dashboard
-                </button>
-              )}
+          <div className="flex items-center gap-2 sm:gap-3">
+            {userProfile?.role === 'admin' && window.location.pathname !== '/admin' && (
               <button
-                onClick={handleSignOut}
-                className="px-5 py-2.5 bg-gray-700 text-white rounded-lg hover:bg-gray-600 hover:scale-105 transition-all duration-300 font-semibold uppercase tracking-wide"
+                onClick={() => navigate('/admin')}
+                className="p-2.5 sm:px-5 sm:py-2.5 bg-white text-black rounded-xl hover:bg-emerald-400 transition-all duration-300 font-bold text-xs sm:text-sm flex items-center gap-2"
               >
-                Sign Out
+                <LayoutDashboard size={18} className="sm:hidden md:block" />
+                <span className="hidden sm:inline uppercase tracking-wider">Admin</span>
               </button>
-            </div>
+            )}
+            {userProfile?.role === 'staff' && (
+              <button
+                onClick={() => navigate('/staff')}
+                className="p-2.5 sm:px-5 sm:py-2.5 bg-white text-black rounded-xl hover:bg-emerald-400 transition-all duration-300 font-bold text-xs sm:text-sm flex items-center gap-2"
+              >
+                <LayoutDashboard size={18} className="sm:hidden md:block" />
+                <span className="hidden sm:inline uppercase tracking-wider">Dashboard</span>
+              </button>
+            )}
+            <button
+              onClick={handleSignOut}
+              className="p-2.5 sm:px-4 sm:py-2.5 bg-red-500/10 text-red-500 border border-red-500/20 rounded-xl hover:bg-red-500 hover:text-white transition-all duration-300 font-bold text-xs sm:text-sm flex items-center gap-2"
+              title="Sign Out"
+            >
+              <LogOut size={18} />
+              <span className="hidden sm:inline uppercase tracking-wider">Exit</span>
+            </button>
           </div>
         </div>
       </div>

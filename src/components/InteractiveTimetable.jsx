@@ -35,7 +35,7 @@ const InteractiveTimetable = ({ classId, selectedDate }) => {
   })
 
   const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
-  const periods = [1, 2, 3, 4, 5, 6]
+  const periods = [1, 2, 3, 4, 5, 6, 7, 8]
 
   // Fetch all staff members for alternative staff selection
   useEffect(() => {
@@ -273,137 +273,292 @@ const InteractiveTimetable = ({ classId, selectedDate }) => {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Timetable Grid */}
-      <div className="bg-white rounded-lg shadow-lg overflow-hidden">
-        <div className="p-6 bg-gradient-to-r from-primary-600 to-primary-700">
-          <h2 className="text-2xl font-bold text-white">Weekly Timetable</h2>
-          {userProfile?.role === 'admin' ? (
-            <p className="text-primary-100 mt-1">📋 Admin View: Timetable management only. Use staff account for attendance marking.</p>
-          ) : (
-            <p className="text-primary-100 mt-1">Click on any period to mark attendance</p>
-          )}
+    <div className="space-y-10">
+      {/* Timetable Grid - Updated Format */}
+      <div className="bg-white text-black p-8 rounded-[2.5rem] overflow-hidden">
+        {/* Header Section */}
+        <div className="text-center mb-6 border-b-2 border-black pb-4">
+          <h1 className="text-2xl font-black uppercase tracking-tight mb-1">SREE SAKTHI ENGINEERING COLLEGE</h1>
+          <h2 className="text-sm font-bold uppercase tracking-widest text-gray-600 mb-4">(AUTONOMOUS)</h2>
+          <div className="flex flex-wrap justify-between text-xs font-bold uppercase tracking-wider gap-4">
+            <div>Academic Year: 2025-2026</div>
+            <div className="text-center">
+              <div className="text-lg font-black mb-1">TIME TABLE</div>
+              <div>Regulation: 2024</div>
+            </div>
+            <div className="text-right">Semester: EVEN</div>
+          </div>
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full border-collapse">
+          <table className="w-full border-collapse border border-black text-xs uppercase text-center">
             <thead>
-              <tr className="bg-gradient-to-r from-gray-800 to-gray-700">
-                <th className="border border-gray-600 px-4 py-4 text-left font-bold text-white text-base">Day / Period</th>
-                {periods.map(period => (
-                  <th key={period} className="border border-gray-600 px-4 py-4 text-center min-w-[150px]">
-                    <div className="font-bold text-white text-base">Period {period}</div>
-                    <div className="text-xs text-gray-300 mt-1 font-semibold">{getPeriodTime(period)}</div>
-                  </th>
-                ))}
+              <tr className="bg-gray-100">
+                <th className="border border-black p-2 w-24">Day</th>
+                <th className="border border-black p-2 min-w-[80px]">
+                  <div>I</div>
+                  <div className="text-[10px] mt-1">08.30-09.20</div>
+                </th>
+                <th className="border border-black p-2 min-w-[80px]">
+                  <div>II</div>
+                  <div className="text-[10px] mt-1">09.20-10.10</div>
+                </th>
+                <th className="border border-black p-2 w-8 bg-gray-200">
+                  <div className="writing-vertical rotate-180 py-4">Tea Break</div>
+                  <div className="text-[10px]">10.10-10.25</div>
+                </th>
+                <th className="border border-black p-2 min-w-[80px]">
+                  <div>III</div>
+                  <div className="text-[10px] mt-1">10.25-11.15</div>
+                </th>
+                <th className="border border-black p-2 min-w-[80px]">
+                  <div>IV</div>
+                  <div className="text-[10px] mt-1">11.15-12.05</div>
+                </th>
+                <th className="border border-black p-2 w-12 bg-gray-200">
+                  <div className="writing-vertical rotate-180 py-4">Lunch Break</div>
+                  <div className="text-[10px]">12.05-12.50</div>
+                </th>
+                <th className="border border-black p-2 min-w-[80px]">
+                  <div>V</div>
+                  <div className="text-[10px] mt-1">12.50-01.40</div>
+                </th>
+                <th className="border border-black p-2 min-w-[80px]">
+                  <div>VI</div>
+                  <div className="text-[10px] mt-1">01.40-02.30</div>
+                </th>
+                <th className="border border-black p-2 w-8 bg-gray-200">
+                  <div className="writing-vertical rotate-180 py-4">Tea Break</div>
+                  <div className="text-[10px]">02.30-02.40</div>
+                </th>
+                <th className="border border-black p-2 min-w-[80px]">
+                  <div>VII</div>
+                  <div className="text-[10px] mt-1">02.40-03.30</div>
+                </th>
+                <th className="border border-black p-2 min-w-[80px]">
+                  <div>VIII</div>
+                  <div className="text-[10px] mt-1">03.30-04.30</div>
+                </th>
               </tr>
             </thead>
             <tbody>
               {days.map((day, dayIndex) => (
                 <tr key={day} className="hover:bg-gray-50">
-                  <td className="border border-gray-300 px-4 py-4 font-bold bg-gradient-to-r from-gray-100 to-gray-50">
-                    <div className="text-gray-900 text-base">{day}</div>
-                    <div className="text-sm text-gray-700 font-semibold mt-1">{getDateForDay(dayIndex)}</div>
+                  <td className="border border-black p-2 font-black text-left">{day}</td>
+                  
+                  {/* Period 1 */}
+                  <td 
+                    className={`border border-black p-1 cursor-pointer hover:bg-gray-100 ${isPeriodMarked(dayIndex, 1) ? 'bg-emerald-100' : ''}`}
+                    onClick={() => {
+                        const entry = getTimetableEntry(dayIndex, 1)
+                        if (entry) handlePeriodClick(dayIndex, 1)
+                        else if (userProfile?.role === 'admin') handleAddPeriodClick(dayIndex, 1)
+                    }}
+                  >
+                    {getTimetableEntry(dayIndex, 1) ? (
+                      <div className="flex flex-col h-full justify-center">
+                         <div className="font-bold">{getTimetableEntry(dayIndex, 1).subject_code}</div>
+                      </div>
+                    ) : userProfile?.role === 'admin' ? <span className="text-gray-300 text-lg">+</span> : ''}
                   </td>
-                  {periods.map(period => {
-                    const entry = getTimetableEntry(dayIndex, period)
-                    const isMarked = isPeriodMarked(dayIndex, period)
-                    
-                    return (
-                      <td 
-                        key={period} 
-                        className={`border border-gray-300 px-3 py-2 transition-all ${
-                          userProfile?.role === 'admin' 
-                            ? entry 
-                              ? 'bg-gray-50 cursor-default' 
-                              : 'bg-gray-100 cursor-default'
-                            : entry 
-                              ? isMarked 
-                                ? 'bg-green-100 hover:bg-green-200 cursor-pointer' 
-                                : 'bg-blue-50 hover:bg-blue-100 cursor-pointer'
-                              : 'bg-gray-100 cursor-pointer'
-                        }`}
-                        onClick={() => entry && handlePeriodClick(dayIndex, period)}
-                      >
-                        {entry ? (
-                          <div className="space-y-1">
-                            <div className="font-semibold text-sm text-gray-900">
-                              {entry.subject_code}
-                            </div>
-                            <div className="text-xs text-gray-600 line-clamp-2">
-                              {entry.subject_name}
-                            </div>
-                            <div className="text-xs text-primary-600 font-medium">
-                              {entry.faculty_name}
-                            </div>
-                            {entry.is_lab && (
-                              <span className="inline-block px-2 py-0.5 bg-purple-100 text-purple-700 text-xs rounded">
-                                Lab
-                              </span>
-                            )}
-                            {isMarked && (
-                              <div className="flex items-center gap-1 mt-1">
-                                <span className="inline-block w-2 h-2 bg-green-500 rounded-full"></span>
-                                <span className="text-xs text-green-700 font-semibold">Marked</span>
-                              </div>
-                            )}
-                          </div>
-                        ) : userProfile?.role === 'admin' ? (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              handleAddPeriodClick(dayIndex, period)
-                            }}
-                            className="w-full h-full flex items-center justify-center text-gray-400 hover:text-primary-600 hover:bg-primary-50 transition-all rounded group"
-                          >
-                            <div className="flex flex-col items-center gap-1">
-                              <svg className="w-8 h-8 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                              </svg>
-                              <span className="text-xs font-medium">Add Period</span>
-                            </div>
-                          </button>
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center text-gray-300">
-                            <span className="text-xs">No Period</span>
-                          </div>
-                        )}
-                      </td>
-                    )
-                  })}
+
+                  {/* Period 2 */}
+                  <td 
+                    className={`border border-black p-1 cursor-pointer hover:bg-gray-100 ${isPeriodMarked(dayIndex, 2) ? 'bg-emerald-100' : ''}`}
+                    onClick={() => {
+                        const entry = getTimetableEntry(dayIndex, 2)
+                        if (entry) handlePeriodClick(dayIndex, 2)
+                        else if (userProfile?.role === 'admin') handleAddPeriodClick(dayIndex, 2)
+                    }}
+                  >
+                    {getTimetableEntry(dayIndex, 2) ? (
+                      <div className="flex flex-col h-full justify-center">
+                         <div className="font-bold">{getTimetableEntry(dayIndex, 2).subject_code}</div>
+                      </div>
+                    ) : userProfile?.role === 'admin' ? <span className="text-gray-300 text-lg">+</span> : ''}
+                  </td>
+
+                  {/* Tea Break */}
+                  <td className="border border-black p-1 bg-gray-200 text-[10px] font-bold writing-vertical rotate-180 text-center text-gray-500">Break</td>
+
+                  {/* Period 3 */}
+                  <td 
+                    className={`border border-black p-1 cursor-pointer hover:bg-gray-100 ${isPeriodMarked(dayIndex, 3) ? 'bg-emerald-100' : ''}`}
+                    onClick={() => {
+                        const entry = getTimetableEntry(dayIndex, 3)
+                        if (entry) handlePeriodClick(dayIndex, 3)
+                        else if (userProfile?.role === 'admin') handleAddPeriodClick(dayIndex, 3)
+                    }}
+                  >
+                    {getTimetableEntry(dayIndex, 3) ? (
+                      <div className="flex flex-col h-full justify-center">
+                         <div className="font-bold">{getTimetableEntry(dayIndex, 3).subject_code}</div>
+                      </div>
+                    ) : userProfile?.role === 'admin' ? <span className="text-gray-300 text-lg">+</span> : ''}
+                  </td>
+
+                  {/* Period 4 */}
+                  <td 
+                    className={`border border-black p-1 cursor-pointer hover:bg-gray-100 ${isPeriodMarked(dayIndex, 4) ? 'bg-emerald-100' : ''}`}
+                    onClick={() => {
+                        const entry = getTimetableEntry(dayIndex, 4)
+                        if (entry) handlePeriodClick(dayIndex, 4)
+                        else if (userProfile?.role === 'admin') handleAddPeriodClick(dayIndex, 4)
+                    }}
+                  >
+                    {getTimetableEntry(dayIndex, 4) ? (
+                      <div className="flex flex-col h-full justify-center">
+                         <div className="font-bold">{getTimetableEntry(dayIndex, 4).subject_code}</div>
+                      </div>
+                    ) : userProfile?.role === 'admin' ? <span className="text-gray-300 text-lg">+</span> : ''}
+                  </td>
+
+                  {/* Lunch Break */}
+                  <td className="border border-black p-1 bg-gray-200 text-[10px] font-bold writing-vertical rotate-180 text-center text-gray-500">Lunch</td>
+
+                  {/* Period 5 */}
+                  <td 
+                    className={`border border-black p-1 cursor-pointer hover:bg-gray-100 ${isPeriodMarked(dayIndex, 5) ? 'bg-emerald-100' : ''}`}
+                    onClick={() => {
+                        const entry = getTimetableEntry(dayIndex, 5)
+                        if (entry) handlePeriodClick(dayIndex, 5)
+                        else if (userProfile?.role === 'admin') handleAddPeriodClick(dayIndex, 5)
+                    }}
+                  >
+                    {getTimetableEntry(dayIndex, 5) ? (
+                      <div className="flex flex-col h-full justify-center">
+                         <div className="font-bold">{getTimetableEntry(dayIndex, 5).subject_code}</div>
+                      </div>
+                    ) : userProfile?.role === 'admin' ? <span className="text-gray-300 text-lg">+</span> : ''}
+                  </td>
+
+                  {/* Period 6 */}
+                  <td 
+                    className={`border border-black p-1 cursor-pointer hover:bg-gray-100 ${isPeriodMarked(dayIndex, 6) ? 'bg-emerald-100' : ''}`}
+                    onClick={() => {
+                        const entry = getTimetableEntry(dayIndex, 6)
+                        if (entry) handlePeriodClick(dayIndex, 6)
+                        else if (userProfile?.role === 'admin') handleAddPeriodClick(dayIndex, 6)
+                    }}
+                  >
+                    {getTimetableEntry(dayIndex, 6) ? (
+                      <div className="flex flex-col h-full justify-center">
+                         <div className="font-bold">{getTimetableEntry(dayIndex, 6).subject_code}</div>
+                      </div>
+                    ) : userProfile?.role === 'admin' ? <span className="text-gray-300 text-lg">+</span> : ''}
+                  </td>
+
+                  {/* Tea Break */}
+                  <td className="border border-black p-1 bg-gray-200 text-[10px] font-bold writing-vertical rotate-180 text-center text-gray-500">Break</td>
+
+                  {/* Period 7 */}
+                  <td 
+                    className={`border border-black p-1 cursor-pointer hover:bg-gray-100 ${isPeriodMarked(dayIndex, 7) ? 'bg-emerald-100' : ''}`}
+                    onClick={() => {
+                        const entry = getTimetableEntry(dayIndex, 7)
+                        if (entry) handlePeriodClick(dayIndex, 7)
+                        else if (userProfile?.role === 'admin') handleAddPeriodClick(dayIndex, 7)
+                    }}
+                  >
+                    {getTimetableEntry(dayIndex, 7) ? (
+                      <div className="flex flex-col h-full justify-center">
+                         <div className="font-bold">{getTimetableEntry(dayIndex, 7).subject_code}</div>
+                      </div>
+                    ) : userProfile?.role === 'admin' ? <span className="text-gray-300 text-lg">+</span> : ''}
+                  </td>
+
+                  {/* Period 8 */}
+                  <td 
+                    className={`border border-black p-1 cursor-pointer hover:bg-gray-100 ${isPeriodMarked(dayIndex, 8) ? 'bg-emerald-100' : ''}`}
+                    onClick={() => {
+                        const entry = getTimetableEntry(dayIndex, 8)
+                        if (entry) handlePeriodClick(dayIndex, 8)
+                        else if (userProfile?.role === 'admin') handleAddPeriodClick(dayIndex, 8)
+                    }}
+                  >
+                    {getTimetableEntry(dayIndex, 8) ? (
+                      <div className="flex flex-col h-full justify-center">
+                         <div className="font-bold">{getTimetableEntry(dayIndex, 8).subject_code}</div>
+                      </div>
+                    ) : userProfile?.role === 'admin' ? <span className="text-gray-300 text-lg">+</span> : ''}
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
 
-        {/* Legend */}
-        <div className="p-4 bg-gray-50 border-t border-gray-200">
-          <div className="flex items-center gap-6 text-sm">
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 bg-blue-50 border border-blue-200 rounded"></div>
-              <span>Not Marked</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 bg-green-100 border border-green-300 rounded"></div>
-              <span>Attendance Marked</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 bg-purple-100 border border-purple-300 rounded"></div>
-              <span className="px-2 py-0.5 bg-purple-100 text-purple-700 text-xs rounded">Lab</span>
-            </div>
+        {/* Subject Allocation Table Section */}
+        <div className="mt-8">
+          <h3 className="text-sm font-black uppercase text-center border-b-2 border-black pb-2 mb-4 underline">Subject - Allocation</h3>
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse border border-black text-xs">
+              <thead>
+                <tr className="bg-gray-100">
+                  <th className="border border-black p-2 w-10">S.No</th>
+                  <th className="border border-black p-2">Subject Code</th>
+                  <th className="border border-black p-2">Room No</th>
+                  <th className="border border-black p-2 text-left">Subject Name / Lab</th>
+                  <th className="border border-black p-2 text-left">Faculty Name</th>
+                  <th className="border border-black p-2 w-16 text-center">Hours / Week</th>
+                </tr>
+              </thead>
+              <tbody>
+                {/* Dynamically Generate Subject List */}
+                {Object.values(timetable.reduce((acc, curr) => {
+                    if (!acc[curr.subject_code]) {
+                        acc[curr.subject_code] = {
+                            code: curr.subject_code,
+                            name: curr.subject_name,
+                            faculty: curr.faculty_name,
+                            isLab: curr.is_lab,
+                            hours: 0
+                        };
+                    }
+                    acc[curr.subject_code].hours += 1;
+                    return acc;
+                }, {})).map((sub, index) => (
+                    <tr key={sub.code}>
+                        <td className="border border-black p-2 text-center">{index + 1}</td>
+                        <td className="border border-black p-2 font-bold text-center">{sub.code}</td>
+                        <td className="border border-black p-2 text-center">-</td>
+                        <td className="border border-black p-2 uppercase">{sub.name} {sub.isLab ? '[LAB]' : ''}</td>
+                        <td className="border border-black p-2 uppercase">{sub.faculty}</td>
+                        <td className="border border-black p-2 text-center font-bold">{sub.hours}</td>
+                    </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr className="bg-gray-100 font-bold">
+                    <td colSpan="5" className="border border-black p-2 text-right">TOTAL WORKING HOURS</td>
+                    <td className="border border-black p-2 text-center">
+                        {timetable.length}
+                    </td>
+                </tr>
+              </tfoot>
+            </table>
           </div>
+        </div>
+
+        {/* Footer / Signatures */}
+        <div className="mt-12 space-y-8">
+            <div className="border border-black p-2 text-xs font-bold flex gap-4">
+                <span>Class Advisor Name:</span>
+                <span className="uppercase text-gray-700">{userProfile?.role === 'staff' && userProfile?.is_class_advisor ? userProfile.name : 'Not Assigned'}</span>
+            </div>
+            
+
         </div>
       </div>
 
       {/* Add Period Modal - NEW VERSION */}
       {showAddPeriodModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full">
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-[#0f1115] rounded-[2rem] border border-white/10 shadow-2xl max-w-md w-full overflow-hidden">
             {/* Header */}
-            <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-6 rounded-t-xl">
-              <h3 className="text-xl font-bold">Add Period to Timetable</h3>
-              <p className="text-blue-100 text-sm mt-2">
+            <div className="bg-white/[0.02] p-6 border-b border-white/10">
+              <h3 className="text-xl font-black text-white tracking-tight">Add Session Node</h3>
+              <p className="text-gray-500 text-[10px] font-bold uppercase tracking-widest mt-1">
                 {days[newPeriodData.dayOfWeek - 1]} - Period {newPeriodData.periodNumber}
               </p>
             </div>
@@ -411,84 +566,80 @@ const InteractiveTimetable = ({ classId, selectedDate }) => {
             {/* Form */}
             <form onSubmit={handleAddPeriodSubmit} className="p-6 space-y-5">
               {/* Subject Code */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-800 mb-2">Subject Code *</label>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] ml-2">Subject Code *</label>
                 <input
                   type="text"
                   placeholder="e.g., CS101"
                   value={newPeriodData.subjectCode}
                   onChange={(e) => setNewPeriodData({ ...newPeriodData, subjectCode: e.target.value })}
-                  style={{ backgroundColor: '#ffffff', color: '#1f2937', borderColor: '#d1d5db' }}
-                  className="w-full px-4 py-2.5 border-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
+                  className="w-full px-4 py-3 bg-black border border-white/10 rounded-xl text-white font-bold text-sm focus:border-white/30 outline-none"
                   required
                 />
               </div>
 
               {/* Subject Name */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-800 mb-2">Subject Name *</label>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] ml-2">Subject Name *</label>
                 <input
                   type="text"
                   placeholder="e.g., Data Structures"
                   value={newPeriodData.subjectName}
                   onChange={(e) => setNewPeriodData({ ...newPeriodData, subjectName: e.target.value })}
-                  style={{ backgroundColor: '#ffffff', color: '#1f2937', borderColor: '#d1d5db' }}
-                  className="w-full px-4 py-2.5 border-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
+                  className="w-full px-4 py-3 bg-black border border-white/10 rounded-xl text-white font-bold text-sm focus:border-white/30 outline-none"
                   required
                 />
               </div>
 
               {/* Faculty Name */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-800 mb-2">Faculty Name *</label>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] ml-2">Faculty Name *</label>
                 <input
                   type="text"
                   placeholder="e.g., Dr. Smith"
                   value={newPeriodData.facultyName}
                   onChange={(e) => setNewPeriodData({ ...newPeriodData, facultyName: e.target.value })}
-                  style={{ backgroundColor: '#ffffff', color: '#1f2937', borderColor: '#d1d5db' }}
-                  className="w-full px-4 py-2.5 border-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
+                  className="w-full px-4 py-3 bg-black border border-white/10 rounded-xl text-white font-bold text-sm focus:border-white/30 outline-none"
                   required
                 />
               </div>
 
               {/* Faculty Code */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-800 mb-2">Faculty Code</label>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] ml-2">Faculty Code</label>
                 <input
                   type="text"
                   placeholder="e.g., DS"
                   value={newPeriodData.facultyCode}
                   onChange={(e) => setNewPeriodData({ ...newPeriodData, facultyCode: e.target.value })}
-                  style={{ backgroundColor: '#ffffff', color: '#1f2937', borderColor: '#d1d5db' }}
-                  className="w-full px-4 py-2.5 border-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
+                  className="w-full px-4 py-3 bg-black border border-white/10 rounded-xl text-white font-bold text-sm focus:border-white/30 outline-none"
                 />
               </div>
 
               {/* Lab Session Checkbox */}
-              <div className="flex items-center gap-3 bg-gray-50 p-3 rounded-lg">
+              <div className="flex items-center gap-3 bg-white/5 p-4 rounded-xl border border-white/5">
                 <input
                   type="checkbox"
                   id="isLab"
                   checked={newPeriodData.isLab}
                   onChange={(e) => setNewPeriodData({ ...newPeriodData, isLab: e.target.checked })}
-                  className="w-5 h-5 text-blue-600 rounded cursor-pointer"
+                  className="w-5 h-5 rounded border-white/20 bg-black checked:bg-purple-500 transition-all"
                 />
-                <label htmlFor="isLab" className="text-sm font-semibold text-gray-800 cursor-pointer">This is a Lab Session</label>
+                <label htmlFor="isLab" className="text-xs font-bold text-gray-300 uppercase tracking-wide cursor-pointer">Lab Session</label>
               </div>
 
               {/* Buttons */}
-              <div className="flex gap-3 pt-4 border-t border-gray-200">
+              <div className="flex gap-3 pt-4 border-t border-white/10">
                 <button
                   type="submit"
-                  className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors duration-200"
+                  className="flex-1 px-4 py-3 bg-white text-black rounded-xl font-black text-xs uppercase tracking-widest hover:scale-[1.02] active:scale-95 transition-all"
                 >
-                  Add Period
+                  Create Node
                 </button>
                 <button
                   type="button"
                   onClick={() => setShowAddPeriodModal(false)}
-                  className="flex-1 px-4 py-2.5 bg-gray-300 text-gray-800 rounded-lg font-semibold hover:bg-gray-400 transition-colors duration-200"
+                  className="flex-1 px-4 py-3 bg-white/10 text-white rounded-xl font-black text-xs uppercase tracking-widest hover:bg-white/20 transition-all"
                 >
                   Cancel
                 </button>
@@ -500,25 +651,30 @@ const InteractiveTimetable = ({ classId, selectedDate }) => {
 
       {/* Attendance Modal */}
       {showAttendanceModal && selectedPeriod && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-[#0f1115] rounded-[2.5rem] border border-white/10 shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
             {/* Modal Header */}
-            <div className="p-6 bg-gradient-to-r from-primary-600 to-primary-700 text-white">
+            <div className="p-8 bg-white/[0.02] border-b border-white/10">
               <div className="flex justify-between items-start">
                 <div>
-                  <h3 className="text-2xl font-bold">{selectedPeriod.subject_name}</h3>
-                  <p className="text-primary-100 mt-1">
-                    {selectedPeriod.subject_code} • {selectedPeriod.faculty_name}
-                  </p>
-                  <p className="text-primary-100 text-sm mt-1">
-                    Period {selectedPeriod.period_number} • {getPeriodTime(selectedPeriod.period_number)}
-                  </p>
+                  <h3 className="text-3xl font-black text-white tracking-tighter uppercase">{selectedPeriod.subject_name}</h3>
+                  <div className="flex items-center gap-3 mt-2">
+                    <span className="px-3 py-1 bg-white/5 border border-white/10 rounded-lg text-xs font-bold text-gray-400 uppercase tracking-wider">
+                       {selectedPeriod.subject_code}
+                    </span>
+                    <span className="px-3 py-1 bg-white/5 border border-white/10 rounded-lg text-xs font-bold text-gray-400 uppercase tracking-wider">
+                       {selectedPeriod.faculty_name}
+                    </span>
+                     <span className="px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-lg text-xs font-bold text-emerald-400 uppercase tracking-wider">
+                       Period {selectedPeriod.period_number} • {getPeriodTime(selectedPeriod.period_number)}
+                    </span>
+                  </div>
                 </div>
                 <button
                   onClick={() => setShowAttendanceModal(false)}
-                  className="text-white hover:bg-white hover:bg-opacity-20 rounded-full p-2 transition-colors"
+                  className="w-10 h-10 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-white transition-colors border border-white/5"
                 >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
@@ -526,71 +682,73 @@ const InteractiveTimetable = ({ classId, selectedDate }) => {
             </div>
 
             {/* Student List */}
-            <div className="p-6 overflow-y-auto max-h-[calc(90vh-250px)]">
+            <div className="p-6 overflow-y-auto custom-scrollbar flex-1">
               {/* Alternative Staff Section */}
-              <div className="mb-6 p-4 bg-yellow-50 border-2 border-yellow-300 rounded-lg">
-                <div className="flex items-start gap-3">
-                  <input
-                    type="checkbox"
-                    id="alternativeStaff"
-                    checked={isAlternativeStaff}
-                    onChange={(e) => {
-                      setIsAlternativeStaff(e.target.checked)
-                      if (!e.target.checked) {
-                        setSelectedAlternativeStaff('')
-                      }
-                    }}
-                    className="mt-1 w-5 h-5 text-yellow-600 rounded"
-                  />
-                  <div className="flex-1">
-                    <label htmlFor="alternativeStaff" className="block font-bold text-gray-900 mb-1 cursor-pointer">
-                      🔄 Mark as Alternative Staff
-                    </label>
-                    <p className="text-sm text-gray-600 mb-3">
-                      Check this if you are marking attendance on behalf of the regular faculty who is absent
-                    </p>
-                    
-                    {isAlternativeStaff && (
-                      <div className="mt-3">
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">
-                          Select Alternative Staff Member *
-                        </label>
-                        <select
-                          value={selectedAlternativeStaff}
-                          onChange={(e) => setSelectedAlternativeStaff(e.target.value)}
-                          className="w-full px-4 py-2 border-2 border-yellow-400 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent bg-white text-gray-900"
-                          required={isAlternativeStaff}
-                        >
-                          <option value="">-- Select Staff Member --</option>
-                          {allStaff.map((staff) => (
-                            <option key={staff.id} value={staff.id}>
-                              {staff.name} ({staff.email})
-                            </option>
-                          ))}
-                        </select>
-                        <p className="mt-2 text-xs text-gray-600">
-                          ℹ️ The attendance report will show this staff member as the one who marked attendance
-                        </p>
-                      </div>
-                    )}
-                  </div>
+              <div className="mb-6 p-6 bg-yellow-500/5 border border-yellow-500/20 rounded-[1.5rem] relative overflow-hidden">
+                <div className="relative z-10">
+                   <div className="flex items-start gap-4">
+                     <input
+                       type="checkbox"
+                       id="alternativeStaff"
+                       checked={isAlternativeStaff}
+                       onChange={(e) => {
+                         setIsAlternativeStaff(e.target.checked)
+                         if (!e.target.checked) {
+                           setSelectedAlternativeStaff('')
+                         }
+                       }}
+                       className="mt-1 w-5 h-5 rounded border-yellow-500/40 bg-black checked:bg-yellow-500 transition-all"
+                     />
+                     <div className="flex-1">
+                       <label htmlFor="alternativeStaff" className="block font-black text-yellow-500 uppercase tracking-widest text-sm mb-1 cursor-pointer">
+                         Alternative Facutly Override
+                       </label>
+                       <p className="text-xs text-yellow-200/60 font-medium mb-4">
+                         Enable this mode if you are conducting this session on behalf of the assigned faculty.
+                       </p>
+                       
+                       {isAlternativeStaff && (
+                         <div className="mt-3">
+                           <label className="block text-[10px] font-black text-yellow-500/70 uppercase tracking-[0.2em] mb-2">
+                             Select Acting Faculty Node
+                           </label>
+                           <select
+                             value={selectedAlternativeStaff}
+                             onChange={(e) => setSelectedAlternativeStaff(e.target.value)}
+                             className="w-full px-4 py-3 bg-black/40 border border-yellow-500/30 rounded-xl text-yellow-100 font-bold text-sm focus:border-yellow-500/60 outline-none"
+                             required={isAlternativeStaff}
+                           >
+                             <option value="">-- Select Faculty --</option>
+                             {allStaff.map((staff) => (
+                               <option key={staff.id} value={staff.id}>
+                                 {staff.name} ({staff.email})
+                               </option>
+                             ))}
+                           </select>
+                           <p className="mt-2 text-[10px] text-yellow-500/50 font-bold uppercase tracking-widest">
+                             This session will be logged under your credentials
+                           </p>
+                         </div>
+                       )}
+                     </div>
+                   </div>
                 </div>
               </div>
 
               {/* Mark All Present Button */}
-              <div className="mb-4 flex justify-end">
+              <div className="mb-6 flex justify-end">
                 <button
                   onClick={handleMarkAllPresent}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors flex items-center gap-2"
+                  className="px-5 py-3 bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-blue-500/20 transition-colors flex items-center gap-2"
                 >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
-                  Mark All as Present
+                  Mark All Present
                 </button>
               </div>
               
-              <div className="space-y-3">
+              <div className="space-y-4">
                 {classStudents.map(student => (
                   <AttendanceCheckbox
                     key={student.id}
@@ -605,22 +763,22 @@ const InteractiveTimetable = ({ classId, selectedDate }) => {
               
               {/* Intern Students Section */}
               {internStudents.length > 0 && (
-                <div className="mt-6 pt-6 border-t-2 border-blue-200">
+                <div className="mt-8 pt-8 border-t border-white/5">
                   <div className="flex items-center gap-2 mb-4">
-                    <span className="text-blue-700 font-bold text-lg">👔 Intern Students</span>
-                    <span className="text-sm text-gray-500">(Cannot mark attendance)</span>
+                    <span className="text-gray-500 font-black text-xs uppercase tracking-widest">Intern Students</span>
+                    <span className="text-[10px] text-gray-700 bg-white/5 px-2 py-0.5 rounded border border-white/5">ReadOnly</span>
                   </div>
                   <div className="space-y-2">
                     {internStudents.map(student => (
                       <div 
                         key={student.id}
-                        className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg border border-blue-200 opacity-60"
+                        className="flex items-center gap-3 p-4 bg-white/[0.02] rounded-xl border border-white/5 opacity-50"
                       >
                         <div className="flex-1">
-                          <div className="font-medium text-gray-700">{student.name}</div>
-                          <div className="text-xs text-gray-500">{student.roll_number}</div>
+                          <div className="font-bold text-gray-400 text-sm">{student.name}</div>
+                          <div className="text-[10px] text-gray-600 font-black tracking-widest">{student.roll_number}</div>
                         </div>
-                        <span className="px-3 py-1 bg-blue-100 text-blue-700 text-xs font-semibold rounded-full">
+                        <span className="px-3 py-1 bg-white/5 text-gray-500 text-[10px] font-black uppercase tracking-widest rounded-lg border border-white/5">
                           Intern
                         </span>
                       </div>
@@ -631,22 +789,22 @@ const InteractiveTimetable = ({ classId, selectedDate }) => {
               
               {/* Suspended Students Section */}
               {suspendedStudents.length > 0 && (
-                <div className="mt-6 pt-6 border-t-2 border-red-200">
+                <div className="mt-8 pt-8 border-t border-white/5">
                   <div className="flex items-center gap-2 mb-4">
-                    <span className="text-red-700 font-bold text-lg">🚫 Suspended Students</span>
-                    <span className="text-sm text-gray-500">(Cannot mark attendance)</span>
+                    <span className="text-red-500/70 font-black text-xs uppercase tracking-widest">Suspended Students</span>
+                    <span className="text-[10px] text-gray-700 bg-white/5 px-2 py-0.5 rounded border border-white/5">ReadOnly</span>
                   </div>
                   <div className="space-y-2">
                     {suspendedStudents.map(student => (
                       <div 
                         key={student.id}
-                        className="flex items-center gap-3 p-3 bg-red-50 rounded-lg border border-red-200 opacity-60"
+                        className="flex items-center gap-3 p-4 bg-red-900/10 rounded-xl border border-red-500/10 opacity-60"
                       >
                         <div className="flex-1">
-                          <div className="font-medium text-gray-700">{student.name}</div>
-                          <div className="text-xs text-gray-500">{student.roll_number}</div>
+                          <div className="font-bold text-red-300 text-sm">{student.name}</div>
+                          <div className="text-[10px] text-red-500/50 font-black tracking-widest">{student.roll_number}</div>
                         </div>
-                        <span className="px-3 py-1 bg-red-100 text-red-700 text-xs font-semibold rounded-full">
+                        <span className="px-3 py-1 bg-red-500/10 text-red-500 text-[10px] font-black uppercase tracking-widest rounded-lg border border-red-500/20">
                           Suspended
                         </span>
                       </div>
@@ -657,18 +815,18 @@ const InteractiveTimetable = ({ classId, selectedDate }) => {
             </div>
 
             {/* Modal Footer */}
-            <div className="p-6 bg-gray-50 border-t border-gray-200 flex gap-3">
+            <div className="p-6 bg-white/[0.02] border-t border-white/10 flex gap-4">
               <button
                 onClick={handleSubmitAttendance}
-                className="flex-1 px-6 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition-colors"
+                className="flex-1 px-6 py-4 bg-emerald-500 text-white rounded-2xl font-black text-xs uppercase tracking-[0.2em] hover:scale-[1.02] active:scale-95 transition-all shadow-xl shadow-emerald-500/20"
               >
-                Submit Attendance
+                Confirm Attendance
               </button>
               <button
                 onClick={() => setShowAttendanceModal(false)}
-                className="px-6 py-3 bg-gray-400 text-white rounded-lg font-semibold hover:bg-gray-500 transition-colors"
+                className="px-8 py-4 bg-white/5 text-white rounded-2xl font-black text-xs uppercase tracking-[0.2em] hover:bg-white/10 transition-all"
               >
-                Cancel
+                Dismiss
               </button>
             </div>
           </div>
@@ -677,32 +835,38 @@ const InteractiveTimetable = ({ classId, selectedDate }) => {
 
       {/* View Attendance Modal */}
       {showViewAttendanceModal && viewAttendanceData && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-[#0f1115] rounded-[2.5rem] border border-white/10 shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
             {/* Modal Header */}
-            <div className="p-6 bg-gradient-to-r from-green-600 to-green-700 text-white">
+            <div className="p-8 bg-white/[0.02] border-b border-white/10">
               <div className="flex justify-between items-start">
                 <div>
-                  <h3 className="text-2xl font-bold">{viewAttendanceData.entry.subject_name}</h3>
-                  <p className="text-green-100 mt-1">
-                    {viewAttendanceData.entry.subject_code} • {viewAttendanceData.entry.faculty_name}
-                  </p>
-                  <p className="text-green-100 text-sm mt-1">
-                    Period {viewAttendanceData.period_number} • {getPeriodTime(viewAttendanceData.period_number)}
-                  </p>
-                  <p className="text-green-100 text-sm mt-2">
-                    ✅ Marked on {new Date(viewAttendanceData.marked_at).toLocaleString()}
+                  <h3 className="text-3xl font-black text-white tracking-tighter uppercase">{viewAttendanceData.entry.subject_name}</h3>
+                  <div className="flex items-center gap-3 mt-2">
+                    <span className="px-3 py-1 bg-white/5 border border-white/10 rounded-lg text-xs font-bold text-gray-400 uppercase tracking-wider">
+                       {viewAttendanceData.entry.subject_code}
+                    </span>
+                    <span className="px-3 py-1 bg-white/5 border border-white/10 rounded-lg text-xs font-bold text-gray-400 uppercase tracking-wider">
+                       {viewAttendanceData.entry.faculty_name}
+                    </span>
+                     <span className="px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-lg text-xs font-bold text-emerald-400 uppercase tracking-wider">
+                       Period {viewAttendanceData.period_number} • {getPeriodTime(viewAttendanceData.period_number)}
+                    </span>
+                  </div>
+                  <p className="text-emerald-400 text-xs font-bold uppercase tracking-widest mt-4 flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                    Verified on {new Date(viewAttendanceData.marked_at).toLocaleString()}
                   </p>
                   {viewAttendanceData.is_alternative_staff && (
-                    <div className="mt-3 p-3 bg-yellow-500/20 border border-yellow-300 rounded-lg">
-                      <p className="text-white font-semibold flex items-center gap-2">
+                    <div className="mt-4 p-4 bg-yellow-500/5 border border-yellow-500/20 rounded-xl">
+                      <p className="text-yellow-500 font-bold uppercase tracking-widest text-xs flex items-center gap-2">
                         <span>🔄</span>
-                        <span>Marked by Alternative Staff:</span>
+                        <span>Marked by Acting Faculty:</span>
                       </p>
-                      <p className="text-yellow-100 text-sm mt-1">
+                      <p className="text-white text-sm font-bold mt-1">
                         {viewAttendanceData.alternative_staff_name}
                       </p>
-                      <p className="text-yellow-100 text-xs mt-1">
+                      <p className="text-yellow-500/50 text-[10px] font-bold uppercase tracking-widest mt-1">
                         (Regular faculty: {viewAttendanceData.entry.faculty_name} was absent)
                       </p>
                     </div>
@@ -710,9 +874,9 @@ const InteractiveTimetable = ({ classId, selectedDate }) => {
                 </div>
                 <button
                   onClick={() => setShowViewAttendanceModal(false)}
-                  className="text-white hover:bg-white hover:bg-opacity-20 rounded-full p-2 transition-colors"
+                  className="w-10 h-10 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-white transition-colors border border-white/5"
                 >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
@@ -720,59 +884,59 @@ const InteractiveTimetable = ({ classId, selectedDate }) => {
             </div>
 
             {/* Attendance Summary */}
-            <div className="p-6 bg-gray-50 border-b border-gray-200">
-              <h4 className="font-bold text-gray-900 mb-3">Attendance Summary</h4>
+            <div className="p-8 bg-white/[0.01] border-b border-white/10">
+              <h4 className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] mb-4">Session Analytics</h4>
               <div className="grid grid-cols-4 gap-4">
-                <div className="bg-white p-4 rounded-lg border border-gray-200">
-                  <div className="text-2xl font-bold text-gray-900">{viewAttendanceData.total_students}</div>
-                  <div className="text-sm text-gray-600">Total Students</div>
+                <div className="bg-white/[0.03] p-6 rounded-2xl border border-white/10 text-center group hover:bg-white/[0.05] transition-all">
+                  <div className="text-3xl font-black text-white mb-1 group-hover:scale-110 transition-transform">{viewAttendanceData.total_students}</div>
+                  <div className="text-[9px] text-gray-500 font-bold uppercase tracking-widest">Total Students</div>
                 </div>
-                <div className="bg-green-50 p-4 rounded-lg border border-green-200">
-                  <div className="text-2xl font-bold text-green-700">{viewAttendanceData.present_count}</div>
-                  <div className="text-sm text-green-600">Present</div>
+                <div className="bg-emerald-500/10 p-6 rounded-2xl border border-emerald-500/20 text-center group hover:bg-emerald-500/20 transition-all">
+                  <div className="text-3xl font-black text-emerald-400 mb-1 group-hover:scale-110 transition-transform">{viewAttendanceData.present_count}</div>
+                  <div className="text-[9px] text-emerald-500/70 font-bold uppercase tracking-widest">Present</div>
                 </div>
-                <div className="bg-red-50 p-4 rounded-lg border border-red-200">
-                  <div className="text-2xl font-bold text-red-700">{viewAttendanceData.absent_count}</div>
-                  <div className="text-sm text-red-600">Absent</div>
+                <div className="bg-red-500/10 p-6 rounded-2xl border border-red-500/20 text-center group hover:bg-red-500/20 transition-all">
+                  <div className="text-3xl font-black text-red-400 mb-1 group-hover:scale-110 transition-transform">{viewAttendanceData.absent_count}</div>
+                  <div className="text-[9px] text-red-500/70 font-bold uppercase tracking-widest">Absent</div>
                 </div>
-                <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                  <div className="text-2xl font-bold text-blue-700">{viewAttendanceData.on_duty_count}</div>
-                  <div className="text-sm text-blue-600">On Duty</div>
+                <div className="bg-blue-500/10 p-6 rounded-2xl border border-blue-500/20 text-center group hover:bg-blue-500/20 transition-all">
+                  <div className="text-3xl font-black text-blue-400 mb-1 group-hover:scale-110 transition-transform">{viewAttendanceData.on_duty_count}</div>
+                  <div className="text-[9px] text-blue-500/70 font-bold uppercase tracking-widest">On Duty</div>
                 </div>
               </div>
             </div>
 
             {/* Student List */}
-            <div className="p-6 overflow-y-auto max-h-[calc(90vh-400px)]">
-              <h4 className="font-bold text-gray-900 mb-4">Student Attendance Details</h4>
+            <div className="p-6 overflow-y-auto custom-scrollbar flex-1">
+              <h4 className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] mb-4">Detailed Roll Call</h4>
               <div className="space-y-2">
                 {viewAttendanceData.studentAttendance.map((attendance) => (
                   <div 
                     key={attendance.id}
-                    className={`flex items-center justify-between p-4 rounded-lg border ${
-                      attendance.status === 'present' ? 'bg-green-50 border-green-200' :
-                      attendance.status === 'absent' ? 'bg-red-50 border-red-200' :
-                      'bg-blue-50 border-blue-200'
+                    className={`flex items-center justify-between p-4 rounded-xl border transition-all hover:scale-[1.01] ${
+                      attendance.status === 'present' ? 'bg-emerald-500/5 border-emerald-500/10 hover:bg-emerald-500/10' :
+                      attendance.status === 'absent' ? 'bg-red-500/5 border-red-500/10 hover:bg-red-500/10' :
+                      'bg-blue-500/5 border-blue-500/10 hover:bg-blue-500/10'
                     }`}
                   >
                     <div className="flex-1">
-                      <div className="font-semibold text-gray-900">{attendance.students?.name}</div>
-                      <div className="text-sm text-gray-600">{attendance.students?.roll_number}</div>
+                      <div className="font-bold text-white text-sm">{attendance.students?.name}</div>
+                      <div className="text-[10px] text-gray-500 font-black tracking-widest">{attendance.students?.roll_number}</div>
                     </div>
                     <div className="flex items-center gap-3">
-                      <span className={`px-4 py-2 rounded-lg font-semibold text-sm ${
-                        attendance.status === 'present' ? 'bg-green-500 text-white' :
-                        attendance.status === 'absent' ? 'bg-red-500 text-white' :
-                        'bg-blue-500 text-white'
+                      <span className={`px-4 py-2 rounded-lg font-black text-[10px] uppercase tracking-widest ${
+                        attendance.status === 'present' ? 'bg-emerald-500/20 text-emerald-400' :
+                        attendance.status === 'absent' ? 'bg-red-500/20 text-red-400' :
+                        'bg-blue-500/20 text-blue-400'
                       }`}>
                         {attendance.status === 'present' ? '✓ Present' :
                          attendance.status === 'absent' ? '✗ Absent' :
                          '◉ On Duty'}
                       </span>
                       {attendance.status === 'absent' && attendance.approval_status && (
-                        <span className={`px-3 py-1 rounded-lg text-xs font-semibold ${
-                          attendance.approval_status === 'approved' ? 'bg-green-100 text-green-700' :
-                          'bg-orange-100 text-orange-700'
+                        <span className={`px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest ${
+                          attendance.approval_status === 'approved' ? 'bg-emerald-400/10 text-emerald-400 border border-emerald-400/20' :
+                          'bg-orange-400/10 text-orange-400 border border-orange-400/20'
                         }`}>
                           {attendance.approval_status === 'approved' ? '✓ Approved' : '⚠ Unapproved'}
                         </span>
@@ -784,12 +948,12 @@ const InteractiveTimetable = ({ classId, selectedDate }) => {
             </div>
 
             {/* Modal Footer */}
-            <div className="p-6 bg-gray-50 border-t border-gray-200">
+            <div className="p-8 bg-white/[0.02] border-t border-white/10">
               <button
                 onClick={() => setShowViewAttendanceModal(false)}
-                className="w-full px-6 py-3 bg-gray-600 text-white rounded-lg font-semibold hover:bg-gray-700 transition-colors"
+                className="w-full py-4 bg-white/10 text-white rounded-2xl font-black text-xs uppercase tracking-[0.2em] hover:bg-white/20 transition-all"
               >
-                Close
+                Close View
               </button>
             </div>
           </div>

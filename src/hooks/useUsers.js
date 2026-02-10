@@ -105,29 +105,22 @@ export const useUsers = () => {
   // Appoint user as Program Coordinator (PC)
   const appointAsPC = async (userId) => {
     try {
-      // First, remove PC role from all other users in the same stream
       const user = users.find(u => u.id === userId)
       if (!user) throw new Error('User not found')
 
-      // Remove PC role from others in the same stream
-      const { error: removeError } = await supabase
-        .from('users')
-        .update({ is_pc: false })
-        .eq('stream_id', user.stream_id)
-
-      if (removeError) throw removeError
-
-      // Appoint the selected user as PC
       const { error: appointError } = await supabase
         .from('users')
-        .update({ is_pc: true, role: 'staff' }) // PC is a staff member with special privileges
+        .update({ 
+          is_pc: true, 
+          role: 'staff',
+          is_hod: false,
+          is_class_advisor: false,
+          advisor_class_id: null
+        })
         .eq('id', userId)
 
       if (appointError) throw appointError
-
-      // Refresh users list
       await fetchUsers()
-      
       return { success: true }
     } catch (err) {
       console.error('Error appointing PC:', err)
@@ -144,13 +137,93 @@ export const useUsers = () => {
         .eq('id', userId)
 
       if (error) throw error
-
-      // Refresh users list
       await fetchUsers()
-      
       return { success: true }
     } catch (err) {
       console.error('Error removing PC role:', err)
+      return { success: false, error: err.message }
+    }
+  }
+
+  // Appoint as HOD
+  const appointAsHOD = async (userId) => {
+    try {
+      const { error } = await supabase
+        .from('users')
+        .update({ 
+          is_hod: true, 
+          is_pc: false, 
+          is_class_advisor: false,
+          advisor_class_id: null,
+          role: 'staff' 
+        })
+        .eq('id', userId)
+
+      if (error) throw error
+      await fetchUsers()
+      return { success: true }
+    } catch (err) {
+      console.error('Error appointing HOD:', err)
+      return { success: false, error: err.message }
+    }
+  }
+
+  // Remove HOD role
+  const removeHOD = async (userId) => {
+    try {
+      const { error } = await supabase
+        .from('users')
+        .update({ is_hod: false })
+        .eq('id', userId)
+
+      if (error) throw error
+      await fetchUsers()
+      return { success: true }
+    } catch (err) {
+      console.error('Error removing HOD role:', err)
+      return { success: false, error: err.message }
+    }
+  }
+
+  // Appoint as Class Advisor
+  const appointAsClassAdvisor = async (userId, classId) => {
+    try {
+      const { error } = await supabase
+        .from('users')
+        .update({ 
+          is_class_advisor: true, 
+          advisor_class_id: classId,
+          is_pc: false,
+          is_hod: false,
+          role: 'staff'
+        })
+        .eq('id', userId)
+
+      if (error) throw error
+      await fetchUsers()
+      return { success: true }
+    } catch (err) {
+      console.error('Error appointing Class Advisor:', err)
+      return { success: false, error: err.message }
+    }
+  }
+
+  // Remove Class Advisor role
+  const removeClassAdvisor = async (userId) => {
+    try {
+      const { error } = await supabase
+        .from('users')
+        .update({ 
+          is_class_advisor: false, 
+          advisor_class_id: null 
+        })
+        .eq('id', userId)
+
+      if (error) throw error
+      await fetchUsers()
+      return { success: true }
+    } catch (err) {
+      console.error('Error removing Class Advisor:', err)
       return { success: false, error: err.message }
     }
   }
@@ -326,6 +399,10 @@ export const useUsers = () => {
     deleteMyAccount,
     updateUser,
     appointAsPC,
-    removePC
+    removePC,
+    appointAsHOD,
+    removeHOD,
+    appointAsClassAdvisor,
+    removeClassAdvisor
   }
 }

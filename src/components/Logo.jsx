@@ -189,13 +189,14 @@ export const LogoGeometric = ({ size = 'default', className = '' }) => {
   )
 }
 
-// Alternative Logo Design - Modern Minimal
-export const LogoModern = ({ size = 'default', className = '' }) => {
+// Premium Logo Design - High-end SaaS Style
+export const LogoPremium = ({ size = 'default', className = '' }) => {
   const sizes = {
     small: 32,
     default: 48,
     large: 64,
-    xlarge: 80
+    xlarge: 80,
+    huge: 120
   }
 
   const dimension = sizes[size] || sizes.default
@@ -208,43 +209,77 @@ export const LogoModern = ({ size = 'default', className = '' }) => {
         viewBox="0 0 100 100"
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
+        className="drop-shadow-2xl"
       >
         <defs>
-          <linearGradient id="modernGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+          <linearGradient id="premiumGradient" x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" stopColor="#10b981" />
-            <stop offset="100%" stopColor="#6ee7b7" />
+            <stop offset="50%" stopColor="#34d399" />
+            <stop offset="100%" stopColor="#0ea5e9" />
           </linearGradient>
+          
+          <linearGradient id="ringGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#10b981" stopOpacity="0" />
+            <stop offset="50%" stopColor="#34d399" stopOpacity="0.5" />
+            <stop offset="100%" stopColor="#0ea5e9" stopOpacity="0" />
+          </linearGradient>
+
+          <filter id="premiumGlow" x="-20%" y="-20%" width="140%" height="140%">
+            <feGaussianBlur stdDeviation="4" result="blur" />
+            <feComposite in="SourceGraphic" in2="blur" operator="over" />
+          </filter>
+          
+          <filter id="softGlow" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur stdDeviation="8" result="blur" />
+            <feComposite in="SourceGraphic" in2="blur" operator="over" />
+          </filter>
         </defs>
 
-        {/* Rounded Square */}
-        <rect
-          x="10"
-          y="10"
-          width="80"
-          height="80"
-          rx="20"
-          fill="url(#modernGradient)"
+        {/* Outer Animated Ring */}
+        <circle 
+          cx="50" cy="50" r="48" 
+          stroke="url(#ringGradient)" 
+          strokeWidth="1" 
+          strokeDasharray="30 15"
+          className="animate-spin-slow"
+          style={{ transformOrigin: 'center' }}
         />
 
-        {/* Letter S */}
+        {/* Inner Background Glow */}
+        <circle cx="50" cy="50" r="35" fill="url(#premiumGradient)" opacity="0.05" filter="url(#softGlow)" />
+
+        {/* Abstract Person Shape (Head) */}
+        <circle cx="50" cy="35" r="14" fill="url(#premiumGradient)" />
+        
+        {/* Abstract Person Shape (Shoulders) */}
         <path
-          d="M 35 30 Q 50 25, 65 30 Q 70 35, 65 40 L 50 50 L 35 60 Q 30 65, 35 70 Q 50 75, 65 70"
-          stroke="white"
-          strokeWidth="6"
+          d="M 22 82 C 22 62, 32 52, 50 52 C 68 52, 78 62, 78 82"
+          stroke="url(#premiumGradient)"
+          strokeWidth="9"
           strokeLinecap="round"
           fill="none"
         />
 
-        {/* Letter A (checkmark style) */}
+        {/* Modern Checkmark with specialized pathing */}
         <path
-          d="M 40 65 L 50 75 L 70 50"
+          d="M 42 68 L 54 80 L 88 38"
           stroke="white"
-          strokeWidth="5"
+          strokeWidth="11"
           strokeLinecap="round"
           strokeLinejoin="round"
           fill="none"
-          opacity="0.8"
+          filter="url(#premiumGlow)"
+          className="drop-shadow-lg"
         />
+        
+        {/* Decorative Orbs */}
+        <circle cx="15" cy="25" r="3" fill="#10b981" className="animate-pulse">
+          <animate attributeName="opacity" values="0.2;0.6;0.2" dur="3s" repeatCount="indefinite" />
+        </circle>
+        <circle cx="85" cy="85" r="4" fill="#0ea5e9" className="animate-pulse" style={{ animationDelay: '1s' }}>
+          <animate attributeName="opacity" values="0.3;0.8;0.3" dur="4s" repeatCount="indefinite" />
+        </circle>
+        <circle cx="88" cy="18" r="2" fill="#34d399" opacity="0.4" />
       </svg>
     </div>
   )

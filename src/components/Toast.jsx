@@ -68,7 +68,7 @@ const Toast = ({ message, type = 'success', onClose, duration = 4000 }) => {
     : 'translate-x-full opacity-0'
 
   return (
-    <div className={`fixed top-6 right-6 z-50 transition-all duration-300 ease-out ${animationClass}`}>
+    <div className={`fixed top-24 right-6 z-[9999] transition-all duration-300 ease-out ${animationClass}`}>
       <div className={`${styles[type]} rounded-2xl shadow-2xl p-5 flex items-center gap-4 min-w-[350px] max-w-md border border-white/30 backdrop-blur-sm relative overflow-hidden`}>
         {/* Animated background gradient */}
         <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent animate-shimmer"></div>
@@ -100,7 +100,7 @@ const Toast = ({ message, type = 'success', onClose, duration = 4000 }) => {
 // Toast Container for multiple toasts
 export const ToastContainer = ({ toasts, removeToast }) => {
   return (
-    <div className="fixed top-6 right-6 z-50 space-y-3">
+    <div className="fixed top-24 right-6 z-[9999] space-y-3">
       {toasts.map((toast) => (
         <Toast
           key={toast.id}
