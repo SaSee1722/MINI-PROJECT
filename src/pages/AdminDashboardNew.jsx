@@ -35,7 +35,10 @@ import {
   FileText,
   UserCheck,
   ChevronRight,
-  Calendar
+  Calendar,
+  CheckCircle,
+  XCircle,
+  AlertCircle
 } from 'lucide-react'
 
 // Animated Hero Text Component (inspired by Dario.io)
@@ -425,14 +428,9 @@ const AdminDashboardNew = () => {
   } = useUsers()
 
 
-  // Define the 6 streams
+  // Define the single stream (CSE)
   const streams = [
-    { id: 'cse', name: 'Computer Science and Engineering', code: 'CSE' },
-    { id: 'it', name: 'Information Technology', code: 'IT' },
-    { id: 'ece', name: 'Electronics and Communication Engineering', code: 'ECE' },
-    { id: 'eee', name: 'Electrical and Electronics Engineering', code: 'EEE' },
-    { id: 'mech', name: 'Mechanical Engineering', code: 'MECH' },
-    { id: 'civil', name: 'Civil Engineering', code: 'CIVIL' }
+    { id: 'cse', name: 'Computer Science and Engineering', code: 'CSE' }
   ]
 
   const [activeTab, setActiveTab] = useState('overview')
@@ -449,6 +447,8 @@ const AdminDashboardNew = () => {
   const [selectAll, setSelectAll] = useState(false)
   const [overviewDate, setOverviewDate] = useState(() => new Date().toISOString().split('T')[0])
   const [autoDateInitialized, setAutoDateInitialized] = useState(false)
+  const [leaveRequests, setLeaveRequests] = useState([])
+  const [loadingLeave, setLoadingLeave] = useState(false)
   const showOverviewCharts = true
 
   const hour = new Date().getHours()
@@ -577,88 +577,156 @@ const AdminDashboardNew = () => {
     return 'Select Class First'
   }
 
-  // Fetch period attendance count for selected date
-  const fetchPeriodAttendanceCount = async () => {
+  // Fetch Definitive Daily Attendance count for selected date
+  const fetchDailyAttendanceCount = async () => {
     try {
-      // Wait for userProfile to load
-      if (!userProfile?.stream_id) {
-        console.log('⏳ Waiting for user profile to load...')
-        setPeriodAttendanceCount(0)
-        return
-      }
+      if (!userProfile?.id) return
       
-      console.log('📊 Fetching attendance count for stream:', userProfile.stream_id, 'date:', overviewDate)
-      
-      const { count: studentCount, error: studentError } = await supabase
-        .from('period_attendance')
-        .select('*, classes!inner(stream_id)', { count: 'exact', head: true })
-        .eq('is_marked', true)
+      // Fetch all student attendance for the date
+      const { data: studentData, error: studentError } = await supabase
+        .from('daily_student_attendance')
+        .select('id, class_id')
         .eq('date', overviewDate)
-        .eq('classes.stream_id', userProfile.stream_id)
+      
+      if (studentError) throw studentError
+      
+      // Filter by stream for non-admin users
+      let studentCount = 0
+      if (userProfile.role === 'admin') {
+        studentCount = studentData?.length || 0
+      } else if (userProfile.stream_id && classes.length > 0) {
+        const userStreamClasses = classes
+          .filter(c => c.stream_id === userProfile.stream_id)
+          .map(c => c.id)
+        
+        studentCount = studentData?.filter(record => 
+          userStreamClasses.includes(record.class_id)
+        ).length || 0
+      }
 
-      const { count: staffCount, error: staffError } = await supabase
+      // Fetch all staff attendance for the date
+      const { data: staffData, error: staffError } = await supabase
         .from('staff_attendance')
-        .select('*, users!inner(stream_id)', { count: 'exact', head: true })
+        .select('id, user_id')
         .eq('date', overviewDate)
-        .eq('users.stream_id', userProfile.stream_id)
-
-      if (studentError) {
-        console.error('Error fetching student count:', studentError)
-        throw studentError
+      
+      if (staffError) throw staffError
+      
+      // Filter by stream for non-admin users
+      let staffCount = 0
+      if (userProfile.role === 'admin') {
+        staffCount = staffData?.length || 0
+      } else if (userProfile.stream_id && users.length > 0) {
+        const userStreamStaff = users
+          .filter(u => u.stream_id === userProfile.stream_id)
+          .map(u => u.id)
+        
+        staffCount = staffData?.filter(record => 
+          userStreamStaff.includes(record.user_id)
+        ).length || 0
       }
 
-      if (staffError) {
-        console.error('Error fetching staff count:', staffError)
-        throw staffError
-      }
-
-      const totalCount = (studentCount || 0) + (staffCount || 0)
-      console.log('✅ Today\'s attendance count - Students:', studentCount, 'Staff:', staffCount, 'Total:', totalCount)
+      const totalCount = studentCount + staffCount
       setPeriodAttendanceCount(totalCount)
-      setStudentAttendanceCount(studentCount || 0)
-      setStaffAttendanceCount(staffCount || 0)
+      setStudentAttendanceCount(studentCount)
+      setStaffAttendanceCount(staffCount)
     } catch (err) {
       console.error('Error fetching attendance count:', err)
       setPeriodAttendanceCount(0)
+      setStudentAttendanceCount(0)
+      setStaffAttendanceCount(0)
     }
   }
 
-  // Fetch period student attendance data
-  const fetchPeriodStudentAttendance = async () => {
+  const fetchLeaveRequests = async () => {
     try {
-      if (!userProfile?.stream_id || classes.length === 0) return
+      setLoadingLeave(true)
+      let query = supabase
+        .from('student_leave_requests')
+        .select('*')
+        .order('created_at', { ascending: false })
       
-      // Get class IDs for this stream
-      const streamClassIds = classes
-        .filter(c => c.stream_id === userProfile.stream_id)
-        .map(c => c.id)
+      // If user is HOD, they should only see requests for their department
+      if (userProfile?.is_hod && userProfile?.role !== 'admin') {
+        query = query.eq('department_id', userProfile.stream_id)
+      }
+
+      const { data, error } = await query
+      if (error && error.code !== 'PGRST116') throw error
+      setLeaveRequests(data || [])
+    } catch (err) {
+      console.error('Error fetching leave requests:', err)
+    } finally {
+      setLoadingLeave(false)
+    }
+  }
+
+  const handleLeaveAction = async (requestId, action) => {
+    try {
+      // HOD action: move to pending_admin
+      // Admin action: move to approved
+      let newStatus = ''
+      if (action === 'approve') {
+        newStatus = userProfile?.role === 'admin' ? 'approved' : 'pending_admin'
+      } else {
+        newStatus = 'rejected'
+      }
+
+      const { error } = await supabase
+        .from('student_leave_requests')
+        .update({ status: newStatus })
+        .eq('id', requestId)
       
-      if (streamClassIds.length === 0) {
+      if (error) throw error
+      
+      setToast({ message: `Request ${action}d successfully`, type: 'success' })
+      fetchLeaveRequests()
+    } catch (err) {
+      setToast({ message: 'Error updating status', type: 'error' })
+    }
+  }
+
+  // Fetch definitive daily student attendance data
+  const fetchDailyStudentAttendance = async () => {
+    try {
+      if (!userProfile?.id) return
+      
+      // If there are no classes, just return empty array
+      if (classes.length === 0) {
         setPeriodStudentAttendance([])
         return
       }
       
-      // Fetch all attendance data first, then filter client-side
+      // Fetch all recent daily attendance
       const { data, error } = await supabase
-        .from('period_student_attendance')
+        .from('daily_student_attendance')
         .select(`
           *,
-          students(id, roll_number, name, class_id, status),
-          period_attendance!inner(date, period_number, total_students, present_count)
+          students (id, name, roll_number, class_id, stream_id),
+          classes (id, name, stream_id)
         `)
-        .eq('period_attendance.date', overviewDate)
-        .order('period_number', { ascending: true })
+        .order('created_at', { ascending: false })
+        .limit(100)
       
       if (error) throw error
       
-      // Filter by stream classes on client side
-      const filteredData = (data || []).filter(item => 
-        streamClassIds.includes(item.students?.class_id)
-      )
+      // Filter client-side based on user role and stream
+      let filteredData = data || []
       
-      setPeriodStudentAttendance(filteredData)
+      if (userProfile.role !== 'admin' && userProfile.stream_id) {
+        // For non-admin users, filter by their stream
+        const userStreamClasses = classes
+          .filter(c => c.stream_id === userProfile.stream_id)
+          .map(c => c.id)
+        
+        filteredData = filteredData.filter(record => 
+          userStreamClasses.includes(record.class_id)
+        )
+      }
+      
+      setPeriodStudentAttendance(filteredData.slice(0, 20))
     } catch (err) {
-      console.error('Error fetching period student attendance:', err)
+      console.error('Error fetching daily student attendance:', err)
       setPeriodStudentAttendance([])
     }
   }
@@ -701,8 +769,18 @@ const AdminDashboardNew = () => {
   // Fetch count when userProfile loads OR when attendance data changes
   useEffect(() => {
     if (userProfile?.stream_id) {
-      fetchPeriodAttendanceCount()
-      fetchPeriodStudentAttendance()
+      fetchDailyAttendanceCount()
+      fetchDailyStudentAttendance()
+      fetchLeaveRequests()
+      
+      // Initialize forms with current stream
+      setForms(prev => ({
+        ...prev,
+        class: { ...prev.class, streamId: userProfile.stream_id },
+        student: { ...prev.student, streamId: userProfile.stream_id },
+        intern: { ...prev.intern, streamId: userProfile.stream_id },
+        suspended: { ...prev.suspended, streamId: userProfile.stream_id }
+      }))
     }
   }, [userProfile, studentAttendance, staffAttendance, classes, students, users, overviewDate])
 
@@ -710,9 +788,9 @@ const AdminDashboardNew = () => {
     if (!userProfile?.stream_id) return
     const channel = supabase
       .channel('admin-dashboard-attendance')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'period_student_attendance' }, () => {
-        fetchPeriodStudentAttendance()
-        fetchPeriodAttendanceCount()
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'daily_student_attendance' }, () => {
+        fetchDailyStudentAttendance()
+        fetchDailyAttendanceCount()
       })
       .on(
         'postgres_changes',
@@ -726,14 +804,14 @@ const AdminDashboardNew = () => {
               setOverviewDate(dateStr)
             }
           }
-          fetchPeriodStudentAttendance()
-          fetchPeriodAttendanceCount()
+          fetchDailyStudentAttendance()
+          fetchDailyAttendanceCount()
         }
       )
       .on('postgres_changes', { event: '*', schema: 'public', table: 'students' }, () => {
         refetchStudents()
-        fetchPeriodStudentAttendance()
-        fetchPeriodAttendanceCount()
+        fetchDailyStudentAttendance()
+        fetchDailyAttendanceCount()
       })
       .subscribe()
     return () => {
@@ -961,19 +1039,19 @@ const AdminDashboardNew = () => {
   // Generate Short Report
   const generateShortReport = async () => {
     console.log('🎯 Generate Report clicked')
+    console.log('📊 Total classes in state:', classes.length)
+    console.log('📊 Total students in state:', students.length)
+    console.log('📊 Classes array:', classes)
     
-    // Determine which stream to use (fallback to user stream or CSE)
-    const reportStream = shortReportStream || userProfile?.stream_id || 'cse'
+    // Determine which stream to use (fallback to user stream or first available)
+    const reportStream = shortReportStream || userProfile?.stream_id || (streams.length > 0 ? streams[0].id : null)
     
-    console.log('📊 Report stream value:', reportStream)
-    console.log('📅 shortReportDate value:', shortReportDate)
-    console.log('👤 User role:', userProfile?.role)
-    console.log('📋 Is PC:', userProfile?.is_pc)
+    console.log('📊 Report stream:', reportStream)
+    console.log('📊 User profile stream_id:', userProfile?.stream_id)
+    console.log('📊 shortReportStream:', shortReportStream)
     
     if (!reportStream) {
-      console.error('❌ No stream available!')
-      const message = userProfile?.role === 'admin' ? 'Please select a stream' : 'Your account is not assigned to a stream'
-      setToast({ message, type: 'info' })
+      setToast({ message: 'No department available', type: 'info' })
       return
     }
     
@@ -982,10 +1060,41 @@ const AdminDashboardNew = () => {
     setLoadingReport(true)
     try {
       // Get all classes for the selected stream
-      const streamClasses = classes.filter(c => c.stream_id === reportStream)
+      // Priority 1: Match stream_id
+      // Priority 2: Fallback to name-based identification for better resilience
+      const streamInfo = streams.find(s => s.id.toLowerCase() === reportStream.toLowerCase())
+      const streamCode = streamInfo?.code?.toLowerCase() || ''
+      const streamName = streamInfo?.name?.toLowerCase() || ''
+      
+      console.log('📊 Stream info:', streamInfo)
+      console.log('📊 Stream code:', streamCode)
+
+      const streamClasses = classes.filter(c => {
+        const cStreamId = c.stream_id?.toLowerCase()
+        const cName = c.name?.toLowerCase()
+        
+        const matches = cStreamId === reportStream.toLowerCase() || 
+               (streamCode && cName?.includes(streamCode)) ||
+               (streamName && cName?.includes(streamName))
+        
+        console.log(`📊 Checking class "${c.name}": stream_id=[${c.stream_id}], matches=${matches}`)
+        
+        return matches
+      })
+      
+      console.log(`📊 Report Generation: Found ${streamClasses.length} class nodes for stream [${reportStream}]`)
+      console.log('📊 Filtered classes:', streamClasses)
+      
+      if (streamClasses.length === 0) {
+        console.log('📋 ALL available classes:', classes)
+        console.log('⚠️ No classes found for this stream!')
+        setToast({ message: 'No classes found for this department', type: 'warning' })
+        setLoadingReport(false)
+        return
+      }
       
       const reportData = {
-        stream: streams.find(s => s.id === reportStream),
+        stream: streams.find(s => s.id.toLowerCase() === reportStream.toLowerCase()),
         date: shortReportDate,
         classes: []
       }
@@ -995,57 +1104,45 @@ const AdminDashboardNew = () => {
         const classStudents = students.filter(s => s.class_id === cls.id)
         const totalStudents = classStudents.length
         
-        // Get today's attendance for this class
-        const { data: attendanceRecords, error } = await supabase
-          .from('period_student_attendance')
-          .select(`
-            *,
-            students!inner(class_id, status),
-            period_attendance!inner(date)
-          `)
-          .eq('students.class_id', cls.id)
-          .eq('period_attendance.date', shortReportDate)
-
-        if (error) {
-          console.error('Error fetching attendance:', error)
-          continue
-        }
-
-        // Calculate statistics
-        // Aggregate attendance status per student for the entire day
-        const studentDailyStatus = {}
+        console.log(`📊 Fetching attendance for class: ${cls.name} (ID: ${cls.id})`)
+        console.log(`📊 Date: ${shortReportDate}`)
         
-        attendanceRecords?.forEach(record => {
-          const sid = record.student_id
-          const currentStatus = record.status
-          const prevStatus = studentDailyStatus[sid]?.status
-          
-          // Priority: present > on_duty > absent
-          if (!prevStatus || 
-              currentStatus === 'present' || 
-              (currentStatus === 'on_duty' && prevStatus === 'absent')) {
-            studentDailyStatus[sid] = {
-              status: currentStatus,
-              approval_status: record.approval_status
-            }
+        // Get today's definitive daily attendance for this class
+        let attendanceRecords = []
+        try {
+          const { data, error } = await supabase
+            .from('daily_student_attendance')
+            .select('*')
+            .eq('class_id', cls.id)
+            .eq('date', shortReportDate)
+
+          if (error) {
+            console.error('❌ Error fetching daily attendance:', error)
+            throw error
           }
-        })
+          
+          attendanceRecords = data || []
+          console.log(`✅ Found ${attendanceRecords.length} attendance records`)
+        } catch (err) {
+          console.error('❌ Failed to fetch attendance for class:', cls.name, err)
+          // Continue with empty attendance records
+        }
 
         let presentCount = 0
         let approvedAbsentCount = 0
         let unapprovedAbsentCount = 0
         let onDutyCount = 0
 
-        Object.values(studentDailyStatus).forEach(data => {
-          if (data.status === 'present') {
+        attendanceRecords?.forEach(record => {
+          if (record.status === 'present') {
             presentCount++
-          } else if (data.status === 'absent') {
-            if (data.approval_status === 'approved') {
+          } else if (record.status === 'absent') {
+            if (record.approval_status === 'approved') {
               approvedAbsentCount++
             } else {
               unapprovedAbsentCount++
             }
-          } else if (data.status === 'on_duty') {
+          } else if (record.status === 'on_duty') {
             onDutyCount++
           }
         })
@@ -1054,7 +1151,7 @@ const AdminDashboardNew = () => {
         const suspendedCount = classStudents.filter(s => s.status === 'suspended').length
         const internCount = classStudents.filter(s => s.status === 'intern').length
 
-        reportData.classes.push({
+        const classData = {
           name: cls.name,
           present: presentCount,
           total: totalStudents,
@@ -1063,8 +1160,14 @@ const AdminDashboardNew = () => {
           onDuty: onDutyCount,
           suspended: suspendedCount,
           intern: internCount
-        })
+        }
+        
+        console.log(`📊 Adding class to report:`, classData)
+        reportData.classes.push(classData)
       }
+
+      console.log(`📊 Final report data:`, reportData)
+      console.log(`📊 Total classes in report: ${reportData.classes.length}`)
 
       setShortReportData(reportData)
     } catch (error) {
@@ -1077,6 +1180,12 @@ const AdminDashboardNew = () => {
 
   // Define tabs based on user role and PC status
   const getAvailableTabs = () => {
+    const pendingLeaveCount = leaveRequests.filter(req => {
+      const isHOD = userProfile?.is_hod
+      const isAdmin = userProfile?.role === 'admin'
+      return (isHOD && req.status === 'pending_hod') || (isAdmin && (req.status === 'pending_admin' || req.status === 'pending_hod'))
+    }).length
+
     const baseTabs = [
       { id: 'overview', name: 'Overview' },
       { id: 'classes', name: 'Classes' },
@@ -1092,6 +1201,11 @@ const AdminDashboardNew = () => {
     // Add Users tab for Admins, HODs, and PCs
     if (userProfile?.role === 'admin' || userProfile?.is_pc || userProfile?.is_hod) {
       baseTabs.push({ id: 'users', name: 'Users' })
+    }
+
+    // Add Leave Requests tab for Admins and HODs
+    if (userProfile?.role === 'admin' || userProfile?.is_hod) {
+      baseTabs.push({ id: 'leaveRequests', name: 'Leave Requests', badge: pendingLeaveCount })
     }
 
     // Add Reports tab for Admins only
@@ -1120,7 +1234,7 @@ const AdminDashboardNew = () => {
 
         const { count: studentSessionsCount, error: studentSessionsError } = await supabase
           .from('period_attendance')
-          .select('*, classes!inner(stream_id)', { count: 'exact', head: true })
+          .select('*, classes!class_id!inner(stream_id)', { count: 'exact', head: true })
           .eq('is_marked', true)
           .eq('classes.stream_id', userProfile.stream_id)
 
@@ -1129,7 +1243,7 @@ const AdminDashboardNew = () => {
 
         const { count: staffMarkedCount, error: staffMarkedError } = await supabase
           .from('staff_attendance')
-          .select('*, users!inner(stream_id)', { count: 'exact', head: true })
+          .select('*, users!user_id!inner(stream_id)', { count: 'exact', head: true })
           .eq('users.stream_id', userProfile.stream_id)
 
         if (staffMarkedError) throw staffMarkedError
@@ -1176,7 +1290,7 @@ const AdminDashboardNew = () => {
           // Fetch staff attendance
           let staffQuery = supabase
              .from('staff_attendance')
-             .select('*, users!inner(name, stream_id)')
+             .select('*, users!user_id!inner(name, stream_id)')
           
           if (reportMode === 'daily') {
              staffQuery = staffQuery.eq('date', reportFromDate)
@@ -1222,7 +1336,7 @@ const AdminDashboardNew = () => {
               </h1>
               
               <p className="text-gray-400 text-xl font-medium leading-relaxed max-w-lg">
-                Your daily attendance overview is ready. Monitoring {students.length} students across all departments.
+                Your daily attendance overview is ready. Monitoring {students.length} students in CSE Department.
               </p>
             </div>
 
@@ -1235,7 +1349,7 @@ const AdminDashboardNew = () => {
               <div className="bg-white/5 backdrop-blur-md rounded-[2rem] p-8 border border-white/10 hover:bg-white/10 transition-all duration-500 group/item hover:scale-105">
                 <Globe size={24} className="text-blue-400 mb-4 group-hover/item:scale-110 transition-transform" />
                 <div className="text-3xl font-black text-white">{classes.length}</div>
-                <div className="text-[10px] font-black text-gray-500 uppercase tracking-widest mt-1">Departments</div>
+                <div className="text-[10px] font-black text-gray-500 uppercase tracking-widest mt-1">Classes</div>
               </div>
             </div>
           </div>
@@ -1254,7 +1368,18 @@ const AdminDashboardNew = () => {
                     : 'text-gray-500 hover:text-white hover:bg-white/5'
                   }`}
                 >
-                  <span className="relative z-10">{tab.name}</span>
+                  <span className="relative z-10 flex items-center gap-2">
+                    {tab.name}
+                    {tab.badge > 0 && (
+                      <span className={`px-2 py-0.5 rounded-full text-[8px] animate-pulse ${
+                        activeTab === tab.id 
+                        ? 'bg-black text-white' 
+                        : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                      }`}>
+                        {tab.badge}
+                      </span>
+                    )}
+                  </span>
                   {activeTab === tab.id && (
                     <div className="absolute inset-0 bg-gradient-to-br from-white via-emerald-50 to-emerald-100 rounded-[1.5rem] -z-0"></div>
                   )}
@@ -1270,7 +1395,7 @@ const AdminDashboardNew = () => {
                    <div className="space-y-4">
                       <div className="w-12 h-1.5 bg-emerald-500 rounded-full"></div>
                       <h2 className="text-4xl md:text-5xl font-black text-white tracking-tighter">Attendance Overview</h2>
-                      <p className="text-gray-500 font-bold uppercase tracking-[0.2em] text-[10px]">Real-time statistics across all departments</p>
+                      <p className="text-gray-500 font-bold uppercase tracking-[0.2em] text-[10px]">Real-time statistics for CSE Department</p>
                    </div>
                      <div className="flex items-center gap-6">
                         <div className="text-right">
@@ -1306,19 +1431,19 @@ const AdminDashboardNew = () => {
                      </div>
                   </div>
 
-                  {/* Streams */}
+                  {/* Classes Card */}
                   <div className="group relative bg-[#020617] border border-white/5 rounded-[2.5rem] p-10 hover:bg-white/[0.04] transition-all duration-500 overflow-hidden cursor-pointer">
                     <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full blur-3xl group-hover:bg-blue-500/10 transition-colors"></div>
                     <div className="w-16 h-16 bg-blue-500/10 rounded-2xl flex items-center justify-center border border-blue-500/20 mb-8 group-hover:scale-110 group-hover:bg-blue-500/20 transition-all duration-500">
                       <LayoutDashboard className="text-blue-400 w-8 h-8" />
                     </div>
                     <h3 className="text-6xl font-black text-white mb-2 tracking-tighter">
-                       {streams.length}
+                       {classes.length}
                     </h3>
-                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Active Streams</p>
+                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Active Classes</p>
                      <div className="mt-8 flex items-center gap-2">
                         <div className="w-2 h-2 rounded-full bg-blue-500"></div>
-                        <span className="text-[10px] font-black text-blue-500/60 uppercase tracking-widest">Total Streams</span>
+                        <span className="text-[10px] font-black text-blue-500/60 uppercase tracking-widest">Total Classes</span>
                      </div>
                   </div>
 
@@ -1600,10 +1725,10 @@ const AdminDashboardNew = () => {
                              <div key={i} className="flex items-start gap-4 group/entry">
                                 <div className={`mt-1 w-2 h-2 rounded-full ring-4 ${r.status === 'present' ? 'bg-emerald-500 ring-emerald-500/10' : r.status === 'on_duty' ? 'bg-blue-500 ring-blue-500/10' : 'bg-red-500 ring-red-500/10'}`}></div>
                                 <div className="flex-1">
-                                   <h4 className="text-sm font-black text-white group-hover/entry:text-orange-400 transition-colors uppercase tracking-tight">{r.students?.name || 'Anonymous Node'}</h4>
+                                   <h4 className="text-sm font-black text-white group-hover/entry:text-orange-400 transition-colors uppercase tracking-tight">{r.students?.name || 'Anonymous Student'}</h4>
                                    <div className="flex items-center justify-between mt-1">
                                       <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest">{r.status.replace('_', ' ')}</p>
-                                      <p className="text-[10px] font-bold text-gray-600">{new Date(r.period_attendance?.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}</p>
+                                      <p className="text-[10px] font-bold text-gray-600">{new Date(r.date || r.period_attendance?.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}</p>
                                    </div>
                                 </div>
                              </div>
@@ -1619,7 +1744,7 @@ const AdminDashboardNew = () => {
                         <div className="relative z-10">
                            <Shield size={40} className="text-white mb-6" />
                            <h3 className="text-2xl font-black text-white tracking-tighter mb-4">Institutional Shield</h3>
-                           <p className="text-sm text-blue-100 leading-relaxed font-medium mb-8">Your session is secured with end-to-end node encryption. Maintain high frequency synchronization for optimal data integrity.</p>
+                           <p className="text-sm text-blue-100 leading-relaxed font-medium mb-8">Your session is secured with end-to-end data encryption. Maintain regular synchronization for optimal data integrity.</p>
                            <div className="flex items-center gap-2 text-[10px] font-black text-white uppercase tracking-widest">
                               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
                               System Integrity Optimal
@@ -1658,17 +1783,36 @@ const AdminDashboardNew = () => {
                   
                   <div className="relative z-10 grid grid-cols-1 md:grid-cols-12 gap-8 items-end">
                     <div className="md:col-span-5 space-y-4">
-                      <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] ml-2">Department Node</label>
+                      <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] ml-2">Academic Department</label>
                       <div className="relative group/input">
                         <div className="absolute left-5 top-1/2 -translate-y-1/2 text-emerald-500/50 group-hover/input:text-emerald-400 transition-colors">
                           <Globe size={18} />
                         </div>
-                        <div className="w-full pl-14 pr-6 py-4 bg-white/[0.03] border border-white/10 rounded-2xl text-white font-bold tracking-tight text-sm cursor-not-allowed">
-                          {streams.find(s => s.id === shortReportStream)?.name ||
-                            streams.find(s => s.id === userProfile?.stream_id)?.name ||
-                            'Institutional Core'}
-                        </div>
+                        {userProfile?.role === 'admin' ? (
+                          <select
+                            value={shortReportStream || userProfile?.stream_id || ''}
+                            onChange={(e) => {
+                              setShortReportStream(e.target.value)
+                              setShortReportData(null)
+                            }}
+                            className="w-full pl-14 pr-12 py-4 bg-white/[0.03] border border-white/10 rounded-2xl text-white font-bold tracking-tight text-sm focus:border-emerald-500/50 outline-none transition-all appearance-none cursor-pointer"
+                          >
+                            <option value="">Select Department</option>
+                            {streams.map(s => (
+                              <option key={s.id} value={s.id}>{s.name}</option>
+                            ))}
+                          </select>
+                        ) : (
+                          <div className="w-full pl-14 pr-6 py-4 bg-white/[0.03] border border-white/10 rounded-2xl text-white font-bold tracking-tight text-sm cursor-not-allowed">
+                            {streams.find(s => s.id === shortReportStream)?.name ||
+                              streams.find(s => s.id === userProfile?.stream_id)?.name ||
+                              'Institutional Core'}
+                          </div>
+                        )}
                         <input type="hidden" value={shortReportStream || userProfile?.stream_id || 'cse'} />
+                        {userProfile?.role === 'admin' && (
+                          <ChevronRight size={18} className="absolute right-5 top-1/2 -translate-y-1/2 text-emerald-500/30 rotate-90 pointer-events-none" />
+                        )}
                       </div>
                     </div>
 
@@ -1730,7 +1874,7 @@ const AdminDashboardNew = () => {
                         </div>
                         
                         <div className="flex flex-col items-end">
-                          <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1">Authorization Node</span>
+                          <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1">Authorization</span>
                           <span className="text-lg font-bold text-white">Dean, {shortReportData.stream?.code}</span>
                         </div>
                       </div>
@@ -1742,7 +1886,7 @@ const AdminDashboardNew = () => {
                             <div className="flex items-center justify-between mb-8">
                               <div className="space-y-1">
                                 <h4 className="text-xl font-black text-white tracking-tight group-hover:text-emerald-400 transition-colors">{cls.name}</h4>
-                                <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest">{shortReportData.stream?.code} Operational Unit</p>
+                                <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest">{shortReportData.stream?.code} Academic Class</p>
                               </div>
                               <div className="text-right">
                                 <div className="text-2xl font-black text-white leading-none">{cls.present}<span className="text-gray-600 mx-1">/</span>{cls.total}</div>
@@ -1762,28 +1906,70 @@ const AdminDashboardNew = () => {
                         ))}
                       </div>
 
-                      {/* Interaction Controls */}
-                      <div className="mt-12 flex flex-col sm:flex-row gap-4">
-                        <button
-                          onClick={() => {
-                            const reportText = `☀️Stream: ${shortReportData.stream?.name}\n☀️Date: ${new Date(shortReportData.date).toLocaleDateString('en-GB')}\n\n${shortReportData.classes.map(cls => 
-                              `➕${cls.name}: ${shortReportData.stream?.code}  ${cls.present}/${cls.total}
-${cls.approved > 0 ? `📍Approved: ${String(cls.approved).padStart(2, '0')}
-` : ''}${cls.unapproved > 0 ? `📍Unapproved: ${String(cls.unapproved).padStart(2, '0')}
-` : ''}${cls.onDuty > 0 ? `📍OD: ${String(cls.onDuty).padStart(2, '0')}
-` : ''}${cls.suspended > 0 ? `📍Suspend: ${String(cls.suspended).padStart(2, '0')}
-` : ''}${cls.intern > 0 ? `📍Intern: ${String(cls.intern).padStart(2, '0')}
-` : ''}`
-                            ).join('\n')}\n\nReported by: Dean, ${shortReportData.stream?.code}`
-                            
-                            navigator.clipboard.writeText(reportText)
-                            setToast({ message: 'Synchronize report cached to clipboard!', type: 'success' })
-                          }}
-                          className="flex-1 py-4 bg-emerald-500 text-white rounded-2xl hover:bg-emerald-400 transition-all duration-300 font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-3"
-                        >
-                          <FileText size={16} />
-                          Cache Digital Report
-                        </button>
+                      {/* Copyable Feed Preview */}
+                      <div className="mt-12 space-y-4">
+                        <div className="flex items-center gap-2 ml-2">
+                           <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
+                           <h4 className="text-[10px] font-black text-emerald-500/80 uppercase tracking-[0.2em]">Institutional Feed Preview</h4>
+                        </div>
+                        <div className="bg-black/60 border border-emerald-500/20 rounded-[2.5rem] p-10 relative group overflow-hidden">
+                          <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-3xl"></div>
+                          <pre className="text-emerald-400/90 font-mono text-xs leading-relaxed whitespace-pre-wrap select-all">
+                            {(() => {
+                              const dateStr = new Date(shortReportData.date).toLocaleDateString('en-GB')
+                              const streamName = shortReportData.stream?.name
+                              const streamCode = shortReportData.stream?.code
+                              
+                              let text = `☀️Stream: ${streamName}\n☀️Date: ${dateStr}\n\n`
+                              
+                              if (shortReportData.classes && shortReportData.classes.length > 0) {
+                                shortReportData.classes.forEach(cls => {
+                                  text += `➕${cls.name}: ${streamCode}  ${cls.present}/${cls.total}\n`
+                                  if (cls.approved > 0) text += `📍Approved: ${String(cls.approved).padStart(2, '0')}\n`
+                                  if (cls.unapproved > 0) text += `📍Unapproved: ${String(cls.unapproved).padStart(2, '0')}\n`
+                                  if (cls.onDuty > 0) text += `📍OD: ${String(cls.onDuty).padStart(2, '0')}\n`
+                                  if (cls.suspended > 0) text += `📍Suspend: ${String(cls.suspended).padStart(2, '0')}\n`
+                                  if (cls.intern > 0) text += `📍Intern: ${String(cls.intern).padStart(2, '0')}\n`
+                                  text += '\n'
+                                })
+                              } else {
+                                text += `[Daily Intelligence Cycle: No decentralized records found]\n\n`
+                              }
+                              
+                              text += `Reported by: Dean, ${streamCode}.`
+                              return text
+                            })()}
+                          </pre>
+                          
+                          <div className="mt-8 flex justify-end relative z-10">
+                            <button
+                              onClick={() => {
+                                const dateStr = new Date(shortReportData.date).toLocaleDateString('en-GB')
+                                const streamName = shortReportData.stream?.name
+                                const streamCode = shortReportData.stream?.code
+                                
+                                let text = `☀️Stream: ${streamName}\n☀️Date: ${dateStr}\n\n`
+                                shortReportData.classes.forEach(cls => {
+                                  text += `➕${cls.name}: ${streamCode}  ${cls.present}/${cls.total}\n`
+                                  if (cls.approved > 0) text += `📍Approved: ${String(cls.approved).padStart(2, '0')}\n`
+                                  if (cls.unapproved > 0) text += `📍Unapproved: ${String(cls.unapproved).padStart(2, '0')}\n`
+                                  if (cls.onDuty > 0) text += `📍OD: ${String(cls.onDuty).padStart(2, '0')}\n`
+                                  if (cls.suspended > 0) text += `📍Suspend: ${String(cls.suspended).padStart(2, '0')}\n`
+                                  if (cls.intern > 0) text += `📍Intern: ${String(cls.intern).padStart(2, '0')}\n`
+                                  text += '\n'
+                                })
+                                text += `Reported by: Dean, ${streamCode}.`
+
+                                navigator.clipboard.writeText(text)
+                                setToast({ message: 'Institutional protocol cached to clipboard!', type: 'success' })
+                              }}
+                              className="bg-emerald-500 hover:bg-emerald-400 text-white px-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] shadow-2xl shadow-emerald-500/20 transition-all flex items-center gap-3"
+                            >
+                              <FileText size={16} />
+                              Synchronize Digital Feed
+                            </button>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -1828,8 +2014,8 @@ ${cls.approved > 0 ? `📍Approved: ${String(cls.approved).padStart(2, '0')}
               <div className="space-y-10 animate-smoothFadeIn">
                 <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
                   <div className="space-y-2">
-                    <h2 className="text-4xl font-black text-white tracking-tighter">Operational Units</h2>
-                    <p className="text-gray-500 font-bold uppercase tracking-[0.2em] text-[10px]">Managing functional departmental divisions</p>
+                    <h2 className="text-4xl font-black text-white tracking-tighter">Academic Classes</h2>
+                    <p className="text-gray-500 font-bold uppercase tracking-[0.2em] text-[10px]">Configure and deploy institutional classes for students</p>
                   </div>
                   <button
                     onClick={() => setShowForm({ ...showForm, class: !showForm.class })}
@@ -1838,7 +2024,7 @@ ${cls.approved > 0 ? `📍Approved: ${String(cls.approved).padStart(2, '0')}
                     <div className="p-1 bg-black/10 rounded-lg group-hover:rotate-90 transition-transform">
                       <Zap size={14} />
                     </div>
-                    Provision New Unit
+                    Provision New Class
                   </button>
                 </div>
 
@@ -1847,10 +2033,10 @@ ${cls.approved > 0 ? `📍Approved: ${String(cls.approved).padStart(2, '0')}
                     <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-full blur-3xl"></div>
                     <div className="grid md:grid-cols-2 gap-8 relative z-10">
                       <div className="space-y-4">
-                        <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] ml-2">Unit Identifier</label>
+                        <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] ml-2">Class Name</label>
                         <input 
                           type="text" 
-                          placeholder="e.g., CSE-B ALPHA" 
+                          placeholder="e.g., III CSE A" 
                           value={forms.class.name} 
                           onChange={(e) => setForms({ ...forms, class: { ...forms.class, name: e.target.value }})} 
                           className="w-full px-6 py-4 bg-white/[0.05] border border-white/10 rounded-2xl text-white font-bold tracking-tight text-sm focus:border-emerald-500/50 outline-none transition-all" 
@@ -1867,7 +2053,7 @@ ${cls.approved > 0 ? `📍Approved: ${String(cls.approved).padStart(2, '0')}
                       <input type="hidden" name="streamId" value={forms.class.streamId} required />
                     </div>
                     <div className="mt-10 flex gap-4">
-                      <button type="submit" className="px-8 py-4 bg-emerald-500 text-white rounded-2xl hover:bg-emerald-400 transition-all font-black text-xs uppercase tracking-widest">Deploy Unit</button>
+                      <button type="submit" className="px-8 py-4 bg-emerald-500 text-white rounded-2xl hover:bg-emerald-400 transition-all font-black text-xs uppercase tracking-widest">Deploy Class</button>
                       <button type="button" onClick={() => setShowForm({ ...showForm, class: false })} className="px-8 py-4 bg-white/5 text-gray-400 rounded-2xl hover:bg-white/10 transition-all font-black text-xs uppercase tracking-widest">Abort</button>
                     </div>
                   </form>
@@ -1887,7 +2073,7 @@ ${cls.approved > 0 ? `📍Approved: ${String(cls.approved).padStart(2, '0')}
                         <button 
                           onClick={async (e) => {
                             e.stopPropagation()
-                            if (confirm('Decommission this operational unit?')) {
+                            if (confirm('Decommission this class?')) {
                               await deleteClass(cls.id)
                               fetchPeriodAttendanceCount()
                             }
@@ -1899,7 +2085,7 @@ ${cls.approved > 0 ? `📍Approved: ${String(cls.approved).padStart(2, '0')}
                       </div>
                       <div className="space-y-2">
                         <h3 className="text-2xl font-black text-white tracking-tight">{cls.name}</h3>
-                        <p className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">{cls.departments?.name || 'Department Node'}</p>
+                        <p className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">Academic Section</p>
                       </div>
                       
                       <div className="mt-10 pt-6 border-t border-white/5 flex items-center justify-between">
@@ -1924,8 +2110,8 @@ ${cls.approved > 0 ? `📍Approved: ${String(cls.approved).padStart(2, '0')}
               <div className="space-y-10 animate-smoothFadeIn">
                 <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
                   <div className="space-y-2">
-                    <h2 className="text-4xl font-black text-white tracking-tighter">Temporal Matrix</h2>
-                    <p className="text-gray-500 font-bold uppercase tracking-[0.2em] text-[10px]">Managing synchronization schedules for institutional nodes</p>
+                    <h2 className="text-4xl font-black text-white tracking-tighter">Class Timetable</h2>
+                    <p className="text-gray-500 font-bold uppercase tracking-[0.2em] text-[10px]">Managing schedules and subject assignments for classes</p>
                   </div>
                   <div className="flex gap-4">
                     <button 
@@ -1933,14 +2119,7 @@ ${cls.approved > 0 ? `📍Approved: ${String(cls.approved).padStart(2, '0')}
                       className="group px-6 py-4 bg-white/[0.05] border border-white/10 text-white rounded-2xl hover:bg-white/[0.1] transition-all duration-500 font-black text-[10px] uppercase tracking-widest flex items-center gap-3"
                     >
                       <Zap size={14} className="text-emerald-400" />
-                      Add Manual Node
-                    </button>
-                    <button 
-                      onClick={() => setShowForm({ ...showForm, bulkTimetable: !showForm.bulkTimetable })} 
-                      className="group px-8 py-4 bg-white text-black rounded-2xl hover:bg-blue-400 transition-all duration-500 font-black text-[10px] uppercase tracking-widest flex items-center gap-3 shadow-2xl shadow-white/5"
-                    >
-                      <FileText size={14} />
-                      Bulk Sync (CSV)
+                      Add Entry
                     </button>
                   </div>
                 </div>
@@ -1955,14 +2134,14 @@ ${cls.approved > 0 ? `📍Approved: ${String(cls.approved).padStart(2, '0')}
                     
                     <div className="grid md:grid-cols-3 gap-8 mb-8 relative z-10">
                       <div className="space-y-4">
-                        <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] ml-2">Target Unit</label>
+                        <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] ml-2">Select Class</label>
                         <select
                           value={forms.timetable.classId}
                           onChange={(e) => setForms({ ...forms, timetable: { ...forms.timetable, classId: e.target.value }})}
                           className="w-full px-6 py-4 bg-white/[0.05] border border-white/10 rounded-2xl text-white font-bold tracking-tight text-sm focus:border-purple-500/50 outline-none transition-all appearance-none cursor-pointer"
                           required
                         >
-                          <option value="">Select Unit</option>
+                          <option value="">Select Class</option>
                           {classes.map((cls) => (
                             <option key={cls.id} value={cls.id}>
                               {cls.name}
@@ -2037,16 +2216,6 @@ ${cls.approved > 0 ? `📍Approved: ${String(cls.approved).padStart(2, '0')}
                           required
                         />
                       </div>
-                      <div className="space-y-4">
-                        <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] ml-2">Faculty Code</label>
-                        <input
-                          type="text"
-                          placeholder="e.g., DS"
-                          value={forms.timetable.facultyCode}
-                          onChange={(e) => setForms({ ...forms, timetable: { ...forms.timetable, facultyCode: e.target.value }})}
-                          className="w-full px-6 py-4 bg-white/[0.05] border border-white/10 rounded-2xl text-white font-bold tracking-tight text-sm focus:border-purple-500/50 outline-none transition-all"
-                        />
-                      </div>
                     </div>
                     
                     <div className="mt-10 flex gap-4">
@@ -2056,258 +2225,7 @@ ${cls.approved > 0 ? `📍Approved: ${String(cls.approved).padStart(2, '0')}
                   </form>
                 )}
 
-                {showForm.bulkTimetable && (
-                  <div className="glass-card p-6 animate-scaleIn hover-lift mb-6">
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-2xl font-bold gradient-text flex items-center gap-2">
-                        <span className="text-3xl">📊</span>
-                        CSV Import - Class Timetable
-                      </h3>
-                      <button 
-                        onClick={() => setShowForm({ ...showForm, bulkTimetable: false })} 
-                        className="text-gray-500 hover:text-gray-700"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                    
-                    {/* Class Selection */}
-                    <div className="mb-6">
-                      <label className="block text-sm font-bold text-gray-700 mb-2">Select Class *</label>
-                      <select
-                        value={forms.timetable.classId}
-                        onChange={(e) => setForms({ ...forms, timetable: { ...forms.timetable, classId: e.target.value }})}
-                        className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-blue-500 focus:outline-none bg-white shadow-sm"
-                        required
-                      >
-                        <option value="">Choose a class...</option>
-                        {classes.map((cls) => (
-                          <option key={cls.id} value={cls.id}>
-                            {cls.name} ({cls.departments?.name})
-                          </option>
-                        ))}
-                      </select>
-                    </div>
 
-                    {/* CSV Template Section */}
-                    <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl border-2 border-blue-200">
-                      <p className="text-sm text-gray-800 mb-3 font-medium">
-                        ✨ Upload a CSV file with timetable data
-                      </p>
-                      <div className="flex flex-wrap gap-2 mb-3">
-                        <span className="px-3 py-1 bg-white rounded-full text-xs font-semibold text-blue-600 shadow-sm">
-                          ✓ day
-                        </span>
-                        <span className="px-3 py-1 bg-white rounded-full text-xs font-semibold text-blue-600 shadow-sm">
-                          ✓ period
-                        </span>
-                        <span className="px-3 py-1 bg-white rounded-full text-xs font-semibold text-blue-600 shadow-sm">
-                          ✓ subject_code
-                        </span>
-                        <span className="px-3 py-1 bg-white rounded-full text-xs font-semibold text-blue-600 shadow-sm">
-                          ✓ subject_name
-                        </span>
-                        <span className="px-3 py-1 bg-white rounded-full text-xs font-semibold text-blue-600 shadow-sm">
-                          ✓ faculty_name
-                        </span>
-                      </div>
-                      <button
-                        onClick={() => {
-                          // Download CSV template
-                          const csvContent = `day,period,subject_code,subject_name,faculty_name,faculty_code,room_number,is_lab
-Monday,1,CA(302),Computer Architecture,Mrs.I.Roshini,IR,R101,false
-Monday,2,DS(302),Data Structures,Mr.Shivasankaran,SSS,R102,false
-Monday,3,OOP(303),Object Oriented Programming,Ms.M.Benitta Mary,MBM,R103,true
-Monday,4,DM(302),Discrete Mathematics,Mrs.R.TamilSelvi,RT,R104,false
-Monday,5,ESS(301),Environmental Science,Dr.M.Kumaran,MK,R105,false
-Monday,6,DPSD(301),Digital Principles,Ms.Sree Arthi D,DSA,R106,true
-Tuesday,1,CA(302),Computer Architecture,Mrs.I.Roshini,IR,R101,false
-Tuesday,2,DS(302),Data Structures,Mr.Shivasankaran,SSS,R102,false
-Tuesday,3,OOP(303),Object Oriented Programming,Ms.M.Benitta Mary,MBM,R103,true
-Tuesday,4,DM(302),Discrete Mathematics,Mrs.R.TamilSelvi,RT,R104,false
-Tuesday,5,ESS(301),Environmental Science,Dr.M.Kumaran,MK,R105,false
-Tuesday,6,DPSD(301),Digital Principles,Ms.Sree Arthi D,DSA,R106,true
-Wednesday,1,CA(302),Computer Architecture,Mrs.I.Roshini,IR,R101,false
-Wednesday,2,DS(302),Data Structures,Mr.Shivasankaran,SSS,R102,false
-Wednesday,3,OOP(303),Object Oriented Programming,Ms.M.Benitta Mary,MBM,R103,true
-Wednesday,4,DM(302),Discrete Mathematics,Mrs.R.TamilSelvi,RT,R104,false
-Wednesday,5,ESS(301),Environmental Science,Dr.M.Kumaran,MK,R105,false
-Wednesday,6,DPSD(301),Digital Principles,Ms.Sree Arthi D,DSA,R106,true
-Thursday,1,CA(302),Computer Architecture,Mrs.I.Roshini,IR,R101,false
-Thursday,2,DS(302),Data Structures,Mr.Shivasankaran,SSS,R102,false
-Thursday,3,OOP(303),Object Oriented Programming,Ms.M.Benitta Mary,MBM,R103,true
-Thursday,4,DM(302),Discrete Mathematics,Mrs.R.TamilSelvi,RT,R104,false
-Thursday,5,ESS(301),Environmental Science,Dr.M.Kumaran,MK,R105,false
-Thursday,6,DPSD(301),Digital Principles,Ms.Sree Arthi D,DSA,R106,true
-Friday,1,CA(302),Computer Architecture,Mrs.I.Roshini,IR,R101,false
-Friday,2,DS(302),Data Structures,Mr.Shivasankaran,SSS,R102,false
-Friday,3,OOP(303),Object Oriented Programming,Ms.M.Benitta Mary,MBM,R103,true
-Friday,4,DM(302),Discrete Mathematics,Mrs.R.TamilSelvi,RT,R104,false
-Friday,5,ESS(301),Environmental Science,Dr.M.Kumaran,MK,R105,false
-Friday,6,DPSD(301),Digital Principles,Ms.Sree Arthi D,DSA,R106,true
-Saturday,1,CA(302),Computer Architecture,Mrs.I.Roshini,IR,R101,false
-Saturday,2,DS(302),Data Structures,Mr.Shivasankaran,SSS,R102,false
-Saturday,3,OOP(303),Object Oriented Programming,Ms.M.Benitta Mary,MBM,R103,true
-Saturday,4,DM(302),Discrete Mathematics,Mrs.R.TamilSelvi,RT,R104,false
-Saturday,5,ESS(301),Environmental Science,Dr.M.Kumaran,MK,R105,false
-Saturday,6,DPSD(301),Digital Principles,Ms.Sree Arthi D,DSA,R106,true`
-
-                          const blob = new Blob([csvContent], { type: 'text/csv' })
-                          const url = window.URL.createObjectURL(blob)
-                          const a = document.createElement('a')
-                          a.href = url
-                          a.download = 'timetable_template.csv'
-                          document.body.appendChild(a)
-                          a.click()
-                          document.body.removeChild(a)
-                          window.URL.revokeObjectURL(url)
-                          setToast({ message: '📥 CSV template downloaded!', type: 'success' })
-                        }}
-                        className="px-4 py-2 bg-gradient-blue text-white rounded-xl hover:shadow-lg hover:scale-105 transition-all font-semibold text-sm flex items-center gap-2"
-                      >
-                        <span>📥</span>
-                        Download CSV Template
-                      </button>
-                    </div>
-
-                    {/* File Upload Section */}
-                    <div className="space-y-4">
-                      <div>
-                        <input
-                          id="timetable-csv-input"
-                          type="file"
-                          accept=".csv"
-                          onChange={async (e) => {
-                            const file = e.target.files[0]
-                            if (!file) return
-                            
-                            if (!forms.timetable.classId) {
-                              setToast({ message: 'Please select a class first!', type: 'error' })
-                              return
-                            }
-                            
-                            const reader = new FileReader()
-                            reader.onload = async (event) => {
-                              const text = event.target.result
-                              const lines = text.split('\n').filter(line => line.trim())
-                              const headers = lines[0].split(',').map(h => h.trim().toLowerCase())
-                              
-                              // Validate headers
-                              const requiredHeaders = ['day', 'period', 'subject_code', 'subject_name', 'faculty_name']
-                              const missingHeaders = requiredHeaders.filter(h => !headers.includes(h))
-                              
-                              if (missingHeaders.length > 0) {
-                                setToast({ message: `Missing required columns: ${missingHeaders.join(', ')}`, type: 'error' })
-                                return
-                              }
-                              
-                              let successCount = 0
-                              let failCount = 0
-                              
-                              for (let i = 1; i < lines.length; i++) {
-                                const values = lines[i].split(',').map(v => v.trim())
-                                if (values.length !== headers.length) continue
-                                
-                                const row = {}
-                                headers.forEach((header, index) => {
-                                  row[header] = values[index]
-                                })
-                                
-                                // Validate required fields
-                                if (!row.day || !row.period || !row.subject_code || !row.subject_name || !row.faculty_name) {
-                                  failCount++
-                                  continue
-                                }
-                                
-                                // Convert day name to number
-                                const dayMap = {
-                                  'monday': 1, 'mon': 1, '1': 1,
-                                  'tuesday': 2, 'tue': 2, '2': 2,
-                                  'wednesday': 3, 'wed': 3, '3': 3,
-                                  'thursday': 4, 'thu': 4, '4': 4,
-                                  'friday': 5, 'fri': 5, '5': 5,
-                                  'saturday': 6, 'sat': 6, '6': 6
-                                }
-                                
-                                const dayNumber = dayMap[row.day.toLowerCase()]
-                                const periodNumber = parseInt(row.period)
-                                
-                                if (!dayNumber || !periodNumber || periodNumber < 1 || periodNumber > 6) {
-                                  failCount++
-                                  continue
-                                }
-                                
-                                try {
-                                  const { error } = await supabase
-                                    .from('timetable')
-                                    .insert([{
-                                      class_id: forms.timetable.classId,
-                                      day_of_week: dayNumber,
-                                      period_number: periodNumber,
-                                      subject_code: row.subject_code,
-                                      subject_name: row.subject_name,
-                                      faculty_name: row.faculty_name,
-                                      faculty_code: row.faculty_code || null,
-                                      is_lab: row.is_lab === 'true' || row.is_lab === '1' || row.is_lab === 'yes'
-                                    }])
-                                  
-                                  if (error) {
-                                    console.error('Error:', error)
-                                    failCount++
-                                  } else {
-                                    successCount++
-                                  }
-                                } catch (err) {
-                                  console.error('Error:', err)
-                                  failCount++
-                                }
-                              }
-                              
-                              setToast({ 
-                                message: `🎉 CSV import complete! Success: ${successCount}, Failed: ${failCount}`, 
-                                type: successCount > 0 ? 'success' : 'error' 
-                              })
-                              
-                              if (successCount > 0) {
-                                setShowForm({ ...showForm, bulkTimetable: false })
-                                window.location.reload()
-                              }
-                            }
-                            reader.readAsText(file)
-                          }}
-                          className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700"
-                        />
-                      </div>
-
-                      {/* Import Button */}
-                      <button
-                        onClick={() => document.getElementById('timetable-csv-input').click()}
-                        className="w-full px-6 py-4 bg-gradient-purple text-white rounded-xl hover:shadow-2xl hover:scale-105 font-bold text-lg transition-all relative overflow-hidden group"
-                      >
-                        <span className="relative z-10 flex items-center justify-center gap-2">
-                          <span>📤</span>
-                          Import Timetable
-                        </span>
-                        <div className="absolute inset-0 bg-white opacity-0 group-hover:opacity-20 transition-opacity"></div>
-                      </button>
-                    </div>
-
-                    {/* Format Guide */}
-                    <div className="mt-6 p-4 bg-gray-50 rounded-xl border border-gray-200">
-                      <h4 className="font-bold text-gray-800 mb-3">📝 Example CSV Format:</h4>
-                      <div className="bg-white p-3 rounded text-xs font-mono overflow-x-auto border">
-                        <div className="text-gray-700">
-                          day,period,subject_code,subject_name,faculty_name,faculty_code,room_number,is_lab<br/>
-                          Monday,1,CA(302),Computer Architecture,Mrs.I.Roshini,IR,R101,false<br/>
-                          Monday,2,DS(302),Data Structures,Mr.Shivasankaran,SSS,R102,false<br/>
-                          Monday,3,OOP(303),Object Oriented Programming,Ms.M.Benitta Mary,MBM,R103,true<br/>
-                          Tuesday,1,DM(302),Discrete Mathematics,Mrs.R.TamilSelvi,RT,R104,false<br/>
-                          ...
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
                   
                 <div className="grid grid-cols-1 gap-4 mb-6">
                   <div>
@@ -2393,8 +2311,8 @@ Saturday,6,DPSD(301),Digital Principles,Ms.Sree Arthi D,DSA,R106,true`
               <div className="space-y-10 animate-smoothFadeIn">
                 <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
                   <div className="space-y-2">
-                    <h2 className="text-4xl font-black text-white tracking-tighter">Identity Core</h2>
-                    <p className="text-gray-500 font-bold uppercase tracking-[0.2em] text-[10px]">Managing population nodes and status segments</p>
+                    <h2 className="text-4xl font-black text-white tracking-tighter">Student Directory</h2>
+                    <p className="text-gray-500 font-bold uppercase tracking-[0.2em] text-[10px]">Manage student profiles, internships and academic status</p>
                   </div>
                   <div className="flex items-center gap-3">
                     <button 
@@ -2402,7 +2320,7 @@ Saturday,6,DPSD(301),Digital Principles,Ms.Sree Arthi D,DSA,R106,true`
                       className="px-6 py-4 bg-white text-black rounded-2xl hover:bg-emerald-400 transition-all duration-500 font-black text-[10px] uppercase tracking-widest flex items-center gap-2 shadow-xl shadow-white/5"
                     >
                       <Zap size={14} />
-                      Add Node
+                      Add Student
                     </button>
                     <button 
                       onClick={() => setShowForm({ ...showForm, intern: !showForm.intern, student: false, suspended: false })} 
@@ -2425,7 +2343,7 @@ Saturday,6,DPSD(301),Digital Principles,Ms.Sree Arthi D,DSA,R106,true`
                   </div>
                   <input 
                     type="text" 
-                    placeholder="Search identity nodes by name or roll number..." 
+                    placeholder="Search students by name or roll number..." 
                     value={studentSearchQuery}
                     onChange={(e) => setStudentSearchQuery(e.target.value)}
                     className="w-full pl-16 pr-6 py-5 bg-white/[0.03] border border-white/10 rounded-[2rem] text-white font-bold tracking-tight text-sm focus:border-emerald-500/50 focus:bg-emerald-500/5 outline-none transition-all duration-300"
@@ -2467,7 +2385,7 @@ Saturday,6,DPSD(301),Digital Principles,Ms.Sree Arthi D,DSA,R106,true`
                     <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-full blur-3xl"></div>
                     <h3 className="text-xl font-black text-white mb-8 tracking-tight flex items-center gap-3">
                       <UserIcon className="text-emerald-400" />
-                      Provision Regular Node
+                      Register New Student
                     </h3>
                     <div className="grid md:grid-cols-2 gap-8 relative z-10">
                       <div className="space-y-4">
@@ -2479,24 +2397,135 @@ Saturday,6,DPSD(301),Digital Principles,Ms.Sree Arthi D,DSA,R106,true`
                         <input type="text" placeholder="e.g., John Doe" value={forms.student.name} onChange={(e) => setForms({ ...forms, student: { ...forms.student, name: e.target.value }})} className="w-full px-6 py-4 bg-white/[0.05] border border-white/10 rounded-2xl text-white font-bold tracking-tight text-sm focus:border-emerald-500/50 outline-none transition-all" required />
                       </div>
                       <div className="space-y-4">
-                        <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] ml-2">Operational Unit</label>
+                        <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] ml-2">Assigned Class</label>
                         <select value={forms.student.classId} onChange={(e) => {
                           const selectedClass = classes.find(c => c.id === e.target.value)
                           setForms({ ...forms, student: { ...forms.student, classId: e.target.value, streamId: selectedClass?.stream_id || '' }})
                         }} className="w-full px-6 py-4 bg-white/[0.05] border border-white/10 rounded-2xl text-white font-bold tracking-tight text-sm focus:border-emerald-500/50 outline-none transition-all appearance-none cursor-pointer" required>
-                          <option value="">Select Unit</option>
+                          <option value="">Select Class</option>
                           {classes.map((cls) => (<option key={cls.id} value={cls.id}>{cls.name}</option>))}
                         </select>
                       </div>
                     </div>
                     <div className="mt-10 flex gap-4">
-                      <button type="submit" className="px-8 py-4 bg-emerald-500 text-white rounded-2xl hover:bg-emerald-400 transition-all font-black text-xs uppercase tracking-widest">Deploy Node</button>
+                      <button type="submit" className="px-8 py-4 bg-emerald-500 text-white rounded-2xl hover:bg-emerald-400 transition-all font-black text-xs uppercase tracking-widest">Add Student</button>
                       <button type="button" onClick={() => setShowForm({ ...showForm, student: false })} className="px-8 py-4 bg-white/5 text-gray-400 rounded-2xl hover:bg-white/10 transition-all font-black text-xs uppercase tracking-widest">Abort</button>
                     </div>
                   </form>
                 )}
 
-                {/* Intern and Suspended forms would follow similar premium pattern, omitted for brevity but should be consistent */}
+
+                {/* Intern Form */}
+                {showForm.intern && (
+                  <form onSubmit={(e) => handleSubmit('intern', e)} className="bg-white/[0.03] border border-white/10 p-10 rounded-[2.5rem] relative overflow-hidden animate-smoothFadeIn">
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/10 rounded-full blur-3xl"></div>
+                    <div className="grid md:grid-cols-2 gap-8 relative z-10">
+                      <div className="space-y-4">
+                        <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] ml-2">Roll Number</label>
+                        <input 
+                          type="text" 
+                          placeholder="e.g., 21CS001" 
+                          value={forms.intern.rollNumber} 
+                          onChange={(e) => setForms({ ...forms, intern: { ...forms.intern, rollNumber: e.target.value }})} 
+                          className="w-full px-6 py-4 bg-white/[0.05] border border-white/10 rounded-2xl text-white font-bold tracking-tight text-sm focus:border-purple-500/50 outline-none transition-all" 
+                          required 
+                        />
+                      </div>
+                      <div className="space-y-4">
+                        <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] ml-2">Student Name</label>
+                        <input 
+                          type="text" 
+                          placeholder="Full Name" 
+                          value={forms.intern.name} 
+                          onChange={(e) => setForms({ ...forms, intern: { ...forms.intern, name: e.target.value }})} 
+                          className="w-full px-6 py-4 bg-white/[0.05] border border-white/10 rounded-2xl text-white font-bold tracking-tight text-sm focus:border-purple-500/50 outline-none transition-all" 
+                          required 
+                        />
+                      </div>
+                      <div className="space-y-4">
+                        <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] ml-2">Assigned Stream</label>
+                        <div className="w-full px-6 py-4 bg-white/[0.02] border border-white/5 rounded-2xl text-gray-400 font-bold tracking-tight text-sm flex items-center gap-3 cursor-not-allowed">
+                          <Shield size={16} className="text-gray-600" />
+                          {streams.find(s => s.id === forms.intern.streamId)?.name || 'Institutional Default'}
+                        </div>
+                      </div>
+                      <div className="space-y-4">
+                        <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] ml-2">Class Assignment</label>
+                        <select 
+                          value={forms.intern.classId} 
+                          onChange={(e) => setForms({ ...forms, intern: { ...forms.intern, classId: e.target.value }})} 
+                          className="w-full px-6 py-4 bg-white/[0.05] border border-white/10 rounded-2xl text-white font-bold tracking-tight text-sm focus:border-purple-500/50 outline-none transition-all appearance-none cursor-pointer" 
+                          required
+                        >
+                          <option value="">Select Class</option>
+                          {classes.filter(c => c.stream_id === forms.intern.streamId).map(cls => (
+                            <option key={cls.id} value={cls.id}>{cls.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                    <div className="mt-10 flex gap-4">
+                      <button type="submit" className="px-8 py-4 bg-purple-500 text-white rounded-2xl hover:bg-purple-400 transition-all font-black text-xs uppercase tracking-widest">Mark as Intern</button>
+                      <button type="button" onClick={() => setShowForm({ ...showForm, intern: false })} className="px-8 py-4 bg-white/5 text-gray-400 rounded-2xl hover:bg-white/10 transition-all font-black text-xs uppercase tracking-widest">Abort</button>
+                    </div>
+                  </form>
+                )}
+
+                {/* Suspended Form */}
+                {showForm.suspended && (
+                  <form onSubmit={(e) => handleSubmit('suspended', e)} className="bg-white/[0.03] border border-white/10 p-10 rounded-[2.5rem] relative overflow-hidden animate-smoothFadeIn">
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-red-500/10 rounded-full blur-3xl"></div>
+                    <div className="grid md:grid-cols-2 gap-8 relative z-10">
+                      <div className="space-y-4">
+                        <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] ml-2">Roll Number</label>
+                        <input 
+                          type="text" 
+                          placeholder="e.g., 21CS001" 
+                          value={forms.suspended.rollNumber} 
+                          onChange={(e) => setForms({ ...forms, suspended: { ...forms.suspended, rollNumber: e.target.value }})} 
+                          className="w-full px-6 py-4 bg-white/[0.05] border border-white/10 rounded-2xl text-white font-bold tracking-tight text-sm focus:border-red-500/50 outline-none transition-all" 
+                          required 
+                        />
+                      </div>
+                      <div className="space-y-4">
+                        <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] ml-2">Student Name</label>
+                        <input 
+                          type="text" 
+                          placeholder="Full Name" 
+                          value={forms.suspended.name} 
+                          onChange={(e) => setForms({ ...forms, suspended: { ...forms.suspended, name: e.target.value }})} 
+                          className="w-full px-6 py-4 bg-white/[0.05] border border-white/10 rounded-2xl text-white font-bold tracking-tight text-sm focus:border-red-500/50 outline-none transition-all" 
+                          required 
+                        />
+                      </div>
+                      <div className="space-y-4">
+                        <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] ml-2">Assigned Stream</label>
+                        <div className="w-full px-6 py-4 bg-white/[0.02] border border-white/5 rounded-2xl text-gray-400 font-bold tracking-tight text-sm flex items-center gap-3 cursor-not-allowed">
+                          <Shield size={16} className="text-gray-600" />
+                          {streams.find(s => s.id === forms.suspended.streamId)?.name || 'Institutional Default'}
+                        </div>
+                      </div>
+                      <div className="space-y-4">
+                        <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] ml-2">Class Assignment</label>
+                        <select 
+                          value={forms.suspended.classId} 
+                          onChange={(e) => setForms({ ...forms, suspended: { ...forms.suspended, classId: e.target.value }})} 
+                          className="w-full px-6 py-4 bg-white/[0.05] border border-white/10 rounded-2xl text-white font-bold tracking-tight text-sm focus:border-red-500/50 outline-none transition-all appearance-none cursor-pointer" 
+                          required
+                        >
+                          <option value="">Select Class</option>
+                          {classes.filter(c => c.stream_id === forms.suspended.streamId).map(cls => (
+                            <option key={cls.id} value={cls.id}>{cls.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                    <div className="mt-10 flex gap-4">
+                      <button type="submit" className="px-8 py-4 bg-red-500 text-white rounded-2xl hover:bg-red-400 transition-all font-black text-xs uppercase tracking-widest">Mark as Suspended</button>
+                      <button type="button" onClick={() => setShowForm({ ...showForm, suspended: false })} className="px-8 py-4 bg-white/5 text-gray-400 rounded-2xl hover:bg-white/10 transition-all font-black text-xs uppercase tracking-widest">Abort</button>
+                    </div>
+                  </form>
+                )}
 
                 <div className="space-y-4">
                   <div className="flex items-center justify-between px-8 py-4 border-b border-white/5">
@@ -2549,7 +2578,7 @@ Saturday,6,DPSD(301),Digital Principles,Ms.Sree Arthi D,DSA,R106,true`
                               <div className="flex items-center gap-2">
                                 <button 
                                   onClick={async () => {
-                                    if (confirm('Decommission this identity node?')) {
+                                    if (confirm('Delete this student profile?')) {
                                       await deleteStudent(student.id)
                                       fetchPeriodAttendanceCount()
                                     }
@@ -2571,8 +2600,8 @@ Saturday,6,DPSD(301),Digital Principles,Ms.Sree Arthi D,DSA,R106,true`
               <div className="space-y-10 animate-smoothFadeIn">
                 <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
                   <div className="space-y-2">
-                    <h2 className="text-4xl font-black text-white tracking-tighter">Authority Matrix</h2>
-                    <p className="text-gray-500 font-bold uppercase tracking-[0.2em] text-[10px]">Managing executive nodes and privilege segments</p>
+                    <h2 className="text-4xl font-black text-white tracking-tighter">Staff & Users</h2>
+                    <p className="text-gray-500 font-bold uppercase tracking-[0.2em] text-[10px]">Managing user accounts and system privileges</p>
                   </div>
                   <div className="flex gap-4">
                     <button
@@ -2589,7 +2618,7 @@ Saturday,6,DPSD(301),Digital Principles,Ms.Sree Arthi D,DSA,R106,true`
                       }}
                       className="px-6 py-4 bg-red-500/10 text-red-500 border border-red-500/20 rounded-2xl hover:bg-red-500 hover:text-white transition-all duration-500 font-black text-[10px] uppercase tracking-widest flex items-center gap-2"
                     >
-                      Self Decommission
+                      Delete My Account
                     </button>
                   </div>
                 </div>
@@ -2644,68 +2673,86 @@ Saturday,6,DPSD(301),Digital Principles,Ms.Sree Arthi D,DSA,R106,true`
                                <div className="space-y-4">
                                  <label className="text-[8px] font-black text-gray-500 uppercase tracking-[0.2em] ml-2">Coordination & Appointments</label>
                                  <div className="flex flex-col gap-3">
-                                   {/* Admin can't appoint other Admins as HOD/Advisor */}
-                                   {user.role !== 'admin' && (
-                                     <>
-                                       {/* HOD Appointment */}
-                                       <button
-                                         onClick={async () => {
-                                           if (user.is_hod) {
-                                             if (window.confirm('Remove HOD status?')) await removeHOD(user.id)
-                                           } else {
-                                             if (window.confirm('Appoint as HOD?')) await appointAsHOD(user.id)
-                                           }
-                                         }}
-                                         className={`w-full px-4 py-3 rounded-xl font-bold tracking-tight text-xs transition-all flex items-center justify-between ${
-                                           user.is_hod 
-                                             ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500 hover:text-white' 
-                                             : 'bg-white/[0.05] text-gray-400 border border-white/5 hover:bg-white/10'
-                                         }`}
-                                       >
-                                         <span>{user.is_hod ? 'HOD Status Active' : 'Appoint as HOD'}</span>
-                                         <Zap size={14} className={user.is_hod ? 'text-emerald-400' : 'text-gray-600'} />
-                                       </button>
+                                   <>
+                                     {/* HOD Appointment */}
+                                        <button
+                                          onClick={async () => {
+                                            try {
+                                              if (user.is_hod) {
+                                                if (window.confirm('Remove HOD status?')) {
+                                                  const result = await removeHOD(user.id)
+                                                  if (result.success) setToast({ message: 'HOD status removed', type: 'success' })
+                                                  else throw new Error(result.error)
+                                                }
+                                              } else {
+                                                if (window.confirm('Appoint as HOD?')) {
+                                                  const result = await appointAsHOD(user.id)
+                                                  if (result.success) setToast({ message: 'User appointed as HOD', type: 'success' })
+                                                  else throw new Error(result.error)
+                                                }
+                                              }
+                                            } catch (err) {
+                                              setToast({ message: 'Error: ' + err.message, type: 'error' })
+                                            }
+                                          }}
+                                          className={`w-full px-4 py-3 rounded-xl font-bold tracking-tight text-xs transition-all flex items-center justify-between ${
+                                            user.is_hod 
+                                              ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500 hover:text-white' 
+                                              : 'bg-white/[0.05] text-gray-400 border border-white/5 hover:bg-white/10'
+                                          }`}
+                                        >
+                                          <span>{user.is_hod ? 'HOD Status Active' : 'Appoint as HOD'}</span>
+                                          <Zap size={14} className={user.is_hod ? 'text-emerald-400' : 'text-gray-600'} />
+                                        </button>
 
-                                       {/* Class Advisor Appointment */}
-                                       <div className="space-y-2">
-                                         {user.is_class_advisor ? (
-                                           <button
-                                             onClick={async () => {
-                                               if (window.confirm('Remove Class Advisor status?')) await removeClassAdvisor(user.id)
-                                             }}
-                                             className="w-full px-4 py-3 rounded-xl font-bold tracking-tight text-xs bg-blue-500/10 text-blue-400 border border-blue-500/20 hover:bg-blue-500 hover:text-white transition-all flex items-center justify-between"
-                                           >
-                                             <span>Advisor: {classes.find(c => c.id === user.advisor_class_id)?.name}</span>
-                                             <Users size={14} />
-                                           </button>
-                                         ) : (
-                                           <select
-                                             onChange={async (e) => {
-                                               if (e.target.value && window.confirm(`Appoint as Class Advisor for ${classes.find(c => c.id === e.target.value)?.name}?`)) {
-                                                 await appointAsClassAdvisor(user.id, e.target.value)
-                                               }
-                                             }}
-                                             className="w-full px-4 py-3 bg-white/[0.05] border border-white/5 rounded-xl text-gray-400 font-bold tracking-tight text-xs outline-none hover:bg-white/10 transition-all appearance-none cursor-pointer"
-                                             disabled={classes.filter(c => c.stream_id === user.stream_id).length === 0}
-                                           >
-                                             <option value="">Appoint as Advisor...</option>
-                                             {classes
-                                               .filter(c => c.stream_id === user.stream_id)
-                                               .map(cls => (
-                                                 <option key={cls.id} value={cls.id}>{cls.name}</option>
-                                               ))
-                                             }
-                                           </select>
-                                         )}
-                                       </div>
+                                        {/* Class Advisor Appointment */}
+                                        <div className="space-y-2">
+                                          {user.is_class_advisor ? (
+                                            <button
+                                              onClick={async () => {
+                                                try {
+                                                  if (window.confirm('Remove Class Advisor status?')) {
+                                                    const result = await removeClassAdvisor(user.id)
+                                                    if (result.success) setToast({ message: 'Advisor status removed', type: 'success' })
+                                                    else throw new Error(result.error)
+                                                  }
+                                                } catch (err) {
+                                                  setToast({ message: 'Error: ' + err.message, type: 'error' })
+                                                }
+                                              }}
+                                              className="w-full px-4 py-3 rounded-xl font-bold tracking-tight text-xs bg-blue-500/10 text-blue-400 border border-blue-500/20 hover:bg-blue-500 hover:text-white transition-all flex items-center justify-between"
+                                            >
+                                              <span>Advisor: {classes.find(c => c.id === user.advisor_class_id)?.name}</span>
+                                              <Users size={14} />
+                                            </button>
+                                          ) : (
+                                            <select
+                                              onChange={async (e) => {
+                                                try {
+                                                  const selectedClass = classes.find(c => c.id === e.target.value)
+                                                  if (e.target.value && window.confirm(`Appoint as Class Advisor for ${selectedClass?.name}?`)) {
+                                                    const result = await appointAsClassAdvisor(user.id, e.target.value)
+                                                    if (result.success) setToast({ message: `Successfully appointed as advisor for ${selectedClass?.name}`, type: 'success' })
+                                                    else throw new Error(result.error)
+                                                  }
+                                                } catch (err) {
+                                                  setToast({ message: 'Error: ' + err.message, type: 'error' })
+                                                }
+                                              }}
+                                              className="w-full px-4 py-3 bg-white/[0.05] border border-white/5 rounded-xl text-gray-400 font-bold tracking-tight text-xs outline-none hover:bg-white/10 transition-all appearance-none cursor-pointer"
+                                              disabled={classes.filter(c => c.stream_id === (user.stream_id || 'cse')).length === 0}
+                                            >
+                                              <option value="">Appoint as Advisor...</option>
+                                              {classes
+                                                .filter(cls => (cls.stream_id === (user.stream_id || 'cse')))
+                                                .map(cls => (
+                                                  <option key={cls.id} value={cls.id}>{cls.name}</option>
+                                                ))
+                                              }
+                                            </select>
+                                          )}
+                                        </div>
                                      </>
-                                   )}
-
-                                   {user.role === 'admin' && (
-                                     <div className="p-4 bg-white/[0.02] border border-white/5 rounded-xl text-center">
-                                       <p className="text-[10px] font-bold text-gray-600 uppercase tracking-widest">Executive permissions locked</p>
-                                     </div>
-                                   )}
                                  </div>
                                </div>
                              </div>
@@ -2716,18 +2763,18 @@ Saturday,6,DPSD(301),Digital Principles,Ms.Sree Arthi D,DSA,R106,true`
                               const newStatus = user.status === 'active' ? 'suspended' : 'active';
                               if (window.confirm(`Update status for ${user.name}?`)) {
                                 const result = await updateUser(user.id, { status: newStatus })
-                                if (result.success) setToast({ message: `Node ${newStatus}`, type: 'success' })
+                                if (result.success) setToast({ message: `User ${newStatus}`, type: 'success' })
                               }
                             }}
                             className="flex-1 px-4 py-3 bg-white/[0.03] border border-white/5 rounded-xl text-[10px] font-black uppercase tracking-widest text-gray-400 hover:bg-white/10 transition-all"
                           >
-                            {user.status === 'suspended' ? 'Reactivate Node' : 'Suspend Node'}
+                            {user.status === 'suspended' ? 'Reactivate User' : 'Suspend User'}
                           </button>
                           <button
                             onClick={async () => {
-                              if (window.confirm('Decommission this identity node?')) {
+                              if (window.confirm('Delete this user account?')) {
                                 const result = await deleteUser(user.id)
-                                if (result.success) setToast({ message: 'Node decommissioned', type: 'success' })
+                                if (result.success) setToast({ message: 'User deleted', type: 'success' })
                               }
                             }}
                             className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-500 hover:bg-red-500 hover:text-white transition-all"
@@ -2741,6 +2788,129 @@ Saturday,6,DPSD(301),Digital Principles,Ms.Sree Arthi D,DSA,R106,true`
               </div>
             )}
 
+            {activeTab === 'leaveRequests' && (
+              <div className="space-y-10 animate-smoothFadeIn">
+                <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+                  <div className="space-y-2">
+                    <h2 className="text-4xl font-black text-white tracking-tighter">Leave Protocol</h2>
+                    <p className="text-gray-500 font-bold uppercase tracking-[0.2em] text-[10px]">Administrative approval for student leave requests</p>
+                  </div>
+                  <div className="flex gap-4">
+                     <div className="px-6 py-4 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
+                        <Shield size={16} />
+                        Authority: {userProfile?.role === 'admin' ? 'Institutional Admin' : 'Head of Department'}
+                     </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-8">
+                  <div className="bg-white/[0.03] border border-white/10 rounded-[2.5rem] p-8 sm:p-10 space-y-8 relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/5 rounded-full blur-[80px] -mr-32 -mt-32"></div>
+                    
+                    <div className="flex items-center gap-4 relative z-10 border-b border-white/5 pb-8">
+                      <div className="w-12 h-12 bg-emerald-500/20 rounded-2xl flex items-center justify-center text-emerald-400 border border-emerald-500/20">
+                         <FileText size={24} />
+                      </div>
+                      <div>
+                        <h3 className="text-2xl font-black text-white tracking-tight">Synchronized Request Queue</h3>
+                        <p className="text-emerald-500/60 font-bold uppercase tracking-widest text-[10px]">Tracking all active leave requests</p>
+                      </div>
+                    </div>
+
+                    <div className="space-y-6 relative z-10">
+                      {loadingLeave ? (
+                        <div className="py-20 text-center animate-pulse">
+                          <Activity size={48} className="mx-auto mb-6 text-gray-700" />
+                          <p className="text-gray-500 font-bold uppercase text-[10px] tracking-[0.3em]">Synchronizing Intelligence Feed...</p>
+                        </div>
+                      ) : leaveRequests.length === 0 ? (
+                        <div className="py-20 text-center bg-black/20 rounded-[2rem] border border-dashed border-white/10">
+                           <Layout size={40} className="mx-auto mb-6 text-gray-800" />
+                           <h4 className="text-xl font-black text-gray-600 tracking-tight">No Active Requests</h4>
+                           <p className="text-gray-700 font-bold uppercase text-[10px] tracking-widest mt-2">All student leave protocols have been resolved</p>
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          {leaveRequests.map(req => {
+                            const isHOD = userProfile?.is_hod
+                            const isAdmin = userProfile?.role === 'admin'
+                            const canApprove = (isHOD && req.status === 'pending_hod') || (isAdmin && (req.status === 'pending_admin' || req.status === 'pending_hod'))
+                            
+                            return (
+                              <div key={req.id} className="group bg-[#020617] border border-white/5 rounded-[2rem] p-8 hover:bg-white/[0.04] transition-all duration-500 relative overflow-hidden flex flex-col justify-between">
+                                <div className="absolute top-0 right-0 w-24 h-24 bg-white/5 rounded-full blur-2xl group-hover:bg-emerald-500/5 transition-colors"></div>
+                                
+                                <div className="flex-1">
+                                  <div className="flex justify-between items-start mb-6">
+                                    <div>
+                                      <h4 className="text-xl font-black text-white tracking-tight group-hover:text-emerald-400 transition-colors">{req.student_name}</h4>
+                                      <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mt-0.5">{req.register_number} • SEC {req.section}</p>
+                                    </div>
+                                    <span className={`px-4 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest border ${
+                                      req.status === 'approved' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
+                                      req.status === 'rejected' ? 'bg-red-500/10 text-red-400 border-red-500/20' :
+                                      req.status === 'pending_admin' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
+                                      'bg-yellow-500/10 text-yellow-400 border-yellow-500/20'
+                                    }`}>
+                                      {req.status?.replace('_', ' ')}
+                                    </span>
+                                  </div>
+
+                                  <div className="bg-white/5 rounded-2xl p-5 mb-8 border border-white/5 group-hover:border-white/10 transition-colors">
+                                    <p className="text-sm text-gray-400 font-medium leading-relaxed italic">"{req.reason}"</p>
+                                  </div>
+
+                                  <div className="grid grid-cols-2 gap-4 mb-8">
+                                    <div className="p-4 bg-white/[0.02] rounded-xl border border-white/5">
+                                      <span className="block text-[8px] font-black text-gray-500 uppercase tracking-widest mb-1">Attendance</span>
+                                      <span className="text-lg font-black text-white">{req.attendance_percentage}%</span>
+                                    </div>
+                                    <div className="p-4 bg-white/[0.02] rounded-xl border border-white/5">
+                                      <span className="block text-[8px] font-black text-gray-500 uppercase tracking-widest mb-1">Created At</span>
+                                      <span className="text-xs font-black text-white uppercase tracking-tight">{new Date(req.created_at).toLocaleDateString()}</span>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div className="flex flex-col sm:flex-row gap-3 mt-auto">
+                                  {req.letter_url && (
+                                    <a 
+                                      href={req.letter_url} 
+                                      target="_blank" 
+                                      rel="noopener noreferrer" 
+                                      className="flex-1 px-4 py-4 bg-white/5 text-gray-400 border border-white/10 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-white/10 hover:text-white transition-all flex items-center justify-center gap-2"
+                                    >
+                                      <FileText size={14} /> View Document
+                                    </a>
+                                  )}
+                                  
+                                  {canApprove && (
+                                    <div className="flex gap-3 w-full sm:w-auto">
+                                      <button 
+                                        onClick={() => handleLeaveAction(req.id, 'approve')}
+                                        className="flex-1 px-6 py-4 bg-emerald-500 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-emerald-400 transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20"
+                                      >
+                                        <CheckCircle size={14} /> Approve
+                                      </button>
+                                      <button 
+                                        onClick={() => handleLeaveAction(req.id, 'reject')}
+                                        className="px-6 py-4 bg-red-500/10 text-red-400 border border-red-500/20 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-red-500/20 transition-all flex items-center justify-center gap-2"
+                                      >
+                                        <XCircle size={14} /> Reject
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
             {activeTab === 'reports' && (
               <div className="space-y-10 animate-smoothFadeIn">
                  <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
@@ -2768,7 +2938,7 @@ Saturday,6,DPSD(301),Digital Principles,Ms.Sree Arthi D,DSA,R106,true`
                  <div className="bg-white/[0.03] border border-white/10 rounded-[2.5rem] p-8 sm:p-10 space-y-8">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                        <div className="space-y-4">
-                          <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] ml-2">Operational Node (Optional)</label>
+                          <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] ml-2">Assigned Class (Optional)</label>
                           <select
                              value={reportSelectedClass}
                              onChange={(e) => setReportSelectedClass(e.target.value)}
@@ -3042,8 +3212,8 @@ Saturday,6,DPSD(301),Digital Principles,Ms.Sree Arthi D,DSA,R106,true`
             {/* Modal Header */}
             <div className="p-8 sm:p-12 border-b border-white/5 flex items-center justify-between">
               <div>
-                <h3 className="text-4xl font-black text-white tracking-tighter">{selectedClassView.name}</h3>
-                <p className="text-gray-500 font-bold uppercase tracking-[0.2em] text-[10px] mt-2">Active Population Node - {students.filter(s => s.class_id === selectedClassView.id).length} identities</p>
+                <h2 className="text-4xl font-black text-white tracking-tighter">{selectedClassView.name}</h2>
+                <p className="text-gray-500 font-bold uppercase tracking-[0.2em] text-[10px] mt-2">Active Class Statistics - {students.filter(s => s.class_id === selectedClassView.id).length} Students</p>
               </div>
               <button 
                 onClick={() => setSelectedClassView(null)}
@@ -3081,7 +3251,7 @@ Saturday,6,DPSD(301),Digital Principles,Ms.Sree Arthi D,DSA,R106,true`
                   ))}
                 {students.filter(s => s.class_id === selectedClassView.id).length === 0 && (
                   <div className="col-span-full py-20 text-center">
-                    <p className="text-gray-500 font-bold uppercase tracking-widest text-xs">No identities deployed to this node</p>
+                    <p className="text-gray-500 font-bold uppercase tracking-widest text-xs">No students enrolled in this class</p>
                   </div>
                 )}
               </div>

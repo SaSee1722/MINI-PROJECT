@@ -6,21 +6,17 @@ import { useSessions } from '../hooks/useSessions'
 import { useAttendance } from '../hooks/useAttendance'
 import { useStudentAttendance } from '../hooks/useStudentAttendance'
 import { useUsers } from '../hooks/useUsers'
+import { useDailyAttendance } from '../hooks/useDailyAttendance'
 import { supabase } from '../services/supabase'
 import Navbar from '../components/Navbar'
 import AttendanceCheckbox from '../components/AttendanceCheckbox'
 import InteractiveTimetable from '../components/InteractiveTimetable'
 import Toast from '../components/Toast'
 import { generatePeriodAttendanceReport } from '../utils/pdfGenerator'
-import { Zap, Shield, Users, Clock, FileText, Activity, AlertCircle, Upload, CheckCircle, XCircle } from 'lucide-react'
+import { Zap, Shield, Users, Clock, FileText, Activity, AlertCircle, Upload, CheckCircle, XCircle, Layout } from 'lucide-react'
 
 const streams = [
-  { id: 'cse', name: 'Computer Science and Engineering', code: 'CSE' },
-  { id: 'it', name: 'Information Technology', code: 'IT' },
-  { id: 'ece', name: 'Electronics and Communication Engineering', code: 'ECE' },
-  { id: 'eee', name: 'Electrical and Electronics Engineering', code: 'EEE' },
-  { id: 'mech', name: 'Mechanical Engineering', code: 'MECH' },
-  { id: 'civil', name: 'Civil Engineering', code: 'CIVIL' }
+  { id: 'cse', name: 'Computer Science and Engineering', code: 'CSE' }
 ]
 
 const StaffDashboardNew = () => {
@@ -60,21 +56,93 @@ const StaffDashboardNew = () => {
   
   const [selectedClassForTimetable, setSelectedClassForTimetable] = useState('')
   const [timetableDate, setTimetableDate] = useState(new Date().toISOString().split('T')[0])
-  const [shortReportDate, setShortReportDate] = useState(new Date().toISOString().split('T')[0])
   const [shortReportData, setShortReportData] = useState(null)
   const [loadingReport, setLoadingReport] = useState(false)
   const [shortReportSelectedClasses, setShortReportSelectedClasses] = useState([])
+  const [showDailyRoster, setShowDailyRoster] = useState(false)
+  const [localDailyAttendance, setLocalDailyAttendance] = useState({})
+  const [recentHistory, setRecentHistory] = useState([])
+  const [submittingDaily, setSubmittingDaily] = useState(false)
+
+  const { dailyAttendance, bulkMarkDailyAttendance, fetchRecentHistory } = useDailyAttendance(
+    userProfile?.advisor_class_id, 
+    attendanceDate
+  )
+
+  useEffect(() => {
+    if (dailyAttendance) {
+      setLocalDailyAttendance(dailyAttendance)
+    }
+  }, [dailyAttendance])
+
+  const loadHistory = async () => {
+    const history = await fetchRecentHistory()
+    setRecentHistory(history)
+  }
+
+  useEffect(() => {
+    if (activeTab === 'dayAttendance' && userProfile?.advisor_class_id) {
+      loadHistory()
+    }
+  }, [activeTab, userProfile?.advisor_class_id])
+
+  const handleSubmitDailyAttendance = async () => {
+    if (!userProfile?.advisor_class_id) return
+    
+    setSubmittingDaily(true)
+    const records = Object.entries(localDailyAttendance).map(([id, data]) => ({
+      student_id: id,
+      class_id: userProfile.advisor_class_id,
+      date: attendanceDate,
+      status: data.status,
+      approval_status: data.approval_status,
+      marked_by: user?.id
+    }))
+
+    if (records.length === 0) {
+      setToast({ message: 'No attendance marked yet', type: 'warning' })
+      setSubmittingDaily(false)
+      return
+    }
+
+    const result = await bulkMarkDailyAttendance(records)
+
+    if (result.success) {
+      setToast({ message: 'Daily attendance synchronized successfully!', type: 'success' })
+      setShowDailyRoster(false)
+      setLocalDailyAttendance({})
+      // Delay history load to allow DB to propagate
+      setTimeout(() => loadHistory(), 800)
+    } else {
+      setToast({ message: 'Synchronization failed: ' + result.error, type: 'error' })
+    }
+    setSubmittingDaily(false)
+  }
+
+  const handleMarkAllDailyPresent = async () => {
+    const allPresentMap = {}
+    dailyStudents.forEach(student => {
+      allPresentMap[student.id] = {
+        status: 'present',
+        approval_status: 'approved'
+      }
+    })
+    setLocalDailyAttendance(prev => ({ ...prev, ...allPresentMap }))
+    setToast({ message: 'All students set to present in local state. Click Sync to save.', type: 'info' })
+  }
 
   const hour = new Date().getHours()
   const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening'
   const currentStream = streams.find(s => s.id === userProfile?.stream_id)
 
   useEffect(() => {
+    // Proactive fetch for HOD badge
+    if (userProfile?.is_hod && userProfile?.stream_id) {
+      fetchHodRequests()
+    }
+
     if (activeTab === 'leaveRequest') {
       fetchMyLeaveRequests()
-      if (userProfile?.is_hod) {
-        fetchHodRequests()
-      }
     }
   }, [activeTab, userProfile])
 
@@ -257,7 +325,7 @@ const StaffDashboardNew = () => {
 
   const handleDownloadReport = async () => {
     if (!selectedClass) {
-      setToast({ message: 'Please select a class', type: 'info' })
+    setToast({ message: 'Please select a class', type: 'info' })
       return
     }
     
@@ -293,6 +361,8 @@ const StaffDashboardNew = () => {
       setToast({ message: 'Error fetching attendance records', type: 'error' })
     }
   }
+
+
   const generateShortReport = async () => {
     if (!userProfile?.stream_id) {
       setToast({ message: 'Your account is not assigned to a stream', type: 'info' })
@@ -324,55 +394,37 @@ const StaffDashboardNew = () => {
         const classStudents = students.filter(s => s.class_id === cls.id)
         const totalStudents = classStudents.length
 
+        // Get today's definitive daily attendance for this class
         const { data: attendanceRecords, error } = await supabase
-          .from('period_student_attendance')
+          .from('daily_student_attendance')
           .select(`
-            *,
-            students!inner(class_id, status),
-            period_attendance!inner(date)
+            status,
+            approval_status,
+            student_id
           `)
-          .eq('students.class_id', cls.id)
-          .eq('period_attendance.date', shortReportDate)
+          .eq('class_id', cls.id)
+          .eq('date', shortReportDate)
 
         if (error) {
-          console.error('Error fetching attendance:', error)
+          console.error('Error fetching daily attendance:', error)
           continue
         }
-
-        // Aggregate attendance status per student for the entire day
-        const studentDailyStatus = {}
-        
-        attendanceRecords?.forEach(record => {
-          const sid = record.student_id
-          const currentStatus = record.status
-          const prevStatus = studentDailyStatus[sid]?.status
-          
-          // Priority: present > on_duty > absent
-          if (!prevStatus || 
-              currentStatus === 'present' || 
-              (currentStatus === 'on_duty' && prevStatus === 'absent')) {
-            studentDailyStatus[sid] = {
-              status: currentStatus,
-              approval_status: record.approval_status
-            }
-          }
-        })
 
         let presentCount = 0
         let approvedAbsentCount = 0
         let unapprovedAbsentCount = 0
         let onDutyCount = 0
 
-        Object.values(studentDailyStatus).forEach(data => {
-          if (data.status === 'present') {
+        attendanceRecords?.forEach(record => {
+          if (record.status === 'present') {
             presentCount++
-          } else if (data.status === 'absent') {
-            if (data.approval_status === 'approved') {
+          } else if (record.status === 'absent') {
+            if (record.approval_status === 'approved') {
               approvedAbsentCount++
             } else {
               unapprovedAbsentCount++
             }
-          } else if (data.status === 'on_duty') {
+          } else if (record.status === 'on_duty') {
             onDutyCount++
           }
         })
@@ -402,13 +454,16 @@ const StaffDashboardNew = () => {
   }
 
   const filteredStudents = selectedClass ? students.filter(s => s.class_id === selectedClass && s.status !== 'suspended' && s.status !== 'intern') : []
+  const dailyStudents = userProfile?.advisor_class_id ? students.filter(s => s.class_id === userProfile.advisor_class_id && s.status !== 'suspended' && s.status !== 'intern') : []
+  const dailySuspendedStudents = userProfile?.advisor_class_id ? students.filter(s => s.class_id === userProfile.advisor_class_id && s.status === 'suspended') : []
+  const dailyInternStudents = userProfile?.advisor_class_id ? students.filter(s => s.class_id === userProfile.advisor_class_id && s.status === 'intern') : []
   const myAttendanceRecords = attendance.filter(record => record.user_id === user?.id)
-  const pcClasses = classes.filter(cls => cls.stream_id === userProfile?.stream_id)
 
   const tabs = [
     { id: 'timetable', name: 'Timetable' },
-    ...(userProfile?.is_pc || userProfile?.is_hod || userProfile?.is_class_advisor ? [{ id: 'shortreport', name: 'Short Report' }] : []),
-    { id: 'leaveRequest', name: 'Leave Request' },
+    ...(userProfile?.is_class_advisor ? [{ id: 'dayAttendance', name: 'Day Attendance' }] : []),
+    ...(userProfile?.is_hod ? [{ id: 'shortreport', name: 'Short Report' }] : []),
+    { id: 'leaveRequest', name: 'Leave Request', badge: userProfile?.is_hod ? hodRequests.length : 0 },
     { id: 'reports', name: 'Reports' }
   ]
 
@@ -453,11 +508,6 @@ const StaffDashboardNew = () => {
                     HEAD OF DEPARTMENT
                   </span>
                 )}
-                {userProfile?.is_pc && (
-                  <span className="px-4 py-2 rounded-xl bg-purple-500/10 text-purple-400 text-[10px] font-black uppercase tracking-widest border border-purple-500/20">
-                    PROGRAM COORDINATOR
-                  </span>
-                )}
                 {userProfile?.is_class_advisor && (
                   <span className="px-4 py-2 rounded-xl bg-blue-500/10 text-blue-400 text-[10px] font-black uppercase tracking-widest border border-blue-500/20">
                     CLASS ADVISOR: {classes.find(c => c.id === userProfile.advisor_class_id)?.name}
@@ -487,15 +537,25 @@ const StaffDashboardNew = () => {
                   <p className="text-blue-200/60 text-sm font-bold uppercase tracking-widest mt-2">Ensure synchronization for <span className="text-white">{classes.find(c => c.id === userProfile.advisor_class_id)?.name}</span></p>
                 </div>
               </div>
-              <button 
-                onClick={() => {
-                  setSelectedClassForTimetable(userProfile.advisor_class_id)
-                  setActiveTab('timetable')
-                }}
-                className="px-8 py-4 bg-white text-black rounded-2xl font-black text-xs uppercase tracking-[0.2em] hover:scale-105 active:scale-95 transition-all shadow-[0_0_40px_-10px_rgba(255,255,255,0.3)]"
-              >
-                Launch Protocol
-              </button>
+              <div className="flex flex-col sm:flex-row gap-4">
+                <button 
+                  onClick={() => {
+                    setSelectedClassForTimetable(userProfile.advisor_class_id)
+                    setActiveTab('timetable')
+                  }}
+                  className="px-8 py-4 bg-white/10 text-white border border-white/20 rounded-2xl font-black text-xs uppercase tracking-[0.2em] hover:bg-white/20 transition-all"
+                >
+                  Period Protocol
+                </button>
+                <button 
+                  onClick={() => {
+                    setActiveTab('dayAttendance')
+                  }}
+                  className="px-8 py-4 bg-white text-black rounded-2xl font-black text-xs uppercase tracking-[0.2em] hover:scale-105 active:scale-95 transition-all shadow-[0_0_40px_-10px_rgba(255,255,255,0.3)]"
+                >
+                  Daily Protocol
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -512,7 +572,16 @@ const StaffDashboardNew = () => {
                    : 'bg-white/5 text-gray-500 hover:bg-white/10 hover:text-white'
                }`}
              >
-               {tab.name}
+               <span className="flex items-center gap-2">
+                 {tab.name}
+                 {tab.badge > 0 && (
+                   <span className={`px-2 py-0.5 rounded-full text-[8px] animate-pulse ${
+                     activeTab === tab.id ? 'bg-black text-white' : 'bg-emerald-500 text-white'
+                   }`}>
+                     {tab.badge}
+                   </span>
+                 )}
+               </span>
              </button>
            ))}
         </div>
@@ -550,6 +619,7 @@ const StaffDashboardNew = () => {
                    <InteractiveTimetable 
                      classId={selectedClassForTimetable} 
                      selectedDate={timetableDate}
+                     className={classes.find(c => c.id === selectedClassForTimetable)?.name}
                    />
                  ) : (
                    <div className="py-20 text-center opacity-30">
@@ -560,6 +630,262 @@ const StaffDashboardNew = () => {
                  )}
                </div>
              </div>
+          )}
+
+          {activeTab === 'dayAttendance' && userProfile?.is_class_advisor && (
+            <div className="space-y-10">
+              <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+                <div className="space-y-2">
+                  <h2 className="text-4xl font-black text-white tracking-tighter">Daily Protocol</h2>
+                  <p className="text-gray-500 font-bold uppercase tracking-[0.2em] text-[10px]">Synchronization of institutional presence</p>
+                </div>
+                {Object.keys(dailyAttendance).length > 0 && (
+                  <div className="flex items-center gap-3 px-6 py-3 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl animate-smoothFadeIn">
+                    <CheckCircle size={16} className="text-emerald-500" />
+                    <span className="text-[10px] font-black text-emerald-400 uppercase tracking-widest mt-0.5">Records Synchronized for {new Date(attendanceDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}</span>
+                  </div>
+                )}
+                <div className="flex gap-4">
+                  <input
+                    type="date"
+                    value={attendanceDate}
+                    onChange={(e) => setAttendanceDate(e.target.value)}
+                    className="px-6 py-4 bg-white/[0.05] border border-white/10 rounded-2xl text-white font-bold tracking-tight text-sm focus:border-emerald-500/50 outline-none transition-all [color-scheme:dark]"
+                  />
+                </div>
+              </div>
+
+              {/* Class Card for Advisor */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {userProfile?.advisor_class_id && (
+                  <div 
+                    onClick={() => {
+                      if (Object.keys(dailyAttendance).length > 0) {
+                        setToast({ 
+                          message: 'Institutional records for today are already synchronized!', 
+                          type: 'info' 
+                        })
+                        return
+                      }
+                      setShowDailyRoster(!showDailyRoster)
+                    }}
+                    className={`group cursor-pointer bg-white/[0.04] border ${showDailyRoster ? 'border-emerald-500' : 'border-emerald-500/30'} rounded-[2.5rem] p-10 relative overflow-hidden transition-all duration-500 shadow-2xl shadow-emerald-500/10 hover:scale-[1.02] active:scale-95`}
+                  >
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-full blur-3xl group-hover:bg-emerald-500/20 transition-colors"></div>
+                    
+                    <div className="relative z-10">
+                      <div className="flex items-center gap-5 mb-8">
+                        <div className="w-16 h-16 bg-emerald-500/20 rounded-[1.5rem] flex items-center justify-center border border-emerald-500/30 text-emerald-400 group-hover:bg-emerald-500 transition-all">
+                          <Layout size={32} className={showDailyRoster ? 'text-white' : ''} />
+                        </div>
+                        <div>
+                          <h3 className="text-3xl font-black text-white tracking-tight">
+                            {classes.find(c => c.id === userProfile.advisor_class_id)?.name}
+                          </h3>
+                          <p className={`text-[10px] font-black uppercase tracking-widest mt-1 ${Object.keys(dailyAttendance).length > 0 ? 'text-emerald-400' : 'text-emerald-500/60'}`}>
+                            {showDailyRoster 
+                              ? 'Marking in Progress' 
+                              : Object.keys(dailyAttendance).length > 0 
+                                ? 'Attendance Already Marked' 
+                                : 'Click to Mark Attendance'}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between py-6 border-y border-white/5 mb-8">
+                        <div>
+                          <span className="block text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1">Total Strength</span>
+                          <span className="text-2xl font-black text-white">
+                            {dailyStudents.length} Students
+                          </span>
+                        </div>
+                        <div className="text-right">
+                          <span className="block text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1">Status</span>
+                          <span className="px-3 py-1 bg-emerald-500/20 text-emerald-400 rounded-lg text-[9px] font-black uppercase tracking-widest border border-emerald-500/20">Active</span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-3">
+                        <div className="flex -space-x-3">
+                          {dailyStudents.slice(0, 3).map((_, i) => (
+                            <div key={i} className="w-10 h-10 rounded-full bg-white/5 border-2 border-[#020617] flex items-center justify-center overflow-hidden">
+                              <Users size={16} className="text-gray-500" />
+                            </div>
+                          ))}
+                        </div>
+                        <span className={`text-[10px] font-black uppercase tracking-widest ml-2 ${Object.keys(dailyAttendance).length > 0 ? 'text-emerald-500' : 'text-gray-500'}`}>
+                          {Object.keys(dailyAttendance).length > 0 ? 'Protocol Synchronized' : 'Verification Ready'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Recent Daily Records Summary */}
+                <div className="bg-white/[0.02] border border-white/5 rounded-[2.5rem] p-8 space-y-6">
+                  <div className="flex items-center justify-between border-b border-white/5 pb-4">
+                    <div className="flex items-center gap-3">
+                      <Activity size={18} className="text-emerald-500" />
+                      <h4 className="text-sm font-black text-white uppercase tracking-widest leading-none mt-1">Recent Intelligence Analysis</h4>
+                    </div>
+                    <button 
+                      onClick={loadHistory}
+                      className="p-2 hover:bg-white/5 rounded-lg transition-colors text-gray-500 hover:text-white"
+                      title="Refresh Analysis"
+                    >
+                      <Clock size={16} />
+                    </button>
+                  </div>
+                  
+                  {recentHistory.length === 0 ? (
+                    <div className="py-10 text-center">
+                      <p className="text-[10px] font-black text-gray-600 uppercase tracking-widest">No recent exceptions logged</p>
+                      <p className="text-[9px] text-gray-700 uppercase tracking-tighter mt-2 font-bold focus:animate-pulse">Analyzing Archives...</p>
+                    </div>
+                  ) : recentHistory[0]?.date === 'error' ? (
+                    <div className="py-10 text-center">
+                      <AlertCircle size={24} className="mx-auto mb-4 text-red-500/50" />
+                      <p className="text-[10px] font-black text-red-500/50 uppercase tracking-widest">Operational Fault Detected</p>
+                      <p className="text-[8px] text-gray-600 mt-1 font-mono">{recentHistory[0].error}</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {recentHistory.map((day) => (
+                        <div key={day.date} className="group flex flex-col gap-3 p-5 bg-white/[0.02] rounded-[1.5rem] border border-white/5 hover:border-emerald-500/20 transition-all">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">
+                              {day.date === 'error' ? 'SYSTEM ERROR' : new Date(day.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                            </span>
+                            <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-widest ${day.exceptions.length > 0 ? 'bg-red-500/10 text-red-400' : 'bg-emerald-500/10 text-emerald-400'}`}>
+                              {day.exceptions.length > 0 ? `${day.exceptions.length} Departures` : 'Full Presence'}
+                            </span>
+                          </div>
+                          
+                          {day.exceptions.length > 0 ? (
+                            <div className="flex flex-wrap gap-2">
+                              {day.exceptions.map((record, idx) => (
+                                <div key={`${day.date}-${record.student_id}-${idx}`} className="flex items-center gap-2 px-3 py-1.5 bg-black/40 rounded-lg border border-white/5">
+                                  <span className="text-[10px] font-bold text-gray-300">{record.students?.name || record.student_id.slice(0, 8)}</span>
+                                  <span className={`text-[8px] font-black uppercase tracking-widest ${record.status === 'absent' ? 'text-red-400' : 'text-blue-400'}`}>
+                                    {record.status === 'absent' ? 'ABS' : 'OD'}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-[9px] font-bold text-gray-600 uppercase tracking-widest italic">100% Institutional Presence Synchronized</p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {showDailyRoster ? (
+                <div className="space-y-8 animate-smoothFadeIn">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/10 pb-6">
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 bg-white/5 rounded-xl flex items-center justify-center text-gray-400">
+                        <Users size={20} />
+                      </div>
+                      <div>
+                        <h4 className="text-xl font-black text-white tracking-tight">Attendance Roster</h4>
+                        <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mt-0.5">Physical headcount verification</p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex gap-3">
+                      <button
+                        onClick={handleMarkAllDailyPresent}
+                        className="px-5 py-3 bg-white/5 text-gray-400 border border-white/10 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-white/10 transition-all flex items-center gap-2"
+                      >
+                        <CheckCircle size={14} />
+                        All Present
+                      </button>
+                      <button
+                        onClick={handleSubmitDailyAttendance}
+                        disabled={submittingDaily}
+                        className="px-8 py-3 bg-emerald-500 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-emerald-600 shadow-xl shadow-emerald-500/20 transition-all flex items-center gap-2 disabled:opacity-50"
+                      >
+                        <Upload size={14} />
+                        {submittingDaily ? 'Syncing...' : 'Sync Protocol'}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-4">
+                    {dailyStudents.map((student) => (
+                      <AttendanceCheckbox
+                        key={student.id}
+                        studentId={student.id}
+                        studentName={student.name}
+                        initialStatus={localDailyAttendance[student.id]?.status || ''}
+                        initialApprovalStatus={localDailyAttendance[student.id]?.approval_status || ''}
+                        onChange={(id, status, approval) => {
+                          setLocalDailyAttendance(prev => ({
+                            ...prev,
+                            [id]: { status, approval_status: approval }
+                          }))
+                        }}
+                      />
+                    ))}
+                  </div>
+
+                  {/* Suspended and Intern Students Sector */}
+                  {(dailySuspendedStudents.length > 0 || dailyInternStudents.length > 0) && (
+                    <div className="pt-10 space-y-6">
+                      <div className="flex items-center gap-3 border-b border-white/5 pb-4">
+                        <Shield size={16} className="text-gray-500" />
+                        <h4 className="text-[10px] font-black text-gray-500 uppercase tracking-widest leading-none mt-1">Special Administrative Category</h4>
+                      </div>
+                      
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {dailySuspendedStudents.map(student => (
+                          <div key={student.id} className="p-4 bg-red-500/5 border border-red-500/20 rounded-xl flex items-center justify-between opacity-70 grayscale hover:grayscale-0 transition-all">
+                            <div>
+                              <div className="font-bold text-red-100 text-sm tracking-tight">{student.name}</div>
+                              <div className="text-[9px] text-red-500/50 font-black tracking-widest">{student.roll_number}</div>
+                            </div>
+                            <span className="px-3 py-1 bg-red-500/20 text-red-400 text-[8px] font-black uppercase tracking-widest rounded-lg border border-red-500/30">
+                              Suspended
+                            </span>
+                          </div>
+                        ))}
+                        
+                        {dailyInternStudents.map(student => (
+                          <div key={student.id} className="p-4 bg-blue-500/5 border border-blue-500/20 rounded-xl flex items-center justify-between opacity-70 grayscale hover:grayscale-0 transition-all">
+                            <div>
+                              <div className="font-bold text-blue-100 text-sm tracking-tight">{student.name}</div>
+                              <div className="text-[9px] text-blue-500/50 font-black tracking-widest">{student.roll_number}</div>
+                            </div>
+                            <span className="px-3 py-1 bg-blue-500/20 text-blue-400 text-[8px] font-black uppercase tracking-widest rounded-lg border border-blue-500/30">
+                              Internship
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="pt-8 border-t border-white/5 flex justify-center">
+                    <button
+                      onClick={handleSubmitDailyAttendance}
+                      disabled={submittingDaily}
+                      className="w-full sm:w-auto px-20 py-5 bg-emerald-500 text-white rounded-[2rem] font-black text-xs uppercase tracking-[0.2em] hover:scale-[1.02] active:scale-95 shadow-2xl shadow-emerald-500/30 transition-all disabled:opacity-50"
+                    >
+                      {submittingDaily ? 'Finalizing Sync...' : 'Finalize Sync Protocol'}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="py-20 text-center opacity-30 animate-smoothFadeIn">
+                  <Activity size={48} className="mx-auto mb-6 text-gray-500" />
+                  <h3 className="text-xl font-black text-white tracking-tight uppercase">Ready for Deployment</h3>
+                  <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-2">Click the class card above to initialize daily attendance roster</p>
+                </div>
+              )}
+            </div>
           )}
 
             {activeTab === 'shortreport' && (
@@ -604,10 +930,10 @@ const StaffDashboardNew = () => {
                   <div className="space-y-4">
                     <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] ml-2">Select Class Nodes</label>
                     <div className="max-h-64 overflow-y-auto bg-white/[0.02] border border-white/10 rounded-2xl p-4 space-y-2 custom-scrollbar">
-                      {pcClasses.length === 0 && (
-                        <p className="text-gray-500 text-xs font-bold text-center py-4">No classes found for your stream.</p>
+                      {classes.length === 0 && (
+                        <p className="text-gray-500 text-xs font-bold text-center py-4">No classes found.</p>
                       )}
-                      {pcClasses.map(cls => (
+                      {classes.map(cls => (
                         <label key={cls.id} className="flex items-center gap-4 p-3 hover:bg-white/[0.05] rounded-xl transition-all cursor-pointer group">
                           <input
                             type="checkbox"
@@ -638,11 +964,6 @@ const StaffDashboardNew = () => {
                       <div className="space-y-1">
                         <div className="flex items-center gap-3">
                           <h3 className="text-2xl font-black text-white tracking-tight">Stream Report: {shortReportData.stream?.name}</h3>
-                          {userProfile?.is_pc && (
-                            <span className="px-3 py-1 bg-purple-500/20 text-purple-300 rounded-lg text-[10px] font-black uppercase tracking-widest border border-purple-500/20">
-                              PC Authorized
-                            </span>
-                          )}
                         </div>
                         <p className="text-gray-500 font-bold text-xs uppercase tracking-widest">Date: {new Date(shortReportData.date).toLocaleDateString('en-GB')}</p>
                       </div>
@@ -696,24 +1017,72 @@ const StaffDashboardNew = () => {
                       ))}
                     </div>
 
-                    <div className="mt-8 pt-6 border-t border-white/10 flex flex-col sm:flex-row justify-between items-center gap-6">
-                      <p className="text-gray-500 text-xs font-bold uppercase tracking-widest">
-                        Reported by: <span className="text-white">Program Coordinator, {shortReportData.stream?.code} - {userProfile?.name}</span>
-                      </p>
-                      
-                      <button
-                        onClick={() => {
-                          const reportText = `☀️Stream: ${shortReportData.stream?.name}\n☀️Date: ${new Date(shortReportData.date).toLocaleDateString('en-GB')}\n\n${shortReportData.classes.map(cls => 
-                            `➕${cls.name}: ${shortReportData.stream?.code}  ${cls.present}/${cls.total}\n${cls.approved > 0 ? `📍Approved: ${String(cls.approved).padStart(2, '0')}\n` : ''}${cls.unapproved > 0 ? `📍Unapproved: ${String(cls.unapproved).padStart(2, '0')}\n` : ''}${cls.onDuty > 0 ? `📍OD: ${String(cls.onDuty).padStart(2, '0')}\n` : ''}${cls.suspended > 0 ? `📍Suspend: ${String(cls.suspended).padStart(2, '0')}\n` : ''}${cls.intern > 0 ? `📍Intern: ${String(cls.intern).padStart(2, '0')}\n` : ''}`
-                          ).join('\n')}\n\nReported by: Program Coordinator, ${shortReportData.stream?.code} - ${userProfile?.name}`
+                    {/* Copyable Feed Preview */}
+                    <div className="mt-12 space-y-4">
+                      <div className="flex items-center gap-2 ml-2">
+                         <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
+                         <h4 className="text-[10px] font-black text-emerald-500/80 uppercase tracking-[0.2em]">Syncable Intelligence Feed</h4>
+                      </div>
+                      <div className="bg-black/60 border border-emerald-500/20 rounded-[2rem] p-8 relative group overflow-hidden">
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-3xl"></div>
+                        <pre className="text-emerald-400/90 font-mono text-xs leading-relaxed whitespace-pre-wrap select-all">
+                          {(() => {
+                            const dateStr = new Date(shortReportData.date).toLocaleDateString('en-GB')
+                            const streamName = shortReportData.stream?.name
+                            const streamCode = shortReportData.stream?.code
+                            const reportSource = userProfile?.is_hod ? 'Head of Department' : 'Class Advisor'
+                            
+                            let text = `☀️Stream: ${streamName}\n☀️Date: ${dateStr}\n\n`
+                            
+                            if (shortReportData.classes && shortReportData.classes.length > 0) {
+                              shortReportData.classes.forEach(cls => {
+                                text += `➕${cls.name}: ${streamCode}  ${cls.present}/${cls.total}\n`
+                                if (cls.approved > 0) text += `📍Approved: ${String(cls.approved).padStart(2, '0')}\n`
+                                if (cls.unapproved > 0) text += `📍Unapproved: ${String(cls.unapproved).padStart(2, '0')}\n`
+                                if (cls.onDuty > 0) text += `📍OD: ${String(cls.onDuty).padStart(2, '0')}\n`
+                                if (cls.suspended > 0) text += `📍Suspend: ${String(cls.suspended).padStart(2, '0')}\n`
+                                if (cls.intern > 0) text += `📍Intern: ${String(cls.intern).padStart(2, '0')}\n`
+                                text += '\n'
+                              })
+                            } else {
+                              text += `[No active class nodes selected for synchronization]\n\n`
+                            }
+                            
+                            text += `Reported by: ${reportSource}, ${streamCode} - ${userProfile?.name}.`
+                            return text
+                          })()}
+                        </pre>
+                        
+                        <div className="mt-8 flex justify-end relative z-10">
+                          <button
+                            onClick={() => {
+                              const dateStr = new Date(shortReportData.date).toLocaleDateString('en-GB')
+                              const streamName = shortReportData.stream?.name
+                              const streamCode = shortReportData.stream?.code
+                              const reportSource = userProfile?.is_hod ? 'Head of Department' : 'Class Advisor'
+                              
+                              let text = `☀️Stream: ${streamName}\n☀️Date: ${dateStr}\n\n`
+                              shortReportData.classes.forEach(cls => {
+                                text += `➕${cls.name}: ${streamCode}  ${cls.present}/${cls.total}\n`
+                                if (cls.approved > 0) text += `📍Approved: ${String(cls.approved).padStart(2, '0')}\n`
+                                if (cls.unapproved > 0) text += `📍Unapproved: ${String(cls.unapproved).padStart(2, '0')}\n`
+                                if (cls.onDuty > 0) text += `📍OD: ${String(cls.onDuty).padStart(2, '0')}\n`
+                                if (cls.suspended > 0) text += `📍Suspend: ${String(cls.suspended).padStart(2, '0')}\n`
+                                if (cls.intern > 0) text += `📍Intern: ${String(cls.intern).padStart(2, '0')}\n`
+                                text += '\n'
+                              })
+                              text += `Reported by: ${reportSource}, ${streamCode} - ${userProfile?.name}.`
 
-                          navigator.clipboard.writeText(reportText)
-                          setToast({ message: 'Report copied to clipboard!', type: 'success' })
-                        }}
-                        className="px-6 py-3 bg-emerald-500 text-white rounded-xl hover:bg-emerald-400 transition-all font-black text-xs uppercase tracking-[0.2em] shadow-lg shadow-emerald-500/20"
-                      >
-                        Copy to Clipboard
-                      </button>
+                              navigator.clipboard.writeText(text)
+                              setToast({ message: 'Synchronize protocol cached to clipboard!', type: 'success' })
+                            }}
+                            className="bg-emerald-500 hover:bg-emerald-400 text-white px-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] shadow-2xl shadow-emerald-500/20 transition-all flex items-center gap-3"
+                          >
+                            <FileText size={16} />
+                            Cache Digital Feed
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 )}
