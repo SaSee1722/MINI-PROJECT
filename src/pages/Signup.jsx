@@ -24,11 +24,7 @@ const Signup = () => {
   const { toasts, removeToast, showSuccess, showError, showWarning } = useToast()
 
   const streams = [
-    { id: 'cse', name: 'Computer Science and Engineering', code: 'CSE' },
-    { id: 'ece', name: 'Electronics and Communication Engineering', code: 'ECE' },
-    { id: 'eee', name: 'Electrical and Electronics Engineering', code: 'EEE' },
-    { id: 'mech', name: 'Mechanical Engineering', code: 'MECH' },
-    { id: 'civil', name: 'Civil Engineering', code: 'CIVIL' }
+    { id: 'cse', name: 'Computer Science and Engineering', code: 'CSE' }
   ]
 
   const handleSubmit = async (e) => {

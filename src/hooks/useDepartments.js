@@ -33,16 +33,14 @@ export const useDepartments = () => {
 
       console.log('All Departments:', allDepts) // DEBUG
 
-      // Filter departments based on user's department_id
-      let filteredDepts = allDepts
+      // Filter departments to only include CSE
+      let filteredDepts = allDepts.filter(dept => dept.id === 'cse' || dept.code === 'CSE')
       
-      if (profile?.department_id) {
-        // Filter to show only user's department
-        filteredDepts = allDepts.filter(dept => dept.id === profile.department_id)
-        console.log('Filtered to user department:', filteredDepts) // DEBUG
-      } else {
-        console.warn('No department_id found for user! Showing all departments.') // DEBUG
-        // If no department assigned, show empty array (don't show all departments)
+      if (filteredDepts.length === 0 && allDepts.length > 0) {
+        console.warn('CSE department not found in database! Showing first available.')
+        filteredDepts = allDepts.slice(0, 1)
+      } else if (allDepts.length === 0) {
+        console.error('No departments found in database!')
         filteredDepts = []
       }
 

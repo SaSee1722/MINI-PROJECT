@@ -28,13 +28,13 @@ export const useStudents = () => {
           departments (id, name, code)
         `)
       
-      // Filter by stream
-      if (profile?.stream_id) {
-        // Both admin and staff see only their stream's students
+      // Filter by role/stream
+      if (profile?.role === 'admin') {
+        // Admins see all students
+        console.log('🔍 Admin view: Fetching all institutional students')
+      } else if (profile?.stream_id) {
+        // Staff see only their stream's students
         query = query.eq('stream_id', profile.stream_id)
-      } else if (profile?.role === 'admin') {
-        // Fallback: If no stream assigned, filter by created_by
-        query = query.or(`created_by.eq.${user?.id},created_by.is.null`)
       }
       // If no stream and not admin, show all (backward compatibility)
       

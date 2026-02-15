@@ -102,64 +102,40 @@ export const useUsers = () => {
     }
   }
 
-  // Appoint user as Program Coordinator (PC)
-  const appointAsPC = async (userId) => {
-    try {
-      const user = users.find(u => u.id === userId)
-      if (!user) throw new Error('User not found')
-
-      const { error: appointError } = await supabase
-        .from('users')
-        .update({ 
-          is_pc: true, 
-          role: 'staff',
-          is_hod: false,
-          is_class_advisor: false,
-          advisor_class_id: null
-        })
-        .eq('id', userId)
-
-      if (appointError) throw appointError
-      await fetchUsers()
-      return { success: true }
-    } catch (err) {
-      console.error('Error appointing PC:', err)
-      return { success: false, error: err.message }
-    }
-  }
-
-  // Remove PC role
-  const removePC = async (userId) => {
-    try {
-      const { error } = await supabase
-        .from('users')
-        .update({ is_pc: false })
-        .eq('id', userId)
-
-      if (error) throw error
-      await fetchUsers()
-      return { success: true }
-    } catch (err) {
-      console.error('Error removing PC role:', err)
-      return { success: false, error: err.message }
-    }
-  }
 
   // Appoint as HOD
-  const appointAsHOD = async (userId) => {
+  const appointAsHOD = async (userId, streamId = 'cse') => {
     try {
+      // Check if HOD already exists for this stream
+      const { data: existingHOD } = await supabase
+        .from('users')
+        .select('id, name')
+        .eq('is_hod', true)
+        .eq('stream_id', streamId)
+        .maybeSingle()
+      
+      if (existingHOD && existingHOD.id !== userId) {
+        return { 
+          success: false, 
+          error: `Stream ${streamId.toUpperCase()} already has an HOD (${existingHOD.name}). They must resign first.` 
+        }
+      }
+
       const { error } = await supabase
         .from('users')
         .update({ 
           is_hod: true, 
-          is_pc: false, 
           is_class_advisor: false,
           advisor_class_id: null,
-          role: 'staff' 
+          role: 'staff',
+          stream_id: streamId
         })
         .eq('id', userId)
 
       if (error) throw error
+      
+      // Also ensure the user is not an admin if they are becoming HOD
+      // unless specifically allowing admin HODs
       await fetchUsers()
       return { success: true }
     } catch (err) {
@@ -188,14 +164,40 @@ export const useUsers = () => {
   // Appoint as Class Advisor
   const appointAsClassAdvisor = async (userId, classId) => {
     try {
+      // Fetch class details to get its stream_id
+      const { data: targetClass, error: classError } = await supabase
+        .from('classes')
+        .select('id, name, stream_id')
+        .eq('id', classId)
+        .single()
+      
+      if (classError) throw classError
+
+      // Check if class already has an advisor
+      const { data: existingAdvisor } = await supabase
+        .from('users')
+        .select('id, name')
+        .eq('is_class_advisor', true)
+        .eq('advisor_class_id', classId)
+        .maybeSingle()
+      
+      if (existingAdvisor && existingAdvisor.id !== userId) {
+        return { 
+          success: false, 
+          error: `This class (${targetClass.name}) already has an advisor (${existingAdvisor.name}).` 
+        }
+      }
+
+      console.log('Linking staff member to class:', targetClass.name, 'Stream:', targetClass.stream_id)
+
       const { error } = await supabase
         .from('users')
         .update({ 
           is_class_advisor: true, 
           advisor_class_id: classId,
-          is_pc: false,
           is_hod: false,
-          role: 'staff'
+          role: 'staff',
+          stream_id: targetClass.stream_id
         })
         .eq('id', userId)
 
@@ -203,8 +205,8 @@ export const useUsers = () => {
       await fetchUsers()
       return { success: true }
     } catch (err) {
-      console.error('Error appointing Class Advisor:', err)
-      return { success: false, error: err.message }
+      console.error('CRITICAL: Error appointing Class Advisor:', err)
+      return { success: false, error: err.message || 'Operation failed' }
     }
   }
 
@@ -398,8 +400,6 @@ export const useUsers = () => {
     deleteUser,
     deleteMyAccount,
     updateUser,
-    appointAsPC,
-    removePC,
     appointAsHOD,
     removeHOD,
     appointAsClassAdvisor,

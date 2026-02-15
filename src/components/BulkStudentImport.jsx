@@ -2,6 +2,16 @@ import { useState } from 'react'
 import { supabase } from '../services/supabase'
 import { useToast } from '../hooks/useToast'
 import { ToastContainer } from './Toast'
+import { 
+  Users, 
+  Upload, 
+  Download, 
+  FileSpreadsheet, 
+  CheckCircle2, 
+  Info,
+  AlertCircle,
+  ShieldCheck
+} from 'lucide-react'
 
 const BulkStudentImport = ({ onImportComplete, streams, classes }) => {
   const [file, setFile] = useState(null)
@@ -72,49 +82,16 @@ const BulkStudentImport = ({ onImportComplete, streams, classes }) => {
     
     const dept = departmentName.toLowerCase().trim()
     
-    // CSE stream departments (all map to CSE stream)
-    if (dept === 'cse' || dept === 'computer science' || dept === 'computer science and engineering') {
+    // All departments now map to CSE stream for this version
+    if (dept === 'cse' || dept === 'computer science' || dept === 'computer science and engineering' ||
+        dept === 'aiml' || dept === 'ai/ml' || dept === 'artificial intelligence and machine learning' || 
+        dept === 'artificial intelligence' || dept === 'machine learning' ||
+        dept === 'aids' || dept === 'ai/ds' || dept === 'artificial intelligence and data science' || 
+        dept === 'data science' ||
+        dept === 'cyber' || dept === 'cybersecurity' || dept === 'cyber security' || 
+        dept === 'cyber security engineering' ||
+        dept === 'it' || dept === 'information technology') {
       return 'cse'
-    }
-    
-    // IT maps to IT stream
-    if (dept === 'it' || dept === 'information technology') {
-      return 'it'
-    }
-    
-    // AIML department maps to CSE stream
-    if (dept === 'aiml' || dept === 'ai/ml' || dept === 'artificial intelligence and machine learning' || 
-        dept === 'artificial intelligence' || dept === 'machine learning') {
-      return 'cse'
-    }
-    
-    // AIDS department maps to CSE stream
-    if (dept === 'aids' || dept === 'ai/ds' || dept === 'artificial intelligence and data science' || 
-        dept === 'data science') {
-      return 'cse'
-    }
-    
-    // CYBER department maps to CSE stream
-    if (dept === 'cyber' || dept === 'cybersecurity' || dept === 'cyber security' || 
-        dept === 'cyber security engineering') {
-      return 'cse'
-    }
-    
-    // Other departments map to their respective streams
-    if (dept === 'ece' || dept === 'electronics and communication' || dept === 'electronics and communication engineering') {
-      return 'ece'
-    }
-    
-    if (dept === 'eee' || dept === 'electrical and electronics' || dept === 'electrical and electronics engineering') {
-      return 'eee'
-    }
-    
-    if (dept === 'mech' || dept === 'mechanical' || dept === 'mechanical engineering') {
-      return 'mech'
-    }
-    
-    if (dept === 'civil' || dept === 'civil engineering') {
-      return 'civil'
     }
     
     // Fallback: try to find in streams array
@@ -125,7 +102,7 @@ const BulkStudentImport = ({ onImportComplete, streams, classes }) => {
       departmentName.toLowerCase().includes(s.code.toLowerCase())
     )
     
-    return stream ? stream.id : null
+    return stream ? stream.id : 'cse' // Default to cse as requested
   }
 
   const findStreamId = (streamName) => {
@@ -418,11 +395,9 @@ const BulkStudentImport = ({ onImportComplete, streams, classes }) => {
   const downloadTemplate = () => {
     const template = 'register_number,name,department,class\n' +
                      '267324104001,John Doe,CSE,II CSE A\n' +
-                     '267324104002,Jane Smith,IT,II IT\n' +
-                     '267324104003,Alice Brown,AIML,II AIML A\n' +
-                     '267324104004,Bob Johnson,AIDS,II AIDS A\n' +
-                     '267324104005,Charlie Wilson,CYBER,II CYBER A\n' +
-                     '267324104006,David Lee,ECE,II ECE A'
+                     '267324104002,Jane Smith,AIML,II AIML A\n' +
+                     '267324104003,Alice Brown,AIDS,II AIDS A\n' +
+                     '267324104004,Bob Johnson,CYBER,II CYBER A'
     
     const blob = new Blob([template], { type: 'text/csv' })
     const url = window.URL.createObjectURL(blob)
@@ -434,84 +409,121 @@ const BulkStudentImport = ({ onImportComplete, streams, classes }) => {
   }
 
   return (
-    <div className="glass-card p-6 animate-scaleIn hover-lift">
-      <h3 className="text-2xl font-bold mb-4 gradient-text flex items-center gap-2">
-        <span className="text-3xl">👥</span>
-        Bulk Import Students
-      </h3>
-      
-      <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl border-2 border-blue-200">
-        <p className="text-sm text-gray-800 mb-3 font-medium">
-          ✨ Upload a CSV file with student data
-        </p>
-        <div className="flex flex-wrap gap-2 mb-3">
-          <span className="px-3 py-1 bg-white rounded-full text-xs font-semibold text-blue-600 shadow-sm">
-            ✓ register_number
-          </span>
-          <span className="px-3 py-1 bg-white rounded-full text-xs font-semibold text-blue-600 shadow-sm">
-            ✓ name
-          </span>
-          <span className="px-3 py-1 bg-white rounded-full text-xs font-semibold text-blue-600 shadow-sm">
-            ✓ department
-          </span>
-          <span className="px-3 py-1 bg-white rounded-full text-xs font-semibold text-blue-600 shadow-sm">
-            ✓ class
-          </span>
+    <div className="bg-[#020617]/60 backdrop-blur-3xl border border-white/5 rounded-[2rem] p-6 sm:p-8 shadow-2xl animate-smoothFadeIn group/container hover:border-emerald-500/10 transition-colors duration-700 max-w-5xl mx-auto">
+      <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-6">
+        <div className="space-y-1">
+          <div className="flex items-center gap-3">
+             <div className="w-10 h-10 bg-emerald-500/10 rounded-xl flex items-center justify-center border border-emerald-500/20">
+                <Users size={20} className="text-emerald-400" />
+             </div>
+             <h3 className="text-2xl font-black text-white tracking-tight">Bulk Import Students</h3>
+          </div>
+          <p className="text-gray-500 font-bold uppercase tracking-[0.2em] text-[9px] ml-1">Accelerate deployment of student identities</p>
         </div>
-        <p className="text-xs text-gray-600 mb-2">
-          <strong>Note:</strong> IT, AIML, AIDS, and CYBER departments are part of CSE stream. Valid departments: CSE, IT, AIML, AIDS, CYBER, ECE, EEE, MECH, CIVIL
-        </p>
+        
         <button
           onClick={downloadTemplate}
-          className="px-4 py-2 bg-gradient-blue text-white rounded-xl hover:shadow-lg hover:scale-105 transition-all font-semibold text-sm flex items-center gap-2"
+          className="px-5 py-2.5 bg-white/[0.05] text-gray-400 border border-white/10 rounded-xl hover:bg-white/10 hover:text-white transition-all font-black text-[9px] uppercase tracking-widest flex items-center gap-2 group/btn"
         >
-          <span>📥</span>
-          Download CSV Template
+          <Download size={12} className="group-hover/btn:translate-y-0.5 transition-transform" />
+          CSV Template
         </button>
       </div>
+      
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className="lg:col-span-8 space-y-6">
+          <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-6 relative overflow-hidden group">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/5 rounded-full blur-[80px] -mr-20 -mt-20 group-hover:bg-emerald-500/10 transition-all duration-700"></div>
+            
+            <div className="relative z-10 space-y-4">
+              <div className="flex items-center gap-2 text-emerald-400">
+                <ShieldCheck size={16} />
+                <span className="text-[9px] font-black uppercase tracking-[0.2em]">Validation Protocol</span>
+              </div>
+              
+              <div className="flex flex-wrap gap-2">
+                {['register_number', 'name', 'department', 'class'].map(field => (
+                  <div key={field} className="flex items-center gap-2 px-3 py-1.5 bg-black/40 border border-white/5 rounded-lg">
+                    <CheckCircle2 size={10} className="text-emerald-500" />
+                    <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">{field.replace('_', ' ')}</span>
+                  </div>
+                ))}
+              </div>
+              
+              <div className="p-3 bg-blue-500/5 border border-blue-500/10 rounded-xl flex items-start gap-3">
+                <Info size={14} className="text-blue-400 mt-0.5" />
+                <div className="space-y-0.5">
+                  <p className="text-[9px] font-black text-blue-300 uppercase tracking-widest">Protocol Intelligence</p>
+                  <p className="text-[11px] text-gray-500 font-bold leading-relaxed">
+                    Auto-mapping enabled for <span className="text-gray-300">CSE, AIML, AIDS, CYBER</span> and <span className="text-gray-300">IT</span> nodes.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
 
-      <div className="space-y-4">
-        <div>
-          <input
-            id="csv-file-input"
-            type="file"
-            accept=".csv"
-            onChange={handleFileChange}
-            className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700"
-          />
+          <div className="space-y-4">
+            <div className="relative group/input">
+              <input
+                id="csv-file-input"
+                type="file"
+                accept=".csv"
+                onChange={handleFileChange}
+                className="hidden"
+              />
+              <label
+                htmlFor="csv-file-input"
+                className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-white/10 rounded-[1.5rem] bg-white/[0.01] hover:bg-white/[0.03] hover:border-emerald-500/20 transition-all cursor-pointer group"
+              >
+                <div className="flex flex-col items-center justify-center py-4">
+                  <div className="w-10 h-10 bg-white/[0.05] rounded-xl flex items-center justify-center mb-2 group-hover:scale-110 transition-transform duration-500">
+                    <FileSpreadsheet size={20} className={file ? 'text-emerald-400' : 'text-gray-600'} />
+                  </div>
+                  <p className="text-[12px] font-black text-white tracking-tight">
+                    {file ? file.name : 'Select Data Node (CSV)'}
+                  </p>
+                  <p className="text-[9px] font-bold text-gray-500 uppercase tracking-widest mt-1 group-hover:text-gray-400 transition-colors">
+                    {file ? `${(file.size / 1024).toFixed(1)} KB recognized` : 'Drag and drop or click to browse'}
+                  </p>
+                </div>
+              </label>
+            </div>
+          </div>
         </div>
 
-        {file && (
-          <div className="text-sm text-gray-600">
-            Selected: {file.name}
-          </div>
-        )}
-
-        {/* Toast notifications will appear in top-right corner */}
-
-        <button
-          onClick={handleImport}
-          disabled={!file || importing}
-          className="w-full px-6 py-4 bg-gradient-purple text-white rounded-xl hover:shadow-2xl hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed font-bold text-lg transition-all relative overflow-hidden group"
-        >
-          <span className="relative z-10 flex items-center justify-center gap-2">
-            {importing ? (
-              <>
-                <span className="animate-spin">⏳</span>
-                Importing...
-              </>
-            ) : (
-              <>
-                <span>📤</span>
-                Import Students
-              </>
+        <div className="lg:col-span-4 flex flex-col justify-end">
+          <button
+            onClick={handleImport}
+            disabled={!file || importing}
+            className={`w-full h-32 rounded-[1.5rem] font-black text-[10px] uppercase tracking-[0.2em] transition-all duration-700 relative overflow-hidden group shadow-2xl ${
+              !file || importing 
+                ? 'bg-white/5 text-gray-600 cursor-not-allowed grayscale' 
+                : 'bg-white text-black hover:scale-[1.02] active:scale-95 shadow-emerald-500/20'
+            }`}
+          >
+            <div className="relative z-10 flex flex-col items-center gap-4">
+              {importing ? (
+                <>
+                  <div className="w-10 h-10 border-4 border-black/20 border-t-black rounded-full animate-spin"></div>
+                  <span>Processing...</span>
+                </>
+              ) : (
+                <>
+                   <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-1 ${!file ? 'bg-black/20' : 'bg-black/5 group-hover:bg-emerald-500 transition-colors duration-500'}`}>
+                    <Upload size={18} className={!file ? 'text-gray-600' : 'text-black group-hover:text-white transition-colors duration-500'} />
+                  </div>
+                  <span>Initialize Ingestion</span>
+                </>
+              )}
+            </div>
+            
+            {!(!file || importing) && (
+              <div className="absolute inset-0 bg-gradient-to-br from-white via-emerald-50 to-emerald-200 opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
             )}
-          </span>
-          <div className="absolute inset-0 bg-white opacity-0 group-hover:opacity-20 transition-opacity"></div>
-        </button>
+          </button>
+        </div>
       </div>
 
-      
       {/* Toast Container */}
       <ToastContainer toasts={toasts} removeToast={removeToast} />
     </div>

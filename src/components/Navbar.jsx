@@ -39,7 +39,9 @@ const Navbar = () => {
             </div>
             <div className="flex flex-col text-left">
               <span className="text-sm font-bold text-white leading-none mb-1">{userProfile?.name}</span>
-              <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">{userProfile?.role}</span>
+              <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">
+                {userProfile?.is_hod ? 'HOD' : userProfile?.is_class_advisor ? 'Class Advisor' : userProfile?.role}
+              </span>
             </div>
           </div>
 

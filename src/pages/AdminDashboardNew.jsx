@@ -408,6 +408,7 @@ const SessionAttendanceGraph = ({ sessionData }) => {
 }
 
 const AdminDashboardNew = () => {
+  const [timetableRefreshKey, setTimetableRefreshKey] = useState(0)
   const { userProfile } = useAuth()
   const { students, addStudent, deleteStudent, refetch: refetchStudents } = useStudents()
   const { classes, addClass, deleteClass, refetch: refetchClasses } = useClasses()
@@ -949,14 +950,14 @@ const AdminDashboardNew = () => {
         break
       case 'timetable':
         result = await addTimetableEntry({
-          classId: forms.timetable.classId,
-          dayOfWeek: parseInt(forms.timetable.dayOfWeek),
-          periodNumber: parseInt(forms.timetable.periodNumber),
-          subjectCode: forms.timetable.subjectCode,
-          subjectName: forms.timetable.subjectName,
-          facultyName: forms.timetable.facultyName,
-          facultyCode: forms.timetable.facultyCode || '',
-          isLab: forms.timetable.isLab
+          class_id: forms.timetable.classId,
+          day_of_week: parseInt(forms.timetable.dayOfWeek),
+          period_number: parseInt(forms.timetable.periodNumber),
+          subject_code: forms.timetable.subjectCode,
+          subject_name: forms.timetable.subjectName,
+          faculty_name: forms.timetable.facultyName,
+          faculty_code: forms.timetable.facultyCode || '',
+          is_lab: forms.timetable.isLab
         })
         break
     }
@@ -969,6 +970,10 @@ const AdminDashboardNew = () => {
                 { rollNumber: '', name: '', email: '', phone: '', streamId: userProfile?.stream_id || '', classId: '', dateOfBirth: '' }
       })
       setToast({ message: `${type.charAt(0).toUpperCase() + type.slice(1)} added successfully!`, type: 'success' })
+      
+      if (type === 'timetable') {
+        setTimetableRefreshKey(prev => prev + 1)
+      }
       
       // Refresh attendance count for classes and students
       if (type === 'class' || type === 'student') {
@@ -2247,6 +2252,7 @@ const AdminDashboardNew = () => {
 
                 {selectedClassForTimetable ? (
                   <AdminTimetableView 
+                    key={`timetable-${timetableRefreshKey}`}
                     classId={selectedClassForTimetable} 
                     selectedDate={timetableDate}
                   />

@@ -8,7 +8,7 @@ import AttendanceCheckbox from './AttendanceCheckbox'
 import { useToast } from '../hooks/useToast'
 import { ToastContainer } from './Toast'
 
-const InteractiveTimetable = ({ classId, selectedDate }) => {
+const InteractiveTimetable = ({ classId, selectedDate, className }) => {
   const { user, userProfile } = useAuth()
   const { timetable, periodTimes, loading, addTimetableEntry, refetch: refetchTimetable } = useTimetable(classId)
   const { periodAttendance, markPeriodAttendance, getPeriodStudentAttendance, refetch: refetchAttendance } = usePeriodAttendance(classId, selectedDate)
@@ -31,6 +31,7 @@ const InteractiveTimetable = ({ classId, selectedDate }) => {
     subjectName: '',
     facultyName: '',
     facultyCode: '',
+    roomNumber: '',
     isLab: false
   })
 
@@ -232,6 +233,7 @@ const InteractiveTimetable = ({ classId, selectedDate }) => {
       subject_name: newPeriodData.subjectName,
       faculty_name: newPeriodData.facultyName,
       faculty_code: newPeriodData.facultyCode,
+      room_number: newPeriodData.roomNumber,
       is_lab: newPeriodData.isLab
     })
 
@@ -248,6 +250,7 @@ const InteractiveTimetable = ({ classId, selectedDate }) => {
         subjectName: '',
         facultyName: '',
         facultyCode: '',
+        roomNumber: '',
         isLab: false
       })
     } else {
@@ -280,13 +283,10 @@ const InteractiveTimetable = ({ classId, selectedDate }) => {
         <div className="text-center mb-6 border-b-2 border-black pb-4">
           <h1 className="text-2xl font-black uppercase tracking-tight mb-1">SREE SAKTHI ENGINEERING COLLEGE</h1>
           <h2 className="text-sm font-bold uppercase tracking-widest text-gray-600 mb-4">(AUTONOMOUS)</h2>
-          <div className="flex flex-wrap justify-between text-xs font-bold uppercase tracking-wider gap-4">
-            <div>Academic Year: 2025-2026</div>
+          <div className="flex flex-wrap justify-center text-xs font-bold uppercase tracking-wider gap-4">
             <div className="text-center">
-              <div className="text-lg font-black mb-1">TIME TABLE</div>
-              <div>Regulation: 2024</div>
+              <div className="text-lg font-black mb-1">TIME TABLE FOR {className || 'SELECTED CLASS'}</div>
             </div>
-            <div className="text-right">Semester: EVEN</div>
           </div>
         </div>
 
@@ -304,7 +304,7 @@ const InteractiveTimetable = ({ classId, selectedDate }) => {
                   <div className="text-[10px] mt-1">09.20-10.10</div>
                 </th>
                 <th className="border border-black p-2 w-8 bg-gray-200">
-                  <div className="writing-vertical rotate-180 py-4">Tea Break</div>
+                  <div style={{ writingMode: 'vertical-rl' }} className="py-4">Tea Break</div>
                   <div className="text-[10px]">10.10-10.25</div>
                 </th>
                 <th className="border border-black p-2 min-w-[80px]">
@@ -316,7 +316,7 @@ const InteractiveTimetable = ({ classId, selectedDate }) => {
                   <div className="text-[10px] mt-1">11.15-12.05</div>
                 </th>
                 <th className="border border-black p-2 w-12 bg-gray-200">
-                  <div className="writing-vertical rotate-180 py-4">Lunch Break</div>
+                  <div style={{ writingMode: 'vertical-rl' }} className="py-4">Lunch Break</div>
                   <div className="text-[10px]">12.05-12.50</div>
                 </th>
                 <th className="border border-black p-2 min-w-[80px]">
@@ -328,7 +328,7 @@ const InteractiveTimetable = ({ classId, selectedDate }) => {
                   <div className="text-[10px] mt-1">01.40-02.30</div>
                 </th>
                 <th className="border border-black p-2 w-8 bg-gray-200">
-                  <div className="writing-vertical rotate-180 py-4">Tea Break</div>
+                  <div style={{ writingMode: 'vertical-rl' }} className="py-4">Tea Break</div>
                   <div className="text-[10px]">02.30-02.40</div>
                 </th>
                 <th className="border border-black p-2 min-w-[80px]">
@@ -357,7 +357,7 @@ const InteractiveTimetable = ({ classId, selectedDate }) => {
                   >
                     {getTimetableEntry(dayIndex, 1) ? (
                       <div className="flex flex-col h-full justify-center">
-                         <div className="font-bold">{getTimetableEntry(dayIndex, 1).subject_code}</div>
+                         <div className="font-bold">{getTimetableEntry(dayIndex, 1).subject_name}</div>
                       </div>
                     ) : userProfile?.role === 'admin' ? <span className="text-gray-300 text-lg">+</span> : ''}
                   </td>
@@ -373,13 +373,13 @@ const InteractiveTimetable = ({ classId, selectedDate }) => {
                   >
                     {getTimetableEntry(dayIndex, 2) ? (
                       <div className="flex flex-col h-full justify-center">
-                         <div className="font-bold">{getTimetableEntry(dayIndex, 2).subject_code}</div>
+                         <div className="font-bold">{getTimetableEntry(dayIndex, 2).subject_name}</div>
                       </div>
                     ) : userProfile?.role === 'admin' ? <span className="text-gray-300 text-lg">+</span> : ''}
                   </td>
 
                   {/* Tea Break */}
-                  <td className="border border-black p-1 bg-gray-200 text-[10px] font-bold writing-vertical rotate-180 text-center text-gray-500">Break</td>
+                  <td style={{ writingMode: 'vertical-rl' }} className="border border-black p-1 bg-gray-200 text-[10px] font-bold text-center text-gray-500">Break</td>
 
                   {/* Period 3 */}
                   <td 
@@ -392,7 +392,7 @@ const InteractiveTimetable = ({ classId, selectedDate }) => {
                   >
                     {getTimetableEntry(dayIndex, 3) ? (
                       <div className="flex flex-col h-full justify-center">
-                         <div className="font-bold">{getTimetableEntry(dayIndex, 3).subject_code}</div>
+                         <div className="font-bold">{getTimetableEntry(dayIndex, 3).subject_name}</div>
                       </div>
                     ) : userProfile?.role === 'admin' ? <span className="text-gray-300 text-lg">+</span> : ''}
                   </td>
@@ -408,13 +408,13 @@ const InteractiveTimetable = ({ classId, selectedDate }) => {
                   >
                     {getTimetableEntry(dayIndex, 4) ? (
                       <div className="flex flex-col h-full justify-center">
-                         <div className="font-bold">{getTimetableEntry(dayIndex, 4).subject_code}</div>
+                         <div className="font-bold">{getTimetableEntry(dayIndex, 4).subject_name}</div>
                       </div>
                     ) : userProfile?.role === 'admin' ? <span className="text-gray-300 text-lg">+</span> : ''}
                   </td>
 
                   {/* Lunch Break */}
-                  <td className="border border-black p-1 bg-gray-200 text-[10px] font-bold writing-vertical rotate-180 text-center text-gray-500">Lunch</td>
+                  <td style={{ writingMode: 'vertical-rl' }} className="border border-black p-1 bg-gray-200 text-[10px] font-bold text-center text-gray-500">Lunch</td>
 
                   {/* Period 5 */}
                   <td 
@@ -427,7 +427,7 @@ const InteractiveTimetable = ({ classId, selectedDate }) => {
                   >
                     {getTimetableEntry(dayIndex, 5) ? (
                       <div className="flex flex-col h-full justify-center">
-                         <div className="font-bold">{getTimetableEntry(dayIndex, 5).subject_code}</div>
+                         <div className="font-bold">{getTimetableEntry(dayIndex, 5).subject_name}</div>
                       </div>
                     ) : userProfile?.role === 'admin' ? <span className="text-gray-300 text-lg">+</span> : ''}
                   </td>
@@ -443,13 +443,13 @@ const InteractiveTimetable = ({ classId, selectedDate }) => {
                   >
                     {getTimetableEntry(dayIndex, 6) ? (
                       <div className="flex flex-col h-full justify-center">
-                         <div className="font-bold">{getTimetableEntry(dayIndex, 6).subject_code}</div>
+                         <div className="font-bold">{getTimetableEntry(dayIndex, 6).subject_name}</div>
                       </div>
                     ) : userProfile?.role === 'admin' ? <span className="text-gray-300 text-lg">+</span> : ''}
                   </td>
 
                   {/* Tea Break */}
-                  <td className="border border-black p-1 bg-gray-200 text-[10px] font-bold writing-vertical rotate-180 text-center text-gray-500">Break</td>
+                  <td style={{ writingMode: 'vertical-rl' }} className="border border-black p-1 bg-gray-200 text-[10px] font-bold text-center text-gray-500">Break</td>
 
                   {/* Period 7 */}
                   <td 
@@ -462,7 +462,7 @@ const InteractiveTimetable = ({ classId, selectedDate }) => {
                   >
                     {getTimetableEntry(dayIndex, 7) ? (
                       <div className="flex flex-col h-full justify-center">
-                         <div className="font-bold">{getTimetableEntry(dayIndex, 7).subject_code}</div>
+                         <div className="font-bold">{getTimetableEntry(dayIndex, 7).subject_name}</div>
                       </div>
                     ) : userProfile?.role === 'admin' ? <span className="text-gray-300 text-lg">+</span> : ''}
                   </td>
@@ -478,7 +478,7 @@ const InteractiveTimetable = ({ classId, selectedDate }) => {
                   >
                     {getTimetableEntry(dayIndex, 8) ? (
                       <div className="flex flex-col h-full justify-center">
-                         <div className="font-bold">{getTimetableEntry(dayIndex, 8).subject_code}</div>
+                         <div className="font-bold">{getTimetableEntry(dayIndex, 8).subject_name}</div>
                       </div>
                     ) : userProfile?.role === 'admin' ? <span className="text-gray-300 text-lg">+</span> : ''}
                   </td>
@@ -488,57 +488,59 @@ const InteractiveTimetable = ({ classId, selectedDate }) => {
           </table>
         </div>
 
+
         {/* Subject Allocation Table Section */}
-        <div className="mt-8">
-          <h3 className="text-sm font-black uppercase text-center border-b-2 border-black pb-2 mb-4 underline">Subject - Allocation</h3>
+        <div className="mt-12">
+          <h3 className="text-sm font-black uppercase text-center border-b-2 border-black pb-2 mb-6 underline tracking-widest">Subject - Allocation Record</h3>
+          
           <div className="overflow-x-auto">
-            <table className="w-full border-collapse border border-black text-xs">
+            <table className="w-full border-collapse border border-black text-[10px] uppercase text-center font-bold">
               <thead>
-                <tr className="bg-gray-100">
+                <tr className="bg-gray-50">
                   <th className="border border-black p-2 w-10">S.No</th>
                   <th className="border border-black p-2">Subject Code</th>
                   <th className="border border-black p-2">Room No</th>
-                  <th className="border border-black p-2 text-left">Subject Name / Lab</th>
+                  <th className="border border-black p-2 text-left">Subject Name</th>
                   <th className="border border-black p-2 text-left">Faculty Name</th>
-                  <th className="border border-black p-2 w-16 text-center">Hours / Week</th>
+                  <th className="border border-black p-3 w-20 text-center">Hours / Week</th>
                 </tr>
               </thead>
               <tbody>
-                {/* Dynamically Generate Subject List */}
                 {Object.values(timetable.reduce((acc, curr) => {
-                    if (!acc[curr.subject_code]) {
-                        acc[curr.subject_code] = {
-                            code: curr.subject_code,
-                            name: curr.subject_name,
-                            faculty: curr.faculty_name,
-                            isLab: curr.is_lab,
-                            hours: 0
-                        };
+                  if (!acc[curr.subject_code]) {
+                    acc[curr.subject_code] = {
+                      code: curr.subject_code,
+                      name: curr.subject_name,
+                      faculty: curr.faculty_name,
+                      room: curr.room_number || '-',
+                      hours: 0
                     }
-                    acc[curr.subject_code].hours += 1;
-                    return acc;
+                  }
+                  acc[curr.subject_code].hours += 1
+                  return acc
                 }, {})).map((sub, index) => (
-                    <tr key={sub.code}>
-                        <td className="border border-black p-2 text-center">{index + 1}</td>
-                        <td className="border border-black p-2 font-bold text-center">{sub.code}</td>
-                        <td className="border border-black p-2 text-center">-</td>
-                        <td className="border border-black p-2 uppercase">{sub.name} {sub.isLab ? '[LAB]' : ''}</td>
-                        <td className="border border-black p-2 uppercase">{sub.faculty}</td>
-                        <td className="border border-black p-2 text-center font-bold">{sub.hours}</td>
-                    </tr>
+                  <tr key={sub.code} className="hover:bg-gray-50 transition-colors">
+                    <td className="border border-black p-2">{index + 1}</td>
+                    <td className="border border-black p-2 font-black">{sub.code}</td>
+                    <td className="border border-black p-2">{sub.room}</td>
+                    <td className="border border-black p-2 text-left">{sub.name}</td>
+                    <td className="border border-black p-2 text-left">{sub.faculty}</td>
+                    <td className="border border-black p-2 text-center text-xs font-black">{sub.hours}</td>
+                  </tr>
                 ))}
               </tbody>
               <tfoot>
-                <tr className="bg-gray-100 font-bold">
-                    <td colSpan="5" className="border border-black p-2 text-right">TOTAL WORKING HOURS</td>
-                    <td className="border border-black p-2 text-center">
-                        {timetable.length}
-                    </td>
+                <tr className="bg-gray-100 font-bold border-t-2 border-black">
+                  <td colSpan="5" className="border border-black p-3 text-right">TOTAL WORKING HOURS / WEEK</td>
+                  <td className="border border-black p-3 text-center text-xs font-black">
+                    {timetable.length}
+                  </td>
                 </tr>
               </tfoot>
             </table>
           </div>
         </div>
+
 
         {/* Footer / Signatures */}
         <div className="mt-12 space-y-8">
@@ -616,6 +618,18 @@ const InteractiveTimetable = ({ classId, selectedDate }) => {
                 />
               </div>
 
+              {/* Room Number */}
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] ml-2">Room Number</label>
+                <input
+                  type="text"
+                  placeholder="e.g., R101"
+                  value={newPeriodData.roomNumber}
+                  onChange={(e) => setNewPeriodData({ ...newPeriodData, roomNumber: e.target.value })}
+                  className="w-full px-4 py-3 bg-black border border-white/10 rounded-xl text-white font-bold text-sm focus:border-white/30 outline-none"
+                />
+              </div>
+
               {/* Lab Session Checkbox */}
               <div className="flex items-center gap-3 bg-white/5 p-4 rounded-xl border border-white/5">
                 <input
@@ -660,7 +674,7 @@ const InteractiveTimetable = ({ classId, selectedDate }) => {
                   <h3 className="text-3xl font-black text-white tracking-tighter uppercase">{selectedPeriod.subject_name}</h3>
                   <div className="flex items-center gap-3 mt-2">
                     <span className="px-3 py-1 bg-white/5 border border-white/10 rounded-lg text-xs font-bold text-gray-400 uppercase tracking-wider">
-                       {selectedPeriod.subject_code}
+                       {selectedPeriod.subject_name}
                     </span>
                     <span className="px-3 py-1 bg-white/5 border border-white/10 rounded-lg text-xs font-bold text-gray-400 uppercase tracking-wider">
                        {selectedPeriod.faculty_name}
@@ -844,7 +858,7 @@ const InteractiveTimetable = ({ classId, selectedDate }) => {
                   <h3 className="text-3xl font-black text-white tracking-tighter uppercase">{viewAttendanceData.entry.subject_name}</h3>
                   <div className="flex items-center gap-3 mt-2">
                     <span className="px-3 py-1 bg-white/5 border border-white/10 rounded-lg text-xs font-bold text-gray-400 uppercase tracking-wider">
-                       {viewAttendanceData.entry.subject_code}
+                       {viewAttendanceData.entry.subject_name}
                     </span>
                     <span className="px-3 py-1 bg-white/5 border border-white/10 rounded-lg text-xs font-bold text-gray-400 uppercase tracking-wider">
                        {viewAttendanceData.entry.faculty_name}

@@ -1,0 +1,1 @@
+CREATE TABLE IF NOT EXISTS subject_allocations (id UUID PRIMARY KEY DEFAULT uuid_generate_v4(), class_id UUID REFERENCES classes(id) ON DELETE CASCADE, subject_code TEXT, subject_name TEXT, faculty_name TEXT, room_number TEXT, is_lab BOOLEAN DEFAULT false, hours_per_week INTEGER DEFAULT 0, created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW());

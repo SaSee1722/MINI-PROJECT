@@ -20,30 +20,37 @@ export const useClasses = () => {
         .eq('id', user?.id)
         .single()
       
+      console.log('🚀 fetchClasses initiated. User ID:', user?.id)
+      console.log('📊 Profile for filter:', profile)
+
       let query = supabase
         .from('classes')
-        .select(`
-          *,
-          users (id, name, email)
-        `)
+        .select('id, name, stream_id, created_by, created_at')
       
-      // Filter by stream
-      if (profile?.stream_id) {
-        // Both admin and staff see only their stream's classes
+      // Filter by role/stream
+      if (profile?.role === 'admin') {
+        console.log('🔍 Admin view: Fetching all institutional classes')
+        // Admins see everything
+      } else if (profile?.stream_id) {
+        console.log('🔍 Filtering classes by stream_id:', profile.stream_id)
         query = query.eq('stream_id', profile.stream_id)
-      } else if (profile?.role === 'admin') {
-        // Fallback: If no stream assigned, filter by created_by
-        query = query.or(`created_by.eq.${user?.id},created_by.is.null`)
       }
-      // If no stream and not admin, show all (backward compatibility)
       
       const { data, error } = await query.order('name', { ascending: true })
 
-      if (error) throw error
+      if (error) {
+        console.error('❌ Supabase fetch error in useClasses:', error)
+        throw error
+      }
+      
+      console.log('✅ fetchClasses Success. Count:', data?.length || 0)
+      if (data && data.length > 0) {
+        console.log('📋 Sample class:', data[0])
+      }
       setClasses(data || [])
     } catch (err) {
+      console.error('CRITICAL: useClasses hook failed:', err)
       setError(err.message)
-      console.error('Error fetching classes:', err)
     } finally {
       setLoading(false)
     }

@@ -4,17 +4,23 @@ import { useTimetable } from '../hooks/useTimetable'
 import { usePeriodAttendance } from '../hooks/usePeriodAttendance'
 import { useStudents } from '../hooks/useStudents'
 import { supabase } from '../services/supabase'
+import { Edit2, Trash2, Plus, X, Save, Info } from 'lucide-react'
+import { useToast } from '../hooks/useToast'
+import { ToastContainer } from './Toast'
 
-const AdminTimetableView = ({ classId, selectedDate }) => {
+const AdminTimetableView = ({ classId, selectedDate, className }) => {
   const { userProfile } = useAuth()
   const { timetable, periodTimes, loading, addTimetableEntry, deleteTimetableEntry, refetch: refetchTimetable } = useTimetable(classId)
   const { periodAttendance, getPeriodStudentAttendance } = usePeriodAttendance(classId, selectedDate)
   const { students } = useStudents()
+  const { toasts, removeToast, showSuccess, showError, showWarning } = useToast()
   const [selectedPeriod, setSelectedPeriod] = useState(null)
   const [attendanceReport, setAttendanceReport] = useState(null)
   const [showAttendanceModal, setShowAttendanceModal] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(null)
   const [showAddPeriodModal, setShowAddPeriodModal] = useState(false)
+  const [editingSubject, setEditingSubject] = useState(null)
+  const [isUpdating, setIsUpdating] = useState(false)
   const [newPeriodData, setNewPeriodData] = useState({
     dayOfWeek: 1,
     periodNumber: 1,
@@ -22,11 +28,12 @@ const AdminTimetableView = ({ classId, selectedDate }) => {
     subjectName: '',
     facultyName: '',
     facultyCode: '',
+    roomNumber: '',
     isLab: false
   })
 
   const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
-  const periods = [1, 2, 3, 4, 5, 6]
+  const periods = [1, 2, 3, 4, 5, 6, 7, 8]
 
   // Get class students
   const classStudents = students.filter(s => s.class_id === classId && s.status === 'active')
@@ -103,6 +110,60 @@ const AdminTimetableView = ({ classId, selectedDate }) => {
     }
   }
 
+  const handleUpdateSubject = async (e) => {
+    e.preventDefault()
+    setIsUpdating(true)
+    try {
+      const { oldCode, subjectCode, subjectName, facultyName, roomNumber } = editingSubject
+      
+      // Find all periods with this subject code
+      const matchingPeriods = timetable.filter(p => p.subject_code === oldCode)
+      
+      for (const period of matchingPeriods) {
+        const { error } = await supabase
+          .from('timetable')
+          .update({
+            subject_code: subjectCode,
+            subject_name: subjectName,
+            faculty_name: facultyName,
+            room_number: roomNumber
+          })
+          .eq('id', period.id)
+        
+        if (error) throw error
+      }
+      
+      setEditingSubject(null)
+      await refetchTimetable()
+    } catch (err) {
+      console.error('Error updating subject:', err)
+      showError('Error updating subject: ' + err.message)
+    } finally {
+      setIsUpdating(false)
+    }
+  }
+
+  const handleDeleteSubject = async (subjectCode) => {
+    if (!confirm(`Are you sure you want to delete ALL periods for subject ${subjectCode}?`)) return
+    
+    setIsUpdating(true)
+    try {
+      const { error } = await supabase
+        .from('timetable')
+        .delete()
+        .eq('class_id', classId)
+        .eq('subject_code', subjectCode)
+      
+      if (error) throw error
+      await refetchTimetable()
+    } catch (err) {
+      console.error('Error deleting subject:', err)
+      showError('Error deleting subject: ' + err.message)
+    } finally {
+      setIsUpdating(false)
+    }
+  }
+
   // Handle add period click
   const handleAddPeriodClick = (dayIndex, periodNum) => {
     setNewPeriodData({
@@ -127,9 +188,10 @@ const AdminTimetableView = ({ classId, selectedDate }) => {
         period_number: newPeriodData.periodNumber,
         subject_code: newPeriodData.subjectCode,
         subject_name: newPeriodData.subjectName,
-        faculty_name: newPeriodData.facultyName,
-        faculty_code: newPeriodData.facultyCode,
-        is_lab: newPeriodData.isLab
+      faculty_name: newPeriodData.facultyName,
+      faculty_code: newPeriodData.facultyCode,
+      room_number: newPeriodData.roomNumber,
+      is_lab: newPeriodData.isLab
       })
       if (result.success) {
         await refetchTimetable(classId)
@@ -143,11 +205,11 @@ const AdminTimetableView = ({ classId, selectedDate }) => {
           facultyCode: '',
           isLab: false
         })
-        alert('Period added successfully!')
+        showSuccess('Period added successfully!')
       }
     } catch (error) {
       console.error('Error adding period:', error)
-      alert('Error adding period')
+      showError('Error adding period')
     }
   }
 
@@ -157,10 +219,10 @@ const AdminTimetableView = ({ classId, selectedDate }) => {
       await deleteTimetableEntry(periodId)
       setShowDeleteConfirm(null)
       await refetchTimetable(classId)
-      alert('Period deleted successfully!')
+      showSuccess('Period deleted successfully!')
     } catch (error) {
       console.error('Error deleting period:', error)
-      alert('Error deleting period')
+      showError('Error deleting period')
     }
   }
 
@@ -177,11 +239,10 @@ const AdminTimetableView = ({ classId, selectedDate }) => {
   const getDateForDay = (dayIndex) => {
     const today = new Date(selectedDate)
     const currentDay = today.getDay() // 0 = Sunday, 1 = Monday, etc.
-    const targetDay = dayIndex + 1 // Convert to our format (1 = Monday)
-    
-    const daysToAdd = targetDay - currentDay
+    const adjustedCurrentDay = currentDay === 0 ? 7 : currentDay // Convert Sunday to 7
+    const diff = (dayIndex + 1) - adjustedCurrentDay
     const targetDate = new Date(today)
-    targetDate.setDate(today.getDate() + daysToAdd)
+    targetDate.setDate(today.getDate() + diff)
     
     return targetDate.toLocaleDateString('en-GB', { 
       day: '2-digit', 
@@ -198,121 +259,380 @@ const AdminTimetableView = ({ classId, selectedDate }) => {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Admin Notice */}
-      <div className="bg-blue-900 border border-blue-700 rounded-lg p-4">
-        <div className="flex justify-between items-center">
-          <div>
-            <h3 className="text-lg font-bold text-blue-100 mb-2">👨‍💼 Admin Timetable View</h3>
-            <p className="text-blue-200 text-sm">
-              Click on periods to view attendance reports or manage periods. You can add/delete periods but cannot mark attendance.
-            </p>
+    <div className="space-y-10">
+      <div className="bg-white text-black p-8 rounded-[2.5rem] overflow-hidden">
+        {/* Header Section */}
+        <div className="text-center mb-6 border-b-2 border-black pb-4">
+          <h1 className="text-2xl font-black uppercase tracking-tight mb-1">SREE SAKTHI ENGINEERING COLLEGE</h1>
+          <h2 className="text-sm font-bold uppercase tracking-widest text-gray-600 mb-4">(AUTONOMOUS)</h2>
+          <div className="flex flex-wrap justify-center text-xs font-bold uppercase tracking-wider gap-4">
+            <div className="text-center">
+              <div className="text-lg font-black mb-1">TIME TABLE FOR {className || 'SELECTED CLASS'}</div>
+            </div>
           </div>
-        </div>
-      </div>
-
-      {/* Timetable Grid */}
-      <div className="bg-gray-900 rounded-lg shadow-lg overflow-hidden border border-white/20">
-        <div className="p-6 bg-gradient-to-r from-gray-800 to-gray-700">
-          <h2 className="text-2xl font-bold text-white">Weekly Timetable - Admin View</h2>
-          <p className="text-gray-300 mt-1">Click on periods to view reports or manage</p>
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full border-collapse">
+          <table className="w-full border-collapse border border-black text-xs uppercase text-center">
             <thead>
-              <tr className="bg-gradient-to-r from-gray-800 to-gray-700">
-                <th className="border border-gray-600 px-4 py-4 text-left font-bold text-white text-base">Day / Period</th>
-                {periods.map(period => (
-                  <th key={period} className="border border-gray-600 px-4 py-4 text-center min-w-[150px]">
-                    <div className="font-bold text-white text-base">Period {period}</div>
-                    <div className="text-xs text-gray-300 mt-1 font-semibold">{getPeriodTime(period)}</div>
-                  </th>
-                ))}
+              <tr className="bg-gray-100">
+                <th className="border border-black p-2 w-24">Day</th>
+                <th className="border border-black p-2 min-w-[80px]">
+                  <div>I</div>
+                  <div className="text-[10px] mt-1">08.30-09.20</div>
+                </th>
+                <th className="border border-black p-2 min-w-[80px]">
+                  <div>II</div>
+                  <div className="text-[10px] mt-1">09.20-10.10</div>
+                </th>
+                <th className="border border-black p-2 w-8 bg-gray-200">
+                  <div style={{ writingMode: 'vertical-rl' }} className="py-4 text-center mx-auto">Tea Break</div>
+                  <div className="text-[10px]">10.10-10.25</div>
+                </th>
+                <th className="border border-black p-2 min-w-[80px]">
+                  <div>III</div>
+                  <div className="text-[10px] mt-1">10.25-11.15</div>
+                </th>
+                <th className="border border-black p-2 min-w-[80px]">
+                  <div>IV</div>
+                  <div className="text-[10px] mt-1">11.15-12.05</div>
+                </th>
+                <th className="border border-black p-2 w-12 bg-gray-200">
+                  <div style={{ writingMode: 'vertical-rl' }} className="py-4 text-center mx-auto">Lunch Break</div>
+                  <div className="text-[10px]">12.05-12.50</div>
+                </th>
+                <th className="border border-black p-2 min-w-[80px]">
+                  <div>V</div>
+                  <div className="text-[10px] mt-1">12.50-01.40</div>
+                </th>
+                <th className="border border-black p-2 min-w-[80px]">
+                  <div>VI</div>
+                  <div className="text-[10px] mt-1">01.40-02.30</div>
+                </th>
+                <th className="border border-black p-2 w-8 bg-gray-200">
+                  <div style={{ writingMode: 'vertical-rl' }} className="py-4 text-center mx-auto">Tea Break</div>
+                  <div className="text-[10px]">02.30-02.40</div>
+                </th>
+                <th className="border border-black p-2 min-w-[80px]">
+                  <div>VII</div>
+                  <div className="text-[10px] mt-1">02.40-03.30</div>
+                </th>
+                <th className="border border-black p-2 min-w-[80px]">
+                  <div>VIII</div>
+                  <div className="text-[10px] mt-1">03.30-04.30</div>
+                </th>
               </tr>
             </thead>
             <tbody>
               {days.map((day, dayIndex) => (
-                <tr key={day} className="hover:bg-gray-800">
-                  <td className="border border-gray-600 px-4 py-6 bg-gray-800 font-bold text-white">
-                    <div className="text-white text-base">{day}</div>
-                    <div className="text-sm text-gray-400 font-semibold mt-1">{getDateForDay(dayIndex)}</div>
+                <tr key={day} className="hover:bg-gray-50">
+                  <td className="border border-black p-2 font-black text-left">{day}</td>
+                  
+                  {/* Period 1 */}
+                  <td 
+                    className={`border border-black p-1 cursor-pointer hover:bg-gray-100 ${isPeriodMarked(dayIndex, 1) ? 'bg-emerald-100' : ''}`}
+                    onClick={() => {
+                        const entry = getTimetableEntry(dayIndex, 1)
+                        if (entry) handlePeriodClick(dayIndex, 1)
+                        else handleAddPeriodClick(dayIndex, 1)
+                    }}
+                  >
+                    {getTimetableEntry(dayIndex, 1) ? (
+                      <div className="flex flex-col h-full justify-center">
+                         <div className="font-bold">{getTimetableEntry(dayIndex, 1).subject_name}</div>
+                      </div>
+                    ) : <span className="text-gray-300 text-lg">+</span>}
                   </td>
-                  {periods.map(period => {
-                    const entry = getTimetableEntry(dayIndex, period)
-                    const isMarked = isPeriodMarked(dayIndex, period)
-                    const stats = getAttendanceStats(dayIndex, period)
-                    
-                    return (
-                      <td 
-                        key={period} 
-                        className={`border border-gray-600 px-3 py-2 cursor-pointer transition-all ${
-                          entry 
-                            ? isMarked 
-                              ? 'bg-green-900 hover:bg-green-800 border-green-600' 
-                              : 'bg-gray-700 hover:bg-gray-600'
-                            : 'bg-gray-800 hover:bg-gray-700'
-                        }`}
-                        onClick={() => entry && handlePeriodClick(dayIndex, period)}
-                      >
-                        {entry ? (
-                          <div className="space-y-1">
-                            <div className="font-semibold text-sm text-white">
-                              {entry.subject_code}
-                            </div>
-                            <div className="text-xs text-gray-300 line-clamp-2">
-                              {entry.subject_name}
-                            </div>
-                            <div className="text-xs text-gray-400">
-                              {entry.faculty_name}
-                            </div>
-                            {entry.faculty_code && (
-                              <div className="text-xs text-gray-500">
-                                ({entry.faculty_code})
-                              </div>
-                            )}
-                            {entry.is_lab && (
-                              <div className="inline-block px-2 py-1 bg-purple-600 text-white text-xs rounded">
-                                LAB
-                              </div>
-                            )}
-                            {isMarked && stats && (
-                              <div className="mt-2 text-xs">
-                                <div className="text-green-400 font-semibold">✅ Attendance Marked</div>
-                                <div className="text-gray-400">Click to view report</div>
-                              </div>
-                            )}
-                            {!isMarked && (
-                              <div className="mt-2 text-xs text-yellow-400">
-                                ⏳ No attendance yet
-                              </div>
-                            )}
-                          </div>
-                        ) : (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              handleAddPeriodClick(dayIndex, period)
-                            }}
-                            className="w-full h-full flex items-center justify-center text-gray-400 hover:text-blue-400 hover:bg-blue-900/30 transition-all rounded group"
-                          >
-                            <div className="flex flex-col items-center gap-1">
-                              <svg className="w-8 h-8 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                              </svg>
-                              <span className="text-xs font-medium">Add Period</span>
-                            </div>
-                          </button>
-                        )}
-                      </td>
-                    )
-                  })}
+
+                  {/* Period 2 */}
+                  <td 
+                    className={`border border-black p-1 cursor-pointer hover:bg-gray-100 ${isPeriodMarked(dayIndex, 2) ? 'bg-emerald-100' : ''}`}
+                    onClick={() => {
+                        const entry = getTimetableEntry(dayIndex, 2)
+                        if (entry) handlePeriodClick(dayIndex, 2)
+                        else handleAddPeriodClick(dayIndex, 2)
+                    }}
+                  >
+                    {getTimetableEntry(dayIndex, 2) ? (
+                      <div className="flex flex-col h-full justify-center">
+                         <div className="font-bold">{getTimetableEntry(dayIndex, 2).subject_name}</div>
+                      </div>
+                    ) : <span className="text-gray-300 text-lg">+</span>}
+                  </td>
+
+                  {/* Tea Break */}
+                  <td style={{ writingMode: 'vertical-rl' }} className="border border-black p-1 bg-gray-200 text-[10px] font-bold text-center text-gray-500">Break</td>
+
+                  {/* Period 3 */}
+                  <td 
+                    className={`border border-black p-1 cursor-pointer hover:bg-gray-100 ${isPeriodMarked(dayIndex, 3) ? 'bg-emerald-100' : ''}`}
+                    onClick={() => {
+                        const entry = getTimetableEntry(dayIndex, 3)
+                        if (entry) handlePeriodClick(dayIndex, 3)
+                        else handleAddPeriodClick(dayIndex, 3)
+                    }}
+                  >
+                    {getTimetableEntry(dayIndex, 3) ? (
+                      <div className="flex flex-col h-full justify-center">
+                         <div className="font-bold">{getTimetableEntry(dayIndex, 3).subject_name}</div>
+                      </div>
+                    ) : <span className="text-gray-300 text-lg">+</span>}
+                  </td>
+
+                  {/* Period 4 */}
+                  <td 
+                    className={`border border-black p-1 cursor-pointer hover:bg-gray-100 ${isPeriodMarked(dayIndex, 4) ? 'bg-emerald-100' : ''}`}
+                    onClick={() => {
+                        const entry = getTimetableEntry(dayIndex, 4)
+                        if (entry) handlePeriodClick(dayIndex, 4)
+                        else handleAddPeriodClick(dayIndex, 4)
+                    }}
+                  >
+                    {getTimetableEntry(dayIndex, 4) ? (
+                      <div className="flex flex-col h-full justify-center">
+                         <div className="font-bold">{getTimetableEntry(dayIndex, 4).subject_name}</div>
+                      </div>
+                    ) : <span className="text-gray-300 text-lg">+</span>}
+                  </td>
+
+                  {/* Lunch Break */}
+                  <td style={{ writingMode: 'vertical-rl' }} className="border border-black p-1 bg-gray-200 text-[10px] font-bold text-center text-gray-500">Lunch</td>
+
+                  {/* Period 5 */}
+                  <td 
+                    className={`border border-black p-1 cursor-pointer hover:bg-gray-100 ${isPeriodMarked(dayIndex, 5) ? 'bg-emerald-100' : ''}`}
+                    onClick={() => {
+                        const entry = getTimetableEntry(dayIndex, 5)
+                        if (entry) handlePeriodClick(dayIndex, 5)
+                        else handleAddPeriodClick(dayIndex, 5)
+                    }}
+                  >
+                    {getTimetableEntry(dayIndex, 5) ? (
+                      <div className="flex flex-col h-full justify-center">
+                         <div className="font-bold">{getTimetableEntry(dayIndex, 5).subject_name}</div>
+                      </div>
+                    ) : <span className="text-gray-300 text-lg">+</span>}
+                  </td>
+
+                  {/* Period 6 */}
+                  <td 
+                    className={`border border-black p-1 cursor-pointer hover:bg-gray-100 ${isPeriodMarked(dayIndex, 6) ? 'bg-emerald-100' : ''}`}
+                    onClick={() => {
+                        const entry = getTimetableEntry(dayIndex, 6)
+                        if (entry) handlePeriodClick(dayIndex, 6)
+                        else handleAddPeriodClick(dayIndex, 6)
+                    }}
+                  >
+                    {getTimetableEntry(dayIndex, 6) ? (
+                      <div className="flex flex-col h-full justify-center">
+                         <div className="font-bold">{getTimetableEntry(dayIndex, 6).subject_name}</div>
+                      </div>
+                    ) : <span className="text-gray-300 text-lg">+</span>}
+                  </td>
+
+                  {/* Tea Break */}
+                  <td style={{ writingMode: 'vertical-rl' }} className="border border-black p-1 bg-gray-200 text-[10px] font-bold text-center text-gray-500">Break</td>
+
+                  {/* Period 7 */}
+                  <td 
+                    className={`border border-black p-1 cursor-pointer hover:bg-gray-100 ${isPeriodMarked(dayIndex, 7) ? 'bg-emerald-100' : ''}`}
+                    onClick={() => {
+                        const entry = getTimetableEntry(dayIndex, 7)
+                        if (entry) handlePeriodClick(dayIndex, 7)
+                        else handleAddPeriodClick(dayIndex, 7)
+                    }}
+                  >
+                    {getTimetableEntry(dayIndex, 7) ? (
+                      <div className="flex flex-col h-full justify-center">
+                         <div className="font-bold">{getTimetableEntry(dayIndex, 7).subject_name}</div>
+                      </div>
+                    ) : <span className="text-gray-300 text-lg">+</span>}
+                  </td>
+
+                  {/* Period 8 */}
+                  <td 
+                    className={`border border-black p-1 cursor-pointer hover:bg-gray-100 ${isPeriodMarked(dayIndex, 8) ? 'bg-emerald-100' : ''}`}
+                    onClick={() => {
+                        const entry = getTimetableEntry(dayIndex, 8)
+                        if (entry) handlePeriodClick(dayIndex, 8)
+                        else handleAddPeriodClick(dayIndex, 8)
+                    }}
+                  >
+                    {getTimetableEntry(dayIndex, 8) ? (
+                      <div className="flex flex-col h-full justify-center">
+                         <div className="font-bold">{getTimetableEntry(dayIndex, 8).subject_name}</div>
+                      </div>
+                    ) : <span className="text-gray-300 text-lg">+</span>}
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
+
+        {/* Subject Allocation section */}
+        <div className="mt-12 pt-8 border-t-2 border-black">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-sm font-black uppercase underline flex items-center gap-2">
+              <Info size={16} />
+              Subject - Allocation
+            </h3>
+            <button 
+              onClick={() => setShowAddPeriodModal(true)}
+              className="px-4 py-2 bg-black text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-gray-800 transition-all flex items-center gap-2"
+            >
+              <Plus size={14} />
+              Add Module
+            </button>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse border border-black text-[10px] uppercase text-center font-bold">
+              <thead>
+                <tr className="bg-gray-50">
+                  <th className="border border-black p-2 w-10">S.No</th>
+                  <th className="border border-black p-2">Subject Code</th>
+                  <th className="border border-black p-2">Room No</th>
+                  <th className="border border-black p-2 text-left">Subject Name / Lab</th>
+                  <th className="border border-black p-2 text-left">Faculty Name</th>
+                  <th className="border border-black p-3 w-16 text-center">Hours / Week</th>
+                  <th className="border border-black p-2 w-24">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {Object.values(timetable.reduce((acc, curr) => {
+                  if (!acc[curr.subject_code]) {
+                    acc[curr.subject_code] = {
+                      code: curr.subject_code,
+                      name: curr.subject_name,
+                      faculty: curr.faculty_name,
+                      room: curr.room_number || '-',
+                      isLab: curr.is_lab,
+                      hours: 0
+                    }
+                  }
+                  acc[curr.subject_code].hours += 1
+                  return acc
+                }, {})).map((sub, index) => (
+                  <tr key={sub.code} className="hover:bg-gray-50 transition-colors">
+                    <td className="border border-black p-2">{index + 1}</td>
+                    <td className="border border-black p-2 font-black">{sub.code}</td>
+                    <td className="border border-black p-2">{sub.room}</td>
+                    <td className="border border-black p-2 text-left">{sub.name} {sub.isLab ? '[LAB]' : ''}</td>
+                    <td className="border border-black p-2 text-left">{sub.faculty}</td>
+                    <td className="border border-black p-2 text-center text-xs font-black">{sub.hours}</td>
+                    <td className="border border-black p-2">
+                      <div className="flex justify-center gap-2">
+                        <button 
+                          onClick={() => setEditingSubject({
+                            oldCode: sub.code,
+                            subjectCode: sub.code,
+                            subjectName: sub.name,
+                            facultyName: sub.faculty,
+                            roomNumber: sub.room === '-' ? '' : sub.room
+                          })}
+                          className="p-1.5 hover:bg-blue-100 text-blue-600 rounded transition-colors"
+                        >
+                          <Edit2 size={14} />
+                        </button>
+                        <button 
+                          onClick={() => handleDeleteSubject(sub.code)}
+                          className="p-1.5 hover:bg-red-100 text-red-600 rounded transition-colors"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr className="bg-gray-100 font-bold">
+                  <td colSpan="5" className="border border-black p-2 text-right">TOTAL WORKING HOURS</td>
+                  <td className="border border-black p-2 text-center text-xs">
+                    {timetable.length}
+                  </td>
+                  <td className="border border-black p-2"></td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
       </div>
+
+      {/* Edit Subject Modal */}
+      {editingSubject && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
+          <div className="bg-white rounded-[2rem] border border-black shadow-2xl max-w-md w-full overflow-hidden">
+            <div className="bg-gray-50 p-6 border-b border-black">
+              <h3 className="text-xl font-black uppercase flex items-center gap-3">
+                <Edit2 size={24} />
+                Edit Module Metadata
+              </h3>
+            </div>
+            <form onSubmit={handleUpdateSubject} className="p-8 space-y-6">
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-2">Subject Code</label>
+                <input 
+                  type="text" 
+                  value={editingSubject.subjectCode}
+                  onChange={e => setEditingSubject({...editingSubject, subjectCode: e.target.value})}
+                  className="w-full px-5 py-4 bg-gray-50 border-2 border-black rounded-2xl font-bold focus:bg-white outline-none"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-2">Subject Name</label>
+                <input 
+                  type="text" 
+                  value={editingSubject.subjectName}
+                  onChange={e => setEditingSubject({...editingSubject, subjectName: e.target.value})}
+                  className="w-full px-5 py-4 bg-gray-50 border-2 border-black rounded-2xl font-bold focus:bg-white outline-none"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-2">Faculty Name</label>
+                <input 
+                  type="text" 
+                  value={editingSubject.facultyName}
+                  onChange={e => setEditingSubject({...editingSubject, facultyName: e.target.value})}
+                  className="w-full px-5 py-4 bg-gray-50 border-2 border-black rounded-2xl font-bold focus:bg-white outline-none"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-2">Room Number</label>
+                <input 
+                  type="text" 
+                  value={editingSubject.roomNumber}
+                  onChange={e => setEditingSubject({...editingSubject, roomNumber: e.target.value})}
+                  className="w-full px-5 py-4 bg-gray-50 border-2 border-black rounded-2xl font-bold focus:bg-white outline-none"
+                  placeholder="e.g., R302"
+                />
+              </div>
+
+              <div className="flex gap-4 pt-4">
+                <button 
+                  type="submit" 
+                  disabled={isUpdating}
+                  className="flex-1 py-4 bg-black text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-gray-800 transition-all flex items-center justify-center gap-2"
+                >
+                  {isUpdating ? <span className="animate-spin inline-block">⏳</span> : <Save size={16} />}
+                  Synchronize Changes
+                </button>
+                <button 
+                  type="button" 
+                  onClick={() => setEditingSubject(null)}
+                  className="px-6 py-4 bg-gray-100 text-black rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-gray-200 transition-all"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Attendance Report Modal */}
       {showAttendanceModal && attendanceReport && (
@@ -514,6 +834,19 @@ const AdminTimetableView = ({ classId, selectedDate }) => {
                 />
               </div>
 
+              {/* Room Number */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-800 mb-2">Room Number</label>
+                <input
+                  type="text"
+                  placeholder="e.g., R302"
+                  value={newPeriodData.roomNumber}
+                  onChange={(e) => setNewPeriodData({ ...newPeriodData, roomNumber: e.target.value })}
+                  style={{ backgroundColor: '#ffffff', color: '#1f2937', borderColor: '#d1d5db' }}
+                  className="w-full px-4 py-2.5 border-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
+                />
+              </div>
+
               {/* Lab Session Checkbox */}
               <div className="flex items-center gap-3 bg-gray-50 p-3 rounded-lg">
                 <input
@@ -574,6 +907,8 @@ const AdminTimetableView = ({ classId, selectedDate }) => {
           </div>
         </div>
       )}
+      
+      <ToastContainer toasts={toasts} removeToast={removeToast} />
     </div>
   )
 }

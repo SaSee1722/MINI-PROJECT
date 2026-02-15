@@ -19,17 +19,13 @@ import { ToastContainer } from '../components/Toast'
 
 const ModernAdminDashboard = () => {
   const { userProfile, signOut } = useAuth()
+  const [timetableRefreshKey, setTimetableRefreshKey] = useState(0)
   const { students, addStudent, deleteStudent, refetch: refetchStudents } = useStudents()
   // const { departments, addDepartment, deleteDepartment } = useDepartments() // Replaced with streams
   
   // Define the 6 streams
   const streams = [
-    { id: 'cse', name: 'Computer Science and Engineering', code: 'CSE' },
-    { id: 'it', name: 'Information Technology', code: 'IT' },
-    { id: 'ece', name: 'Electronics and Communication Engineering', code: 'ECE' },
-    { id: 'eee', name: 'Electrical and Electronics Engineering', code: 'EEE' },
-    { id: 'mech', name: 'Mechanical Engineering', code: 'MECH' },
-    { id: 'civil', name: 'Civil Engineering', code: 'CIVIL' }
+    { id: 'cse', name: 'Computer Science and Engineering', code: 'CSE' }
   ]
   const { classes, addClass, deleteClass } = useClasses()
   const { sessions, addSession, deleteSession } = useSessions()
@@ -265,14 +261,14 @@ const ModernAdminDashboard = () => {
         break
       case 'timetable':
         result = await addTimetableEntry({
-          classId: forms.timetable.classId,
-          dayOfWeek: parseInt(forms.timetable.dayOfWeek),
-          periodNumber: parseInt(forms.timetable.periodNumber),
-          subjectCode: forms.timetable.subjectCode,
-          subjectName: forms.timetable.subjectName,
-          facultyName: forms.timetable.facultyName,
-          facultyCode: forms.timetable.facultyCode || '',
-          isLab: forms.timetable.isLab
+          class_id: forms.timetable.classId,
+          day_of_week: parseInt(forms.timetable.dayOfWeek),
+          period_number: parseInt(forms.timetable.periodNumber),
+          subject_code: forms.timetable.subjectCode,
+          subject_name: forms.timetable.subjectName,
+          faculty_name: forms.timetable.facultyName,
+          faculty_code: forms.timetable.facultyCode || '',
+          is_lab: forms.timetable.isLab
         })
         break
     }
@@ -286,6 +282,9 @@ const ModernAdminDashboard = () => {
       if (type === 'intern') setForms({ ...forms, intern: { rollNumber: '', name: '', email: '', phone: '', departmentId: '', classId: '', dateOfBirth: '' }})
       if (type === 'suspended') setForms({ ...forms, suspended: { rollNumber: '', name: '', email: '', phone: '', departmentId: '', classId: '', dateOfBirth: '' }})
       if (type === 'session') setForms({ ...forms, session: { name: '', startTime: '', endTime: '' }})
+      if (type === 'timetable') {
+        setTimetableRefreshKey(prev => prev + 1)
+      }
       showSuccess('🎉 Added successfully!')
     } else {
       showError('Error: ' + result.error)
@@ -675,7 +674,7 @@ const ModernAdminDashboard = () => {
                 <SmartTimetableBuilder 
                   classes={classes} 
                   onImportComplete={() => {
-                    // Refresh any timetable data if needed
+                    setTimetableRefreshKey(prev => prev + 1)
                     console.log('Timetable import completed')
                   }} 
                 />
@@ -705,6 +704,7 @@ const ModernAdminDashboard = () => {
                       />
                     </div>
                     <InteractiveTimetable 
+                      key={`timetable-${timetableRefreshKey}`}
                       classId={selectedClassForTimetable} 
                       selectedDate={timetableDate} 
                     />
