@@ -26,7 +26,9 @@ const SimpleBulkTimetable = ({ onImportComplete, classes }) => {
     { value: '3', label: 'Period 3' },
     { value: '4', label: 'Period 4' },
     { value: '5', label: 'Period 5' },
-    { value: '6', label: 'Period 6' }
+    { value: '6', label: 'Period 6' },
+    { value: '7', label: 'Period 7' },
+    { value: '8', label: 'Period 8' }
   ]
 
   const addPeriodRow = () => {
@@ -117,7 +119,7 @@ const SimpleBulkTimetable = ({ onImportComplete, classes }) => {
   const fillWeekTemplate = () => {
     const template = []
     for (let day = 1; day <= 6; day++) {
-      for (let period = 1; period <= 6; period++) {
+      for (let period = 1; period <= 8; period++) {
         template.push({
           day: day.toString(),
           period: period.toString(),
@@ -327,7 +329,7 @@ const SimpleBulkTimetable = ({ onImportComplete, classes }) => {
         <h4 className="font-bold text-blue-900 mb-2">💡 Quick Tips:</h4>
         <ul className="text-sm text-blue-800 space-y-1">
           <li>• Click <strong>"📋 Copy"</strong> to duplicate a row with same details</li>
-          <li>• Click <strong>"📅 Fill Full Week Template"</strong> to create 36 empty slots (6 days × 6 periods)</li>
+          <li>• Click <strong>"📅 Fill Full Week Template"</strong> to create 48 empty slots (6 days × 8 periods)</li>
           <li>• Use <strong>"➕ Add Period"</strong> to add one row at a time</li>
           <li>• Faculty Code is optional, all other fields are required</li>
         </ul>

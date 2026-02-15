@@ -21,7 +21,7 @@ const SmartTimetableBuilder = ({ onImportComplete, classes }) => {
     { value: '6', label: 'Saturday', short: 'Sat' }
   ]
 
-  const periods = [1, 2, 3, 4, 5, 6]
+  const periods = [1, 2, 3, 4, 5, 6, 7, 8]
 
   // Initialize empty timetable
   const initializeEmptyTimetable = () => {
@@ -188,7 +188,7 @@ const SmartTimetableBuilder = ({ onImportComplete, classes }) => {
         }
 
         const periodNumber = parseInt(row.period)
-        if (!periodNumber || periodNumber < 1 || periodNumber > 6) {
+        if (!periodNumber || periodNumber < 1 || periodNumber > 8) {
           errors.push(`Row ${i + 1}: Invalid period "${row.period}"`)
           continue
         }
@@ -568,7 +568,7 @@ Tuesday,3,DPSD(301),Digital Principles,Ms.Sree Arthi D,DSA,R106,true`
         <ul className="text-sm text-purple-800 space-y-1">
           <li>• Use <strong>"📥 Download CSV"</strong> to get a template with your college format</li>
           <li>• Use <strong>"📊 Import CSV"</strong> for bulk import from Excel/Google Sheets</li>
-          <li>• Use <strong>"📅 Empty Week"</strong> to create 36 empty slots (6 days × 6 periods)</li>
+          <li>• Use <strong>"📅 Empty Week"</strong> to create 48 empty slots (6 days × 8 periods)</li>
           <li>• Fill Monday completely, then use <strong>"📋 Copy Monday"</strong> to duplicate to all days</li>
           <li>• Use <strong>"🎯 Smart Fill"</strong> for common engineering subjects template</li>
           <li>• CSV format: day, period, subject_code, subject_name, faculty_name, faculty_code, room_number, is_lab</li>
