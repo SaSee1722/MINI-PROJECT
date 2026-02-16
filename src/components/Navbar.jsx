@@ -31,16 +31,16 @@ const Navbar = () => {
         </div>
 
         {/* Right: Actions */}
-        <div className="flex items-center gap-4 sm:gap-6">
+        <div className="flex items-center gap-2 sm:gap-6">
           {/* User Profile Summary */}
-          <div className="hidden md:flex items-center gap-3 bg-white/[0.03] border border-white/10 px-4 py-2 rounded-2xl hover:bg-white/[0.05] transition-all cursor-default">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500/20 to-cyan-500/20 flex items-center justify-center border border-emerald-500/30">
-              <UserIcon className="text-emerald-400" size={18} />
+          <div className="flex items-center gap-2 sm:gap-3 bg-white/[0.03] border border-white/10 px-2 sm:px-4 py-1.5 sm:py-2 rounded-xl hover:bg-white/[0.05] transition-all cursor-default">
+            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl bg-gradient-to-br from-emerald-500/20 to-cyan-500/20 flex items-center justify-center border border-emerald-500/30 flex-shrink-0">
+              <UserIcon className="text-emerald-400" size={16} />
             </div>
-            <div className="flex flex-col text-left">
-              <span className="text-sm font-bold text-white leading-none mb-1">{userProfile?.name}</span>
-              <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">
-                {userProfile?.is_hod ? 'HOD' : userProfile?.is_class_advisor ? 'Class Advisor' : userProfile?.role}
+            <div className="hidden sm:flex flex-col text-left">
+              <span className="text-xs sm:text-sm font-bold text-white leading-none mb-1 truncate max-w-[100px]">{userProfile?.name}</span>
+              <span className="text-[9px] sm:text-[10px] font-black text-gray-500 uppercase tracking-widest">
+                {userProfile?.is_hod ? 'HOD' : userProfile?.is_class_advisor ? 'Advisor' : userProfile?.role}
               </span>
             </div>
           </div>

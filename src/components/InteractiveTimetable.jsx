@@ -278,14 +278,14 @@ const InteractiveTimetable = ({ classId, selectedDate, className }) => {
   return (
     <div className="space-y-10">
       {/* Timetable Grid - Updated Format */}
-      <div className="bg-white text-black p-8 rounded-[2.5rem] overflow-hidden">
+      <div className="bg-white text-black p-4 sm:p-8 rounded-3xl sm:rounded-[2.5rem] overflow-hidden">
         {/* Header Section */}
         <div className="text-center mb-6 border-b-2 border-black pb-4">
-          <h1 className="text-2xl font-black uppercase tracking-tight mb-1">SREE SAKTHI ENGINEERING COLLEGE</h1>
-          <h2 className="text-sm font-bold uppercase tracking-widest text-gray-600 mb-4">(AUTONOMOUS)</h2>
-          <div className="flex flex-wrap justify-center text-xs font-bold uppercase tracking-wider gap-4">
+          <h1 className="text-lg sm:text-2xl font-black uppercase tracking-tight mb-1">SREE SAKTHI ENGINEERING COLLEGE</h1>
+          <h2 className="text-[10px] sm:text-sm font-bold uppercase tracking-widest text-gray-600 mb-4">(AUTONOMOUS)</h2>
+          <div className="flex flex-wrap justify-center text-[10px] sm:text-xs font-bold uppercase tracking-wider gap-4">
             <div className="text-center">
-              <div className="text-lg font-black mb-1">TIME TABLE FOR {className || 'SELECTED CLASS'}</div>
+              <div className="text-sm sm:text-lg font-black mb-1">TIME TABLE FOR {className || 'SELECTED CLASS'}</div>
             </div>
           </div>
         </div>
@@ -556,7 +556,7 @@ const InteractiveTimetable = ({ classId, selectedDate, className }) => {
       {/* Add Period Modal - NEW VERSION */}
       {showAddPeriodModal && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-[#0f1115] rounded-[2rem] border border-white/10 shadow-2xl max-w-md w-full overflow-hidden">
+          <div className="bg-[#0f1115] rounded-3xl sm:rounded-[2rem] border border-white/10 shadow-2xl max-w-md w-full overflow-hidden max-h-[90vh] overflow-y-auto">
             {/* Header */}
             <div className="bg-white/[0.02] p-6 border-b border-white/10">
               <h3 className="text-xl font-black text-white tracking-tight">Add Session Node</h3>
@@ -666,20 +666,20 @@ const InteractiveTimetable = ({ classId, selectedDate, className }) => {
       {/* Attendance Modal */}
       {showAttendanceModal && selectedPeriod && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-[#0f1115] rounded-[2.5rem] border border-white/10 shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+          <div className="bg-[#0f1115] rounded-3xl sm:rounded-[2.5rem] border border-white/10 shadow-2xl max-w-4xl w-full max-h-[95vh] sm:max-h-[90vh] overflow-hidden flex flex-col">
             {/* Modal Header */}
-            <div className="p-8 bg-white/[0.02] border-b border-white/10">
+            <div className="p-6 sm:p-8 bg-white/[0.02] border-b border-white/10">
               <div className="flex justify-between items-start">
                 <div>
-                  <h3 className="text-3xl font-black text-white tracking-tighter uppercase">{selectedPeriod.subject_name}</h3>
-                  <div className="flex items-center gap-3 mt-2">
-                    <span className="px-3 py-1 bg-white/5 border border-white/10 rounded-lg text-xs font-bold text-gray-400 uppercase tracking-wider">
+                  <h3 className="text-xl sm:text-3xl font-black text-white tracking-tighter uppercase">{selectedPeriod.subject_name}</h3>
+                  <div className="flex flex-wrap items-center gap-2 sm:gap-3 mt-2">
+                    <span className="px-3 py-1 bg-white/5 border border-white/10 rounded-lg text-[9px] sm:text-xs font-bold text-gray-400 uppercase tracking-wider">
                        {selectedPeriod.subject_name}
                     </span>
-                    <span className="px-3 py-1 bg-white/5 border border-white/10 rounded-lg text-xs font-bold text-gray-400 uppercase tracking-wider">
+                    <span className="px-3 py-1 bg-white/5 border border-white/10 rounded-lg text-[9px] sm:text-xs font-bold text-gray-400 uppercase tracking-wider">
                        {selectedPeriod.faculty_name}
                     </span>
-                     <span className="px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-lg text-xs font-bold text-emerald-400 uppercase tracking-wider">
+                     <span className="px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-lg text-[9px] sm:text-xs font-bold text-emerald-400 uppercase tracking-wider">
                        Period {selectedPeriod.period_number} • {getPeriodTime(selectedPeriod.period_number)}
                     </span>
                   </div>

@@ -69,11 +69,26 @@ code {
 /* Mobile responsive table */
 @media (max-width: 640px) {
   table {
-    font-size: 0.75rem;
+    font-size: 0.7rem;
+    display: block;
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
   }
 
   th, td {
-    padding: 0.5rem !important;
+    padding: 0.4rem 0.2rem !important;
+    min-width: 60px;
+  }
+
+  .container {
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+  }
+  
+  h1 {
+    font-size: 2.25rem !important; /* text-4xl equivalent as fallback */
+    line-height: 2.5rem !important;
   }
 }
 

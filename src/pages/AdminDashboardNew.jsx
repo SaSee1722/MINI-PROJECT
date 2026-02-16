@@ -1329,18 +1329,18 @@ const AdminDashboardNew = () => {
       <div className="container mx-auto px-3 sm:px-6 py-4 sm:py-8">
         {/* Animated Hero Section */}
         {/* Premium Dashboard Header */}
-        <div className="relative mb-16 py-12 overflow-hidden rounded-[3rem] bg-[#020617] border border-white/5 shadow-2xl animate-smoothFadeIn px-10 group">
-          <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-emerald-500/10 rounded-full blur-[120px] -mr-60 -mt-60 animate-pulse transition-colors duration-1000 group-hover:bg-emerald-500/20"></div>
-          <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-blue-500/10 rounded-full blur-[100px] -ml-40 -mb-40"></div>
+        <div className="relative mb-8 sm:mb-16 py-8 sm:py-12 overflow-hidden rounded-3xl sm:rounded-[3rem] bg-[#020617] border border-white/5 shadow-2xl animate-smoothFadeIn px-6 sm:px-10 group">
+          <div className="absolute top-0 right-0 w-[300px] sm:w-[600px] h-[300px] sm:h-[600px] bg-emerald-500/10 rounded-full blur-[80px] sm:blur-[120px] -mr-32 -mt-32 sm:-mr-60 sm:-mt-60 animate-pulse transition-colors duration-1000 group-hover:bg-emerald-500/20"></div>
+          <div className="absolute bottom-0 left-0 w-[200px] sm:w-[400px] h-[200px] sm:h-[400px] bg-blue-500/10 rounded-full blur-[60px] sm:blur-[100px] -ml-20 -mb-20 sm:-ml-40 sm:-mb-40"></div>
           
-          <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-10">
-            <div className="space-y-6 max-w-2xl">
-              <div className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-full mb-6">
+          <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6 sm:gap-10">
+            <div className="space-y-4 sm:space-y-6 max-w-2xl">
+              <div className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-full mb-2 sm:mb-6">
                 <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
                 <span className="text-emerald-400 text-[10px] font-black uppercase tracking-widest">Administrative Control</span>
               </div>
               
-              <h1 className="text-6xl md:text-8xl font-black text-white tracking-tighter mb-8 leading-[0.9]">
+              <h1 className="text-3xl sm:text-5xl md:text-8xl font-black text-white tracking-tighter mb-4 sm:mb-8 leading-[1.1] sm:leading-[0.9]">
                 {greeting},<br />
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 via-cyan-400 to-blue-500 animate-gradient whitespace-nowrap">
                   {userProfile?.name?.split(' ')[0]}
@@ -1353,28 +1353,28 @@ const AdminDashboardNew = () => {
             </div>
 
             <div className="grid grid-cols-2 gap-4 w-full md:w-auto">
-              <div className="bg-white/5 backdrop-blur-md rounded-[2rem] p-8 border border-white/10 hover:bg-white/10 transition-all duration-500 group/item hover:scale-105">
-                <Users size={24} className="text-emerald-400 mb-4 group-hover/item:scale-110 transition-transform" />
-                <div className="text-3xl font-black text-white">{students.length}</div>
+              <div className="bg-white/5 backdrop-blur-md rounded-3xl sm:rounded-[2rem] p-6 sm:p-8 border border-white/10 hover:bg-white/10 transition-all duration-500 group/item hover:scale-105">
+                <Users size={20} className="text-emerald-400 mb-2 sm:mb-4 group-hover/item:scale-110 transition-transform" />
+                <div className="text-2xl sm:text-3xl font-black text-white">{students.length}</div>
                 <div className="text-[10px] font-black text-gray-500 uppercase tracking-widest mt-1">Students</div>
               </div>
-              <div className="bg-white/5 backdrop-blur-md rounded-[2rem] p-8 border border-white/10 hover:bg-white/10 transition-all duration-500 group/item hover:scale-105">
-                <Globe size={24} className="text-blue-400 mb-4 group-hover/item:scale-110 transition-transform" />
-                <div className="text-3xl font-black text-white">{classes.length}</div>
+              <div className="bg-white/5 backdrop-blur-md rounded-3xl sm:rounded-[2rem] p-6 sm:p-8 border border-white/10 hover:bg-white/10 transition-all duration-500 group/item hover:scale-105">
+                <Globe size={20} className="text-blue-400 mb-2 sm:mb-4 group-hover/item:scale-110 transition-transform" />
+                <div className="text-2xl sm:text-3xl font-black text-white">{classes.length}</div>
                 <div className="text-[10px] font-black text-gray-500 uppercase tracking-widest mt-1">Classes</div>
               </div>
             </div>
           </div>
         </div>
 
-        <div className="bg-[#020617]/40 backdrop-blur-3xl rounded-[4rem] border border-white/5 mb-16 shadow-2xl overflow-hidden group/container hover:border-emerald-500/10 transition-colors duration-700">
-          <div className="border-b border-white/5 px-8 pt-8 pb-4 bg-white/[0.01]">
-            <nav className="flex overflow-x-auto gap-4 scrollbar-hide items-center justify-center">
+        <div className="bg-[#020617]/40 backdrop-blur-3xl rounded-3xl sm:rounded-[4rem] border border-white/5 mb-12 sm:mb-16 shadow-2xl overflow-hidden group/container hover:border-emerald-500/10 transition-colors duration-700">
+          <div className="border-b border-white/5 px-4 sm:px-8 py-4 bg-white/[0.01]">
+            <nav className="flex overflow-x-auto gap-2 sm:gap-4 scrollbar-hide items-center sm:justify-center py-2">
               {tabs.map((tab) => (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`group relative px-8 py-4 transition-all duration-700 rounded-[1.5rem] text-[10px] font-black tracking-[0.2em] uppercase overflow-hidden ${
+                  className={`group relative whitespace-nowrap px-6 sm:px-8 py-3 sm:py-4 transition-all duration-700 rounded-xl sm:rounded-[1.5rem] text-[10px] font-black tracking-[0.2em] uppercase overflow-hidden ${
                     activeTab === tab.id 
                     ? 'text-black bg-white shadow-2xl shadow-emerald-500/20' 
                     : 'text-gray-500 hover:text-white hover:bg-white/5'
@@ -1393,14 +1393,14 @@ const AdminDashboardNew = () => {
                     )}
                   </span>
                   {activeTab === tab.id && (
-                    <div className="absolute inset-0 bg-gradient-to-br from-white via-emerald-50 to-emerald-100 rounded-[1.5rem] -z-0"></div>
+                    <div className="absolute inset-0 bg-gradient-to-br from-white via-emerald-50 to-emerald-100 rounded-xl sm:rounded-[1.5rem] -z-0"></div>
                   )}
                 </button>
               ))}
             </nav>
           </div>
 
-          <div className="p-8 sm:p-16">
+          <div className="p-6 sm:p-16">
             {activeTab === 'overview' && (
               <div className="space-y-16 animate-smoothFadeIn">
                 <div className="flex flex-col md:flex-row md:items-end justify-between gap-8 border-b border-white/5 pb-12">
@@ -1426,69 +1426,53 @@ const AdminDashboardNew = () => {
                 </div>
 
                 {/* Statistics Cards */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
                   {/* Active Students */}
-                  <div className="group relative bg-[#020617] border border-white/5 rounded-[2.5rem] p-10 hover:bg-white/[0.04] transition-all duration-500 overflow-hidden cursor-pointer">
+                  <div className="group relative bg-[#020617] border border-white/5 rounded-3xl sm:rounded-[2.5rem] p-6 sm:p-10 hover:bg-white/[0.04] transition-all duration-500 overflow-hidden cursor-pointer">
                     <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-3xl group-hover:bg-emerald-500/10 transition-colors"></div>
-                    <div className="w-16 h-16 bg-emerald-500/10 rounded-2xl flex items-center justify-center border border-emerald-500/20 mb-8 group-hover:scale-110 group-hover:bg-emerald-500/20 transition-all duration-500">
-                      <Users className="text-emerald-400 w-8 h-8" />
+                    <div className="w-12 h-12 sm:w-16 sm:h-16 bg-emerald-500/10 rounded-xl sm:rounded-2xl flex items-center justify-center border border-emerald-500/20 mb-6 sm:mb-8 group-hover:scale-110 group-hover:bg-emerald-500/20 transition-all duration-500">
+                      <Users className="text-emerald-400 w-6 h-6 sm:w-8 sm:h-8" />
                     </div>
-                    <h3 className="text-6xl font-black text-white mb-2 tracking-tighter">
+                    <h3 className="text-4xl sm:text-6xl font-black text-white mb-2 tracking-tighter">
                        {students.filter(s => s.status === 'active').length}
                     </h3>
                     <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Active Students</p>
-                     <div className="mt-8 flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
-                        <span className="text-[10px] font-black text-emerald-500/60 uppercase tracking-widest">Online Now</span>
-                     </div>
                   </div>
 
                   {/* Classes Card */}
-                  <div className="group relative bg-[#020617] border border-white/5 rounded-[2.5rem] p-10 hover:bg-white/[0.04] transition-all duration-500 overflow-hidden cursor-pointer">
+                  <div className="group relative bg-[#020617] border border-white/5 rounded-3xl sm:rounded-[2.5rem] p-6 sm:p-10 hover:bg-white/[0.04] transition-all duration-500 overflow-hidden cursor-pointer">
                     <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full blur-3xl group-hover:bg-blue-500/10 transition-colors"></div>
-                    <div className="w-16 h-16 bg-blue-500/10 rounded-2xl flex items-center justify-center border border-blue-500/20 mb-8 group-hover:scale-110 group-hover:bg-blue-500/20 transition-all duration-500">
-                      <LayoutDashboard className="text-blue-400 w-8 h-8" />
+                    <div className="w-12 h-12 sm:w-16 sm:h-16 bg-blue-500/10 rounded-xl sm:rounded-2xl flex items-center justify-center border border-blue-500/20 mb-6 sm:mb-8 group-hover:scale-110 group-hover:bg-blue-500/20 transition-all duration-500">
+                      <LayoutDashboard className="text-blue-400 w-6 h-6 sm:w-8 sm:h-8" />
                     </div>
-                    <h3 className="text-6xl font-black text-white mb-2 tracking-tighter">
+                    <h3 className="text-4xl sm:text-6xl font-black text-white mb-2 tracking-tighter">
                        {classes.length}
                     </h3>
                     <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Active Classes</p>
-                     <div className="mt-8 flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full bg-blue-500"></div>
-                        <span className="text-[10px] font-black text-blue-500/60 uppercase tracking-widest">Total Classes</span>
-                     </div>
                   </div>
 
                   {/* Staff Members */}
-                   <div className="group relative bg-[#020617] border border-white/5 rounded-[2.5rem] p-10 hover:bg-white/[0.04] transition-all duration-500 overflow-hidden cursor-pointer">
+                   <div className="group relative bg-[#020617] border border-white/5 rounded-3xl sm:rounded-[2.5rem] p-6 sm:p-10 hover:bg-white/[0.04] transition-all duration-500 overflow-hidden cursor-pointer">
                     <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/5 rounded-full blur-3xl group-hover:bg-purple-500/10 transition-colors"></div>
-                    <div className="w-16 h-16 bg-purple-500/10 rounded-2xl flex items-center justify-center border border-purple-500/20 mb-8 group-hover:scale-110 group-hover:bg-purple-500/20 transition-all duration-500">
-                      <UserCheck className="text-purple-400 w-8 h-8" />
+                    <div className="w-12 h-12 sm:w-16 sm:h-16 bg-purple-500/10 rounded-xl sm:rounded-2xl flex items-center justify-center border border-purple-500/20 mb-6 sm:mb-8 group-hover:scale-110 group-hover:bg-purple-500/20 transition-all duration-500">
+                      <UserCheck className="text-purple-400 w-6 h-6 sm:w-8 sm:h-8" />
                     </div>
-                    <h3 className="text-6xl font-black text-white mb-2 tracking-tighter">
+                    <h3 className="text-4xl sm:text-6xl font-black text-white mb-2 tracking-tighter">
                        {users.filter(u => u.role === 'staff' && u.stream_id === userProfile?.stream_id).length}
                     </h3>
                     <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Staff Members</p>
-                     <div className="mt-8 flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full bg-purple-500"></div>
-                        <span className="text-[10px] font-black text-purple-500/60 uppercase tracking-widest">Active Staff</span>
-                     </div>
                   </div>
 
                   {/* Syncs */}
-                  <div className="group relative bg-[#020617] border border-white/5 rounded-[2.5rem] p-10 hover:bg-white/[0.04] transition-all duration-500 overflow-hidden cursor-pointer">
+                  <div className="group relative bg-[#020617] border border-white/5 rounded-3xl sm:rounded-[2.5rem] p-6 sm:p-10 hover:bg-white/[0.04] transition-all duration-500 overflow-hidden cursor-pointer">
                     <div className="absolute top-0 right-0 w-32 h-32 bg-orange-500/5 rounded-full blur-3xl group-hover:bg-orange-500/10 transition-colors"></div>
-                    <div className="w-16 h-16 bg-orange-500/10 rounded-2xl flex items-center justify-center border border-orange-500/20 mb-8 group-hover:scale-110 group-hover:bg-orange-500/20 transition-all duration-500">
-                      <Activity className="text-orange-400 w-8 h-8" />
+                    <div className="w-12 h-12 sm:w-16 sm:h-16 bg-orange-500/10 rounded-xl sm:rounded-2xl flex items-center justify-center border border-orange-500/20 mb-6 sm:mb-8 group-hover:scale-110 group-hover:bg-orange-500/20 transition-all duration-500">
+                      <Activity className="text-orange-400 w-6 h-6 sm:w-8 sm:h-8" />
                     </div>
-                     <h3 className="text-6xl font-black text-white mb-2 tracking-tighter">
+                     <h3 className="text-4xl sm:text-6xl font-black text-white mb-2 tracking-tighter">
                         {studentAttendanceCount + staffAttendanceCount}
                      </h3>
                      <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Attendance Recorded</p>
-                     <div className="mt-8 flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full bg-orange-500"></div>
-                        <span className="text-[10px] font-black text-orange-500/60 uppercase tracking-widest">Today's Data</span>
-                     </div>
                    </div>
                 </div>
 

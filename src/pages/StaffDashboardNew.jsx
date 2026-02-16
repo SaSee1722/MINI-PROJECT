@@ -594,18 +594,18 @@ const StaffDashboardNew = () => {
       
       <div className="container mx-auto px-3 sm:px-6 py-4 sm:py-8">
         {/* Premium Dashboard Header */}
-        <div className="relative mb-16 py-12 overflow-hidden rounded-[3rem] bg-[#020617] border border-white/5 shadow-2xl animate-smoothFadeIn px-10 group">
-          <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-emerald-500/10 rounded-full blur-[120px] -mr-60 -mt-60 animate-pulse transition-colors duration-1000 group-hover:bg-emerald-500/20"></div>
-          <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-blue-500/10 rounded-full blur-[100px] -ml-40 -mb-40"></div>
+        <div className="relative mb-8 sm:mb-16 py-8 sm:py-12 overflow-hidden rounded-3xl sm:rounded-[3rem] bg-[#020617] border border-white/5 shadow-2xl animate-smoothFadeIn px-6 sm:px-10 group">
+          <div className="absolute top-0 right-0 w-[300px] sm:w-[600px] h-[300px] sm:h-[600px] bg-emerald-500/10 rounded-full blur-[80px] sm:blur-[120px] -mr-32 -mt-32 sm:-mr-60 sm:-mt-60 animate-pulse transition-colors duration-1000 group-hover:bg-emerald-500/20"></div>
+          <div className="absolute bottom-0 left-0 w-[200px] sm:w-[400px] h-[200px] sm:h-[400px] bg-blue-500/10 rounded-full blur-[60px] sm:blur-[100px] -ml-20 -mb-20 sm:-ml-40 sm:-mb-40"></div>
           
-          <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-10">
-            <div className="space-y-6 max-w-2xl">
-              <div className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-full mb-6">
+          <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6 sm:gap-10">
+            <div className="space-y-4 sm:space-y-6 max-w-2xl">
+              <div className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-full mb-2 sm:mb-6">
                 <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
                 <span className="text-emerald-400 text-[10px] font-black uppercase tracking-widest">Faculty Access Node</span>
               </div>
               
-              <h1 className="text-5xl md:text-7xl font-black text-white tracking-tighter leading-[0.9]">
+              <h1 className="text-3xl sm:text-5xl md:text-7xl font-black text-white tracking-tighter leading-[1.1] sm:leading-[0.9]">
                 Staff <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400">Dashboard</span>
               </h1>
               
@@ -641,16 +641,16 @@ const StaffDashboardNew = () => {
 
         {/* Daily Prompt for Class Advisors */}
         {userProfile?.is_class_advisor && (
-          <div className="mb-16 bg-gradient-to-r from-blue-600/10 to-emerald-600/10 border border-blue-500/20 rounded-[2.5rem] p-10 relative overflow-hidden group">
+          <div className="mb-12 sm:mb-16 bg-gradient-to-r from-blue-600/10 to-emerald-600/10 border border-blue-500/20 rounded-3xl sm:rounded-[2.5rem] p-6 sm:p-10 relative overflow-hidden group">
             <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full blur-[80px] -mr-20 -mt-20 group-hover:bg-blue-500/20 transition-all duration-700"></div>
-            <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-10">
-              <div className="flex items-center gap-8">
-                <div className="w-20 h-20 bg-blue-500/20 rounded-3xl flex items-center justify-center text-3xl text-blue-400 border border-blue-500/20 shadow-2xl">
-                  <Clock size={32} />
+            <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6 sm:gap-10">
+              <div className="flex items-center gap-4 sm:gap-8 w-full md:w-auto">
+                <div className="w-16 h-16 sm:w-20 sm:h-20 bg-blue-500/20 rounded-2xl sm:rounded-3xl flex items-center justify-center text-2xl sm:text-3xl text-blue-400 border border-blue-500/20 shadow-2xl flex-shrink-0">
+                  <Clock size={28} />
                 </div>
                 <div>
-                  <h3 className="text-3xl font-black text-white tracking-tight">Daily Protocol</h3>
-                  <p className="text-blue-200/60 text-sm font-bold uppercase tracking-widest mt-2">Ensure synchronization for <span className="text-white">{classes.find(c => c.id === userProfile.advisor_class_id)?.name}</span></p>
+                  <h3 className="text-2xl sm:text-3xl font-black text-white tracking-tight">Daily Protocol</h3>
+                  <p className="text-blue-200/60 text-xs sm:text-sm font-bold uppercase tracking-widest mt-1">Ensure synchronization for <span className="text-white">{classes.find(c => c.id === userProfile.advisor_class_id)?.name}</span></p>
                 </div>
               </div>
               <div className="flex flex-col sm:flex-row gap-4">
@@ -677,14 +677,14 @@ const StaffDashboardNew = () => {
         )}
 
         {/* Navigation Tabs */}
-        <div className="flex flex-wrap items-center justify-center gap-4 mb-16 animate-slideUp" style={{animationDelay: '0.1s'}}>
+        <div className="flex overflow-x-auto scrollbar-hide items-center sm:justify-center gap-3 sm:gap-4 mb-12 sm:mb-16 animate-slideUp py-2 -mx-3 px-3 sm:mx-0 sm:px-0" style={{animationDelay: '0.1s'}}>
            {tabs.map((tab) => (
              <button
                key={tab.id}
                onClick={() => setActiveTab(tab.id)}
-               className={`px-8 py-4 rounded-2xl text-xs font-black uppercase tracking-[0.2em] transition-all duration-500 ${
+               className={`whitespace-nowrap px-6 sm:px-8 py-3 sm:py-4 rounded-xl sm:rounded-2xl text-[10px] sm:text-xs font-black uppercase tracking-[0.2em] transition-all duration-500 ${
                  activeTab === tab.id 
-                   ? 'bg-white text-black shadow-[0_0_40px_-10px_rgba(255,255,255,0.3)] scale-110' 
+                   ? 'bg-white text-black shadow-[0_0_40px_-10px_rgba(255,255,255,0.3)] scale-105 sm:scale-110' 
                    : 'bg-white/5 text-gray-500 hover:bg-white/10 hover:text-white'
                }`}
              >
@@ -705,16 +705,16 @@ const StaffDashboardNew = () => {
         <div className="animate-slideUp" style={{animationDelay: '0.2s'}}>
 
           <div className="p-3 sm:p-6">
-          {activeTab === 'timetable' && (
-             <div className="space-y-10">
+           {activeTab === 'timetable' && (
+             <div className="space-y-8 sm:space-y-10">
                <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
                  <div className="space-y-2">
-                   <h2 className="text-4xl font-black text-white tracking-tighter">Interactive Timetable</h2>
+                   <h2 className="text-3xl sm:text-4xl font-black text-white tracking-tighter">Interactive Timetable</h2>
                    <p className="text-gray-500 font-bold uppercase tracking-[0.2em] text-[10px]">Manage sessions & mark attendance</p>
                  </div>
                </div>
 
-               <div className="bg-white/[0.03] border border-white/10 rounded-[2.5rem] p-8 sm:p-10 space-y-8">
+               <div className="bg-white/[0.03] border border-white/10 rounded-3xl sm:rounded-[2.5rem] p-6 sm:p-10 space-y-6 sm:space-y-8">
                  <div className="space-y-4">
                    <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] ml-2">Select Academic Node</label>
                    <select
@@ -774,7 +774,7 @@ const StaffDashboardNew = () => {
               {/* Class Card for Advisor */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {userProfile?.advisor_class_id && (
-                  <div 
+                   <div 
                     onClick={() => {
                       if (Object.keys(dailyAttendance).length > 0) {
                         setToast({ 
@@ -785,17 +785,17 @@ const StaffDashboardNew = () => {
                       }
                       setShowDailyRoster(!showDailyRoster)
                     }}
-                    className={`group cursor-pointer bg-white/[0.04] border ${showDailyRoster ? 'border-emerald-500' : 'border-emerald-500/30'} rounded-[2.5rem] p-10 relative overflow-hidden transition-all duration-500 shadow-2xl shadow-emerald-500/10 hover:scale-[1.02] active:scale-95`}
+                    className={`group cursor-pointer bg-white/[0.04] border ${showDailyRoster ? 'border-emerald-500' : 'border-emerald-500/30'} rounded-3xl sm:rounded-[2.5rem] p-6 sm:p-10 relative overflow-hidden transition-all duration-500 shadow-2xl shadow-emerald-500/10 hover:scale-[1.02] active:scale-95`}
                   >
                     <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-full blur-3xl group-hover:bg-emerald-500/20 transition-colors"></div>
                     
                     <div className="relative z-10">
-                      <div className="flex items-center gap-5 mb-8">
-                        <div className="w-16 h-16 bg-emerald-500/20 rounded-[1.5rem] flex items-center justify-center border border-emerald-500/30 text-emerald-400 group-hover:bg-emerald-500 transition-all">
-                          <Layout size={32} className={showDailyRoster ? 'text-white' : ''} />
+                      <div className="flex items-center gap-4 sm:gap-5 mb-6 sm:mb-8">
+                        <div className="w-12 h-12 sm:w-16 sm:h-16 bg-emerald-500/20 rounded-2xl sm:rounded-[1.5rem] flex items-center justify-center border border-emerald-500/30 text-emerald-400 group-hover:bg-emerald-500 transition-all">
+                          <Layout size={24} className={showDailyRoster ? 'text-white' : ''} />
                         </div>
                         <div>
-                          <h3 className="text-3xl font-black text-white tracking-tight">
+                          <h3 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
                             {classes.find(c => c.id === userProfile.advisor_class_id)?.name}
                           </h3>
                           <p className={`text-[10px] font-black uppercase tracking-widest mt-1 ${Object.keys(dailyAttendance).length > 0 ? 'text-emerald-400' : 'text-emerald-500/60'}`}>

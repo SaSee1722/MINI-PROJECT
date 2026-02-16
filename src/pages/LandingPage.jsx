@@ -220,7 +220,7 @@ const LandingPage = () => {
               </span>
             </div>
             
-            <h1 className="text-7xl md:text-[10rem] font-black tracking-tighter leading-[0.85] mb-12 animate-smoothSlideUp relative group">
+            <h1 className="text-5xl sm:text-7xl md:text-[10rem] font-black tracking-tighter leading-[0.95] sm:leading-[0.85] mb-8 sm:mb-12 animate-smoothSlideUp relative group">
               <span className="inline-block hover:scale-[1.02] hover:-rotate-1 transition-transform cursor-default">ATTENDANCE</span><br />
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 via-cyan-400 to-blue-500 animate-gradient">EVOLVED.</span>
               <div className="absolute -top-20 -right-20 w-40 h-40 bg-emerald-500/10 rounded-full blur-3xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
@@ -233,9 +233,9 @@ const LandingPage = () => {
               No friction.
             </p>
 
-            <div className="max-w-3xl mx-auto mb-24 px-8 py-10 bg-[#0a0a0a] border border-white/10 rounded-[3rem] animate-smoothSlideUp relative group backdrop-blur-sm shadow-2xl" style={{ animationDelay: '300ms' }}>
+            <div className="max-w-3xl mx-auto mb-16 sm:mb-24 px-6 sm:px-8 py-8 sm:py-10 bg-[#0a0a0a] border border-white/10 rounded-3xl sm:rounded-[3rem] animate-smoothSlideUp relative group backdrop-blur-sm shadow-2xl" style={{ animationDelay: '300ms' }}>
               <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity rounded-[3rem]"></div>
-              <p className="relative z-10 text-gray-400 font-medium leading-relaxed italic text-lg group-hover:text-gray-200 transition-colors">
+              <p className="relative z-10 text-gray-400 font-medium leading-relaxed italic text-base sm:text-lg group-hover:text-gray-200 transition-colors">
                 "Our vision is to bridge the gap between administrative overhead and academic excellence through seamless, transparent, and intelligent presence tracking."
               </p>
             </div>
@@ -257,11 +257,11 @@ const LandingPage = () => {
           <div className="container mx-auto px-6">
             <div className="mb-24 flex flex-col md:flex-row md:items-end justify-between gap-10">
               <div className="max-w-xl">
-                <h2 className="text-4xl md:text-5xl font-black text-white tracking-tighter mb-6 uppercase">
+                <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-white tracking-tighter mb-6 uppercase">
                    Engineered for<br />
-                   <span className="text-emerald-500 text-6xl md:text-7xl italic animate-pulse">Precision.</span>
+                   <span className="text-4xl sm:text-5xl md:text-7xl text-emerald-500 italic animate-pulse">Precision.</span>
                 </h2>
-                <p className="text-gray-500 font-medium text-lg leading-relaxed">
+                <p className="text-gray-500 font-medium text-base sm:text-lg leading-relaxed">
                   We've rebuilt the core attendance logic from the ground up to support high-traffic environments while maintaining millisecond-level responsiveness.
                 </p>
               </div>
@@ -364,11 +364,11 @@ const LandingPage = () => {
                 
                 <div className="relative z-10 flex flex-col lg:flex-row items-center justify-between gap-16">
                    <div className="max-w-2xl text-center lg:text-left">
-                      <h2 className="text-5xl md:text-7xl font-black text-white tracking-tighter mb-10 leading-[0.85] uppercase">
+                      <h2 className="text-4xl sm:text-5xl md:text-7xl font-black text-white tracking-tighter mb-8 sm:mb-10 leading-[1] sm:leading-[0.85] uppercase">
                         Ready to deploy<br />
                         <span className="text-emerald-500 italic">Smart Presence?</span>
                       </h2>
-                      <p className="text-gray-400 text-xl font-medium tracking-tight mb-12">
+                      <p className="text-gray-400 text-lg sm:text-xl font-medium tracking-tight mb-10 sm:mb-12">
                         Join modern departments elevating their administrative standards today. No credit card required to start.
                       </p>
                       <div className="flex flex-wrap justify-center lg:justify-start gap-4">
@@ -381,8 +381,8 @@ const LandingPage = () => {
                       </div>
                    </div>
 
-                   <div className="flex-shrink-0 animate-bounce-slow">
-                      <Link to="/signup" className="relative px-20 py-10 bg-emerald-500 hover:bg-emerald-400 text-black text-base font-black uppercase tracking-[0.3em] rounded-[2.5rem] transition-all shadow-[0_0_50px_rgba(16,185,129,0.3)] hover:scale-[1.05] active:scale-95 flex items-center gap-4 group/btn overflow-hidden">
+                   <div className="flex-shrink-0 animate-bounce-slow mt-8 lg:mt-0">
+                      <Link to="/signup" className="relative px-12 sm:px-20 py-6 sm:py-10 bg-emerald-500 hover:bg-emerald-400 text-black text-sm sm:text-base font-black uppercase tracking-[0.3em] rounded-3xl sm:rounded-[2.5rem] transition-all shadow-[0_0_50px_rgba(16,185,129,0.3)] hover:scale-[1.05] active:scale-95 flex items-center gap-4 group/btn overflow-hidden">
                         <span className="relative z-10">Activate Hub</span>
                         <ChevronRight size={24} className="group-hover/btn:translate-x-3 transition-transform relative z-10" />
                         <div className="absolute inset-0 bg-white opacity-0 group-hover/btn:opacity-20 transition-opacity"></div>

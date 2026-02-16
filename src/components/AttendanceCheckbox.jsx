@@ -59,21 +59,21 @@ const AttendanceCheckbox = ({ studentId, studentName, initialStatus, initialAppr
       {/* Attendance and Approval Options Container */}
       <div className="flex flex-col sm:flex-row sm:items-center gap-4">
         {/* Attendance Options */}
-        <div className="flex gap-2">
+        <div className="flex flex-wrap sm:flex-nowrap gap-2 w-full">
           {statuses.map((status) => (
             <button
               key={status.value}
               onClick={() => handleStatusChange(status.value)}
               className={`
-                relative px-4 py-2 rounded-lg font-black text-xs uppercase tracking-widest transition-all duration-300
+                relative flex-1 px-2 sm:px-4 py-3 sm:py-2 rounded-lg font-black text-[10px] sm:text-xs uppercase tracking-widest transition-all duration-300
                 ${selectedStatus === status.value 
                   ? `${status.color} text-white shadow-xl scale-105` 
                   : status.unselected
                 }
               `}
             >
-              <span className="flex items-center gap-2">
-                <span className="text-sm">{status.icon}</span>
+              <span className="flex items-center justify-center gap-1.5 sm:gap-2">
+                <span className="text-xs sm:text-sm">{status.icon}</span>
                 <span>{status.label}</span>
               </span>
               {selectedStatus === status.value && (
