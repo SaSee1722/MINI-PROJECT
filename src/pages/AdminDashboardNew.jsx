@@ -1921,15 +1921,15 @@ const AdminDashboardNew = () => {
                           <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-3xl"></div>
                           <pre className="text-emerald-400/90 font-mono text-xs leading-relaxed whitespace-pre-wrap select-all">
                             {(() => {
-                              const dateStr = new Date(shortReportData.date).toLocaleDateString('en-GB')
-                              const streamName = shortReportData.stream?.name
+                              const d = new Date(shortReportData.date)
+                              const dateStr = `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getFullYear()).slice(-2)}`
                               const streamCode = shortReportData.stream?.code
                               
-                              let text = `☀️Stream: ${streamName}\n☀️Date: ${dateStr}\n\n`
+                              let text = `Department: ${streamCode}\n☀Date: ${dateStr}\n\n`
                               
                               if (shortReportData.classes && shortReportData.classes.length > 0) {
                                 shortReportData.classes.forEach(cls => {
-                                  text += `➕${cls.name}: ${streamCode}  ${cls.present}/${cls.total}\n`
+                                  text += `➕${cls.name}: ${streamCode} ${cls.present}/${cls.total}\n`
                                   if (cls.approved > 0) text += `📍Approved: ${String(cls.approved).padStart(2, '0')}\n`
                                   if (cls.unapproved > 0) text += `📍Unapproved: ${String(cls.unapproved).padStart(2, '0')}\n`
                                   if (cls.onDuty > 0) text += `📍OD: ${String(cls.onDuty).padStart(2, '0')}\n`
@@ -1941,7 +1941,7 @@ const AdminDashboardNew = () => {
                                 text += `[Daily Intelligence Cycle: No decentralized records found]\n\n`
                               }
                               
-                              text += `Reported by: Dean, ${streamCode}.`
+                              text += `Reported by: \nHOD /${streamCode} : "${userProfile?.name}"`
                               return text
                             })()}
                           </pre>
@@ -1949,21 +1949,21 @@ const AdminDashboardNew = () => {
                           <div className="mt-8 flex justify-end relative z-10">
                             <button
                               onClick={() => {
-                                const dateStr = new Date(shortReportData.date).toLocaleDateString('en-GB')
-                                const streamName = shortReportData.stream?.name
-                                const streamCode = shortReportData.stream?.code
-                                
-                                let text = `☀️Stream: ${streamName}\n☀️Date: ${dateStr}\n\n`
-                                shortReportData.classes.forEach(cls => {
-                                  text += `➕${cls.name}: ${streamCode}  ${cls.present}/${cls.total}\n`
-                                  if (cls.approved > 0) text += `📍Approved: ${String(cls.approved).padStart(2, '0')}\n`
-                                  if (cls.unapproved > 0) text += `📍Unapproved: ${String(cls.unapproved).padStart(2, '0')}\n`
-                                  if (cls.onDuty > 0) text += `📍OD: ${String(cls.onDuty).padStart(2, '0')}\n`
-                                  if (cls.suspended > 0) text += `📍Suspend: ${String(cls.suspended).padStart(2, '0')}\n`
-                                  if (cls.intern > 0) text += `📍Intern: ${String(cls.intern).padStart(2, '0')}\n`
-                                  text += '\n'
-                                })
-                                text += `Reported by: Dean, ${streamCode}.`
+                                  const d = new Date(shortReportData.date)
+                                  const dateStr = `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getFullYear()).slice(-2)}`
+                                  const streamCode = shortReportData.stream?.code
+                                  
+                                  let text = `Department: ${streamCode}\n☀Date: ${dateStr}\n\n`
+                                  shortReportData.classes.forEach(cls => {
+                                    text += `➕${cls.name}: ${streamCode} ${cls.present}/${cls.total}\n`
+                                    if (cls.approved > 0) text += `📍Approved: ${String(cls.approved).padStart(2, '0')}\n`
+                                    if (cls.unapproved > 0) text += `📍Unapproved: ${String(cls.unapproved).padStart(2, '0')}\n`
+                                    if (cls.onDuty > 0) text += `📍OD: ${String(cls.onDuty).padStart(2, '0')}\n`
+                                    if (cls.suspended > 0) text += `📍Suspend: ${String(cls.suspended).padStart(2, '0')}\n`
+                                    if (cls.intern > 0) text += `📍Intern: ${String(cls.intern).padStart(2, '0')}\n`
+                                    text += '\n'
+                                  })
+                                  text += `Reported by: \nHOD /${streamCode} : "${userProfile?.name}"`
 
                                 navigator.clipboard.writeText(text)
                                 setToast({ message: 'Institutional protocol cached to clipboard!', type: 'success' })
