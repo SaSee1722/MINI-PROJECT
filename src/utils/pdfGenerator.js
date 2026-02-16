@@ -27,177 +27,183 @@ const getPeriodText = (num) => {
 
 export const generatePeriodAttendanceReport = async (periodData, supabase, options = {}) => {
   const doc = new jsPDF('p', 'mm', 'a4')
-  const { startDate, endDate, className } = options
+  const { subjectCode } = options
   
-  const primaryPurple = [139, 92, 246] // Violet-500
-  const darkPurple = [124, 58, 237] // Violet-600
-  const slateText = [71, 85, 105]
-  const successGreen = [34, 197, 94]
-  const dangerRed = [239, 68, 68]
+  const primaryPurple = [31, 41, 55] // Gray-800
+  const accentBlue = [37, 99, 235] // Blue-600
+  const dangerRed = [220, 38, 38] // Red-600
+  const successGreen = [22, 163, 74] // Green-600
+  const warningOrange = [217, 119, 6] // Orange-600
 
   // --- Header Section ---
-  doc.setTextColor(...primaryPurple)
-  doc.setFontSize(18)
-  doc.setFont('helvetica', 'bold')
-  doc.text('Smart Presence', 105, 15, { align: 'center' })
-  
-  doc.setTextColor(30, 41, 59)
-  doc.setFontSize(14)
-  doc.text('Date Range Attendance Report', 105, 23, { align: 'center' })
-  
-  doc.setFontSize(10)
-  doc.setTextColor(...slateText)
-  const rangeStr = (startDate && endDate) ? (startDate === endDate ? startDate : `${startDate} to ${endDate}`) : ''
-  doc.text(rangeStr, 105, 30, { align: 'center' })
-  
-  doc.setFontSize(8)
-  doc.setTextColor(148, 163, 184)
-  const genTime = new Date().toLocaleString()
-  doc.text(`Generated: ${genTime}`, 105, 36, { align: 'center' })
-
-  // --- Data Extraction ---
-  let totalPresentAcrossAll = 0
-  let totalAbsentAcrossAll = 0
-  let totalMarkedAcrossAll = 0
-  const processedPeriods = []
-  
-  const sortedPeriods = [...periodData].sort((a,b) => {
-     const dateA = new Date(a.date)
-     const dateB = new Date(b.date)
-     if (dateA - dateB !== 0) return dateA - dateB
-     return a.period_number - b.period_number
-  })
-
-  for (const record of sortedPeriods) {
-    try {
-      const { data: students, error } = await supabase
-        .from('period_student_attendance')
-        .select(`*, students (roll_number, name, classes (name))`)
-        .eq('period_attendance_id', record.id)
-        .order('students(roll_number)')
-      
-      if (!error && students) {
-        let p = 0, a = 0
-        students.forEach(s => { 
-          if (s.status === 'present') p++; else a++ 
-          totalMarkedAcrossAll++
-        })
-        totalPresentAcrossAll += p
-        totalAbsentAcrossAll += a
-        processedPeriods.push({ ...record, studentList: students, presentCount: p, absentCount: a })
-      }
-    } catch (err) { console.error(err) }
-  }
-
-  // --- Attendance Summary Card ---
   doc.setFillColor(...primaryPurple)
-  doc.roundedRect(10, 42, 190, 40, 3, 3, 'F')
+  doc.rect(0, 0, 210, 40, 'F')
   
   doc.setTextColor(255, 255, 255)
-  doc.setFontSize(10)
+  doc.setFontSize(22)
   doc.setFont('helvetica', 'bold')
-  doc.text('ATTENDANCE SUMMARY', 15, 50)
+  doc.text('Subject Attendance Report', 105, 18, { align: 'center' })
   
-  const drawStatBox = (label, value, x) => {
-    doc.setFillColor(...darkPurple)
-    doc.roundedRect(x, 55, 42, 16, 2, 2, 'F')
-    doc.setFontSize(10)
-    doc.text(value.toString(), x + 21, 63, { align: 'center' })
-    doc.setFontSize(6)
-    doc.setFont('helvetica', 'normal')
-    doc.text(label, x + 21, 68, { align: 'center' })
-    doc.setFont('helvetica', 'bold')
-  }
-
-  drawStatBox('TOTAL SESSIONS', processedPeriods.length, 15)
-  drawStatBox('TRACKING UNITS', totalMarkedAcrossAll, 62)
-  drawStatBox('PRESENT', totalPresentAcrossAll, 109)
-  drawStatBox('ABSENT', totalAbsentAcrossAll, 156)
+  doc.setFontSize(14)
+  doc.setFont('helvetica', 'normal')
+  doc.text(`Subject Code: ${subjectCode || 'N/A'}`, 105, 28, { align: 'center' })
   
-  doc.setFontSize(8)
-  const rate = totalMarkedAcrossAll > 0 ? ((totalPresentAcrossAll/totalMarkedAcrossAll)*100).toFixed(1) : '0.0'
-  doc.text(`Overall attendance rate for the following sessions:  ${rate}%`, 105, 76, { align: 'center' })
+  doc.setFontSize(9)
+  doc.setTextColor(200, 200, 200)
+  const genTime = new Date().toLocaleString()
+  doc.text(`Generated on: ${genTime}`, 105, 35, { align: 'center' })
 
-  // --- Session Blocks (Card Style) ---
-  let currentY = 92
+  let currentY = 50
 
-  processedPeriods.forEach((session, idx) => {
-    if (currentY > 230) {
+  for (const session of periodData) {
+    if (currentY > 240) {
       doc.addPage()
       currentY = 20
     }
+
+    // Fetch all students in this class to identify Intern/Suspend
+    const { data: allStudents } = await supabase
+      .from('students')
+      .select('id, name, roll_number, status')
+      .eq('class_id', session.class_id)
+
+    // Fetch attendance details for this session
+    const { data: attendanceRecords } = await supabase
+      .from('period_student_attendance')
+      .select('*, students(name, roll_number)')
+      .eq('period_attendance_id', session.id)
+
+    const absentees = attendanceRecords?.filter(r => r.status === 'absent') || []
+    const onDuty = attendanceRecords?.filter(r => r.status === 'on_duty') || []
+    const interns = allStudents?.filter(s => s.status === 'intern') || []
+    const suspended = allStudents?.filter(s => s.status === 'suspended') || []
     
-    // Header Row
-    doc.setTextColor(0, 0, 0)
-    doc.setFontSize(12)
+    const totalStrength = allStudents?.length || 0
+    const presentCount = session.present_count || 0
+    
+    // session card border
+    doc.setDrawColor(229, 231, 235)
+    doc.setLineWidth(0.5)
+    doc.roundedRect(10, currentY, 190, 15, 2, 2, 'S')
+    
+    // Header row of the card
+    doc.setFillColor(249, 250, 251)
+    doc.roundedRect(10, currentY, 190, 15, 2, 2, 'FD')
+    
+    doc.setTextColor(17, 24, 39)
+    doc.setFontSize(11)
     doc.setFont('helvetica', 'bold')
-    doc.text((idx + 1).toString(), 15, currentY)
+    const className = session.classes?.name || 'Unknown Class'
+    const sessionDate = new Date(session.date).toLocaleDateString('en-GB')
+    doc.text(`${className} | ${session.timetable?.subject_name} (${subjectCode})`, 15, currentY + 10)
     
-    doc.setFontSize(8)
+    doc.setFontSize(9)
     doc.setFont('helvetica', 'normal')
-    doc.setTextColor(148, 163, 184)
-    const staffName = session.is_alternative_staff ? session.alternative_staff_name : (session.timetable?.faculty_name || 'N/A')
-    const sessionClass = session.classes?.name || className || 'N/A'
-    const sessionDate = new Date(session.date).toLocaleDateString()
+    doc.setTextColor(107, 114, 128)
+    doc.text(`Date: ${sessionDate} | Period: ${session.period_number} | Handler: ${session.timetable?.faculty_name || 'N/A'}`, 155, currentY + 10, { align: 'right' })
+
+    currentY += 20
+
+    // Stats Section
+    doc.setFontSize(10)
+    doc.setFont('helvetica', 'bold')
+    doc.setTextColor(17, 24, 39)
+    doc.text('Attendance Statistics:', 15, currentY)
     
-    doc.text(`Staff: ${staffName} | Date: ${sessionDate} | Session: ${getPeriodText(session.period_number)}`, 15, currentY + 5)
-    doc.text(`${session.presentCount} Present | ${session.absentCount} Absent`, 195, currentY + 5, { align: 'right' })
+    doc.setFont('helvetica', 'normal')
+    doc.text(`Present: `, 15, currentY + 7)
+    doc.setTextColor(...successGreen)
+    doc.text(`${presentCount}`, 30, currentY + 7)
+    doc.setTextColor(107, 114, 128)
+    doc.text(` / Total Strength: ${totalStrength}`, 35, currentY + 7)
+    
+    const attendanceRate = totalStrength > 0 ? ((presentCount / totalStrength) * 100).toFixed(1) : 0
+    doc.text(`Attendance Rate: ${attendanceRate}%`, 130, currentY + 7)
 
-    autoTable(doc, {
-      startY: currentY + 8,
-      head: [['STUDENT NAME', 'ROLL NUMBER', 'PERIOD', 'CLASS', 'STATUS']],
-      body: session.studentList.map(s => [
-        s.students?.name || 'N/A',
-        s.students?.roll_number || 'N/A',
-        getPeriodText(session.period_number),
-        s.students?.classes?.name || className || 'N/A',
-        s.status === 'present' ? 'Present' : 'Absent'
-      ]),
-      theme: 'striped',
-      headStyles: { 
-        fillColor: [241, 245, 249], 
-        textColor: [71, 85, 105], 
-        fontSize: 7, 
-        fontStyle: 'bold',
-        halign: 'left'
-      },
-      styles: { fontSize: 7, cellPadding: 2, valign: 'middle' },
-      columnStyles: {
-        4: { fontStyle: 'bold', halign: 'right' }
-      },
-      didDrawCell: (data) => {
-        if (data.column.index === 4 && data.cell.section === 'body') {
-          const status = data.cell.text[0]
-          if (status === 'Present') {
-            doc.setTextColor(...successGreen)
-            data.cell.text[0] = '✓ Present'
-          } else {
-            doc.setTextColor(...dangerRed)
-            data.cell.text[0] = '✗ Absent'
-          }
+    currentY += 15
+
+    // Right side for OD/Intern/Suspend
+    let rightY = currentY + 3
+    
+    const drawSideList = (title, list, color, x) => {
+      if (list.length === 0) return rightY
+      doc.setFontSize(8)
+      doc.setFont('helvetica', 'bold')
+      doc.setTextColor(...color)
+      doc.text(`${title} (${list.length}):`, x, rightY)
+      rightY += 5
+      
+      doc.setFont('helvetica', 'normal')
+      doc.setTextColor(31, 41, 55)
+      list.forEach(item => {
+        const text = `${item.students?.roll_number || item.roll_number} - ${item.students?.name || item.name}`
+        doc.text(text, x, rightY)
+        rightY += 4
+        if (rightY > 280) {
+          // Very simplified overflow handling for side lists
+           doc.text('...', x, rightY)
+           return
         }
-      },
-      margin: { left: 15, right: 15 }
-    })
+      })
+      rightY += 5
+      return rightY
+    }
 
-    currentY = doc.lastAutoTable.finalY + 15
-  })
+    // Absentees Table
+    if (absentees.length > 0) {
+      doc.setFont('helvetica', 'bold')
+      doc.setTextColor(...dangerRed)
+      doc.text(`Absentees (${absentees.length}):`, 15, currentY)
+      
+      autoTable(doc, {
+        startY: currentY + 3,
+        head: [['Reg No', 'Student Name']],
+        body: absentees.map(a => [a.students?.roll_number || 'N/A', a.students?.name || 'N/A']),
+        theme: 'grid',
+        headStyles: { fillColor: [254, 242, 242], textColor: [153, 27, 27], fontSize: 8 },
+        styles: { fontSize: 8, cellPadding: 2 },
+        margin: { left: 15, right: 105 } // Left side for absentees
+      })
+      
+      const tableEndY = doc.lastAutoTable.finalY
+      
+      rightY = drawSideList('On Duty', onDuty, accentBlue, 110)
+      rightY = drawSideList('Internship', interns, warningOrange, 110)
+      rightY = drawSideList('Suspended', suspended, primaryPurple, 110)
+      
+      currentY = Math.max(tableEndY, rightY) + 10
+    } else {
+      doc.setTextColor(...successGreen)
+      doc.setFont('helvetica', 'bold')
+      doc.text('All students are present.', 15, currentY)
+      
+      // Even if none absent, show OD/Intern/Suspend
+      rightY = currentY + 7
+      rightY = drawSideList('On Duty', onDuty, accentBlue, 15)
+      rightY = drawSideList('Internship', interns, warningOrange, 15)
+      rightY = drawSideList('Suspended', suspended, primaryPurple, 15)
+      currentY = rightY + 10
+    }
 
-  // --- Institutional Footer ---
+    // Divider
+    doc.setDrawColor(243, 244, 246)
+    doc.line(10, currentY - 5, 200, currentY - 5)
+    currentY += 5
+  }
+
+  // Footer
   const pageCount = doc.internal.getNumberOfPages()
   for (let i = 1; i <= pageCount; i++) {
     doc.setPage(i)
     doc.setFontSize(8)
-    doc.setTextColor(148, 163, 184)
-    doc.text(`Smart Presence Report Archive`, 105, 285, { align: 'center' })
-    doc.setDrawColor(30, 41, 59)
-    doc.setLineWidth(0.3)
-    doc.line(10, 280, 200, 280)
-    doc.text(`Authenticated System Log - Page ${i} of ${pageCount}`, 15, 288)
+    doc.setTextColor(156, 163, 175)
+    doc.text(`Page ${i} of ${pageCount}`, 105, 285, { align: 'center' })
+    doc.text(`Institutional System Log | ${subjectCode}`, 15, 285)
   }
 
-  doc.save(`smart_presence_archive_${new Date().toISOString().split('T')[0]}.pdf`)
+  doc.save(`Attendance_Report_${subjectCode}_${new Date().toISOString().split('T')[0]}.pdf`)
 }
+
 
 export const generateDailyConsolidatedReport = async (periodData, supabase) => {
   const doc = new jsPDF('landscape')

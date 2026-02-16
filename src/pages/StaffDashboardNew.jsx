@@ -63,6 +63,9 @@ const StaffDashboardNew = () => {
   const [localDailyAttendance, setLocalDailyAttendance] = useState({})
   const [recentHistory, setRecentHistory] = useState([])
   const [submittingDaily, setSubmittingDaily] = useState(false)
+  const [reportSubjectCode, setReportSubjectCode] = useState('')
+  const [foundReports, setFoundReports] = useState([])
+  const [searchingReports, setSearchingReports] = useState(false)
 
   const { dailyAttendance, bulkMarkDailyAttendance, fetchRecentHistory } = useDailyAttendance(
     userProfile?.advisor_class_id, 
@@ -323,15 +326,15 @@ const StaffDashboardNew = () => {
     }
   }
 
-  const handleDownloadReport = async () => {
-    if (!selectedClass) {
-    setToast({ message: 'Please select a class', type: 'info' })
+  const handleSearchReports = async () => {
+    if (!selectedClass || !reportSubjectCode) {
+      setToast({ message: 'Select class and enter subject code', type: 'info' })
       return
     }
-    
+
+    setSearchingReports(true)
     try {
-      // Fetch period attendance data for the selected class
-      const { data: periodData, error } = await supabase
+      const { data, error } = await supabase
         .from('period_attendance')
         .select(`
           *,
@@ -341,24 +344,41 @@ const StaffDashboardNew = () => {
             faculty_name
           ),
           classes (
-            name
+            name,
+            id
           )
         `)
         .eq('class_id', selectedClass)
         .eq('is_marked', true)
+        .eq('marked_by', user.id)
+        .filter('timetable.subject_code', 'eq', reportSubjectCode)
         .order('date', { ascending: false })
-      
+
       if (error) throw error
       
-      if (!periodData || periodData.length === 0) {
-        setToast({ message: 'No attendance records for this class', type: 'info' })
-        return
-      }
+      const filtered = data.filter(p => p.timetable && p.timetable.subject_code === reportSubjectCode)
+      setFoundReports(filtered)
       
-      await generatePeriodAttendanceReport(periodData, supabase)
+      if (filtered.length === 0) {
+        setToast({ message: 'No reports found for this subject code', type: 'info' })
+      }
     } catch (err) {
-      console.error('Error fetching attendance:', err)
-      setToast({ message: 'Error fetching attendance records', type: 'error' })
+      console.error('Search error:', err)
+      setToast({ message: 'Error searching reports', type: 'error' })
+    } finally {
+      setSearchingReports(false)
+    }
+  }
+
+  const handleDownloadReport = async (reportsToDownload) => {
+    if (!reportsToDownload || reportsToDownload.length === 0) return
+    
+    try {
+      await generatePeriodAttendanceReport(reportsToDownload, supabase, { subjectCode: reportSubjectCode })
+      setToast({ message: 'Report generated successfully', type: 'success' })
+    } catch (err) {
+      console.error('Download error:', err)
+      setToast({ message: 'Error generating PDF', type: 'error' })
     }
   }
 
@@ -1271,37 +1291,99 @@ const StaffDashboardNew = () => {
                      <p className="text-gray-500 font-bold uppercase tracking-[0.2em] text-[10px]">Export detailed session archives</p>
                    </div>
                  </div>
-
+ 
                  <div className="bg-white/[0.03] border border-white/10 rounded-[2.5rem] p-8 sm:p-10 space-y-8">
-                   <div className="grid md:grid-cols-2 gap-8">
+                   <div className="grid md:grid-cols-3 gap-6">
                      <div className="space-y-4">
                        <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] ml-2">Select Target Class</label>
                        <select 
                          value={selectedClass} 
-                         onChange={(e) => setSelectedClass(e.target.value)} 
+                         onChange={(e) => {
+                           setSelectedClass(e.target.value)
+                           setFoundReports([])
+                         }} 
                          className="w-full px-6 py-4 bg-white/[0.05] border border-white/10 rounded-2xl text-white font-bold tracking-tight text-sm focus:border-emerald-500/50 outline-none transition-all appearance-none cursor-pointer"
                        >
                          <option value="">Select Class Node</option>
                          {classes.map((cls) => (<option key={cls.id} value={cls.id}>{cls.name}</option>))}
                        </select>
                      </div>
+                     <div className="space-y-4">
+                       <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] ml-2">Subject Code</label>
+                       <input 
+                         type="text"
+                         value={reportSubjectCode}
+                         onChange={(e) => {
+                           setReportSubjectCode(e.target.value.toUpperCase())
+                           setFoundReports([])
+                         }}
+                         placeholder="e.g. CS301"
+                         className="w-full px-6 py-4 bg-white/[0.05] border border-white/10 rounded-2xl text-white font-bold tracking-tight text-sm focus:border-emerald-500/50 outline-none transition-all"
+                       />
+                     </div>
                      <div className="flex items-end">
                        <button 
-                         onClick={handleDownloadReport} 
-                         disabled={!selectedClass}
-                         className="w-full py-4 bg-blue-600/90 text-white rounded-2xl font-black text-xs uppercase tracking-[0.2em] hover:bg-blue-500 transition-all shadow-xl shadow-blue-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                         onClick={handleSearchReports} 
+                         disabled={!selectedClass || !reportSubjectCode || searchingReports}
+                         className="w-full py-4 bg-white text-black rounded-2xl font-black text-xs uppercase tracking-[0.2em] hover:scale-105 transition-all shadow-xl disabled:opacity-50"
                        >
-                         Download Archive PDF
+                         {searchingReports ? 'Scanning...' : 'Search Sessions'}
                        </button>
                      </div>
                    </div>
                  </div>
-
-                 <div className="bg-white/[0.01] border-2 border-dashed border-white/5 rounded-[2rem] p-8 text-center">
-                   <p className="text-gray-500 text-xs font-bold uppercase tracking-widest gap-2 flex items-center justify-center">
-                     <AlertCircle size={14} className="text-blue-400" />
-                     <span className="text-white">Note:</span> Access is limited to your assigned academic nodes. For system-wide intelligence, contact administration.
-                   </p>
+ 
+                 {foundReports.length > 0 && (
+                   <div className="space-y-6 animate-smoothFadeIn">
+                     <div className="flex items-center justify-between px-2">
+                       <h3 className="text-xl font-black text-white uppercase tracking-tight">Available Archive Nodes ({foundReports.length})</h3>
+                       <button 
+                         onClick={() => handleDownloadReport(foundReports)}
+                         className="px-6 py-3 bg-blue-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-500 transition-all flex items-center gap-2"
+                       >
+                         <FileText size={14} /> Download Overall Report
+                       </button>
+                     </div>
+ 
+                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                       {foundReports.map((report) => (
+                         <div key={report.id} className="bg-white/[0.02] border border-white/5 rounded-2xl p-5 hover:border-white/20 transition-all group">
+                           <div className="flex justify-between items-start mb-4">
+                             <div>
+                               <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest mb-1">{new Date(report.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
+                               <h4 className="text-white font-bold text-sm">Period {report.period_number} Sessions</h4>
+                             </div>
+                             <button 
+                               onClick={() => handleDownloadReport([report])}
+                               className="p-2 bg-white/5 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition-all"
+                               title="Download this node"
+                             >
+                               <Upload size={14} className="rotate-180" />
+                             </button>
+                           </div>
+                           <div className="flex items-center justify-between py-3 border-t border-white/5">
+                             <div className="text-center flex-1">
+                               <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-1">Present</p>
+                               <p className="text-emerald-400 font-black">{report.present_count}</p>
+                             </div>
+                             <div className="w-px h-6 bg-white/5"></div>
+                             <div className="text-center flex-1">
+                               <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-1">Absent</p>
+                               <p className="text-red-400 font-black">{report.absent_count}</p>
+                             </div>
+                           </div>
+                         </div>
+                       ))}
+                     </div>
+                   </div>
+                 )}
+ 
+                 <div className="bg-white/[0.01] border-2 border-dashed border-white/5 rounded-[2rem] p-8 text-center text-gray-500 font-bold uppercase text-[10px] tracking-widest">
+                   {foundReports.length === 0 && !searchingReports ? (
+                     <p>Select academic parameters to initialize archive retrieval</p>
+                   ) : searchingReports ? (
+                     <p className="animate-pulse">Retrieving encrypted archives from secure storage...</p>
+                   ) : null}
                  </div>
                </div>
             )}
