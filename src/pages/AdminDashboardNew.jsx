@@ -329,8 +329,7 @@ const SessionAttendanceGraph = ({ sessionData }) => {
 
   // Group by period_number and calculate average percentage
   const periodMap = new Map()
-  sessionData.forEach(record => {
-    const p = record.period_attendance
+  sessionData.forEach(p => {
     if (!p) return
     const key = p.period_number
     if (!periodMap.has(key)) {
@@ -448,6 +447,7 @@ const AdminDashboardNew = () => {
   const [selectAll, setSelectAll] = useState(false)
   const [overviewDate, setOverviewDate] = useState(() => new Date().toISOString().split('T')[0])
   const [autoDateInitialized, setAutoDateInitialized] = useState(false)
+  const [overviewSessions, setOverviewSessions] = useState([])
   const [leaveRequests, setLeaveRequests] = useState([])
   const [loadingLeave, setLoadingLeave] = useState(false)
   const showOverviewCharts = true
@@ -687,6 +687,28 @@ const AdminDashboardNew = () => {
     }
   }
 
+  const fetchOverviewSessions = async () => {
+    try {
+      if (!userProfile?.stream_id) return
+      
+      let query = supabase
+        .from('period_attendance')
+        .select('*, classes!inner(stream_id)')
+        .eq('is_marked', true)
+        .eq('date', overviewDate)
+
+      if (userProfile.role !== 'admin') {
+        query = query.eq('classes.stream_id', userProfile.stream_id)
+      }
+
+      const { data, error } = await query
+      if (error) throw error
+      setOverviewSessions(data || [])
+    } catch (err) {
+      console.error('Error fetching overview sessions:', err)
+    }
+  }
+
   // Fetch definitive daily student attendance data
   const fetchDailyStudentAttendance = async () => {
     try {
@@ -773,6 +795,7 @@ const AdminDashboardNew = () => {
       fetchDailyAttendanceCount()
       fetchDailyStudentAttendance()
       fetchLeaveRequests()
+      fetchOverviewSessions()
       
       // Initialize forms with current stream
       setForms(prev => ({
@@ -792,6 +815,7 @@ const AdminDashboardNew = () => {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'daily_student_attendance' }, () => {
         fetchDailyStudentAttendance()
         fetchDailyAttendanceCount()
+        fetchOverviewSessions()
       })
       .on(
         'postgres_changes',
@@ -807,6 +831,7 @@ const AdminDashboardNew = () => {
           }
           fetchDailyStudentAttendance()
           fetchDailyAttendanceCount()
+          fetchOverviewSessions()
         }
       )
       .on('postgres_changes', { event: '*', schema: 'public', table: 'students' }, () => {
@@ -1594,8 +1619,8 @@ const AdminDashboardNew = () => {
                   <div className={showOverviewCharts ? 'lg:col-span-2 space-y-10' : 'hidden'}>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                      <AttendanceTrendChart attendanceData={attendance} totalStudents={students.length} />
-                      <SessionAttendanceGraph sessionData={sessionAttendanceCount} />
+                      <AttendanceTrendChart attendanceData={studentAttendance} totalStudents={students.length} />
+                      <SessionAttendanceGraph sessionData={overviewSessions} />
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8 font-black">
