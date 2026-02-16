@@ -677,12 +677,12 @@ const StaffDashboardNew = () => {
         )}
 
         {/* Navigation Tabs */}
-        <div className="flex overflow-x-auto scrollbar-hide items-center sm:justify-center gap-3 sm:gap-4 mb-12 sm:mb-16 animate-slideUp py-2 -mx-3 px-3 sm:mx-0 sm:px-0" style={{animationDelay: '0.1s'}}>
+        <div className="flex overflow-x-auto scrollbar-hide items-center justify-start sm:justify-center gap-2 sm:gap-4 mb-8 sm:mb-16 animate-slideUp py-2 -mx-3 px-3 sm:mx-0 sm:px-0" style={{animationDelay: '0.1s'}}>
            {tabs.map((tab) => (
              <button
                key={tab.id}
                onClick={() => setActiveTab(tab.id)}
-               className={`whitespace-nowrap px-6 sm:px-8 py-3 sm:py-4 rounded-xl sm:rounded-2xl text-[10px] sm:text-xs font-black uppercase tracking-[0.2em] transition-all duration-500 ${
+               className={`whitespace-nowrap px-4 sm:px-8 py-3 sm:py-4 rounded-xl sm:rounded-2xl text-[10px] sm:text-xs font-black uppercase tracking-[0.1em] sm:tracking-[0.2em] transition-all duration-500 flex-shrink-0 ${
                  activeTab === tab.id 
                    ? 'bg-white text-black shadow-[0_0_40px_-10px_rgba(255,255,255,0.3)] scale-105 sm:scale-110' 
                    : 'bg-white/5 text-gray-500 hover:bg-white/10 hover:text-white'

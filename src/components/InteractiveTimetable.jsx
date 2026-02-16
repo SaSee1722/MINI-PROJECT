@@ -290,8 +290,8 @@ const InteractiveTimetable = ({ classId, selectedDate, className }) => {
           </div>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse border border-black text-xs uppercase text-center">
+        <div className="bg-white/5 border border-white/10 rounded-3xl overflow-x-auto scrollbar-hide -mx-2 px-2">
+        <table className="w-full border-collapse min-w-[800px] border border-black text-xs uppercase text-center">
             <thead>
               <tr className="bg-gray-100">
                 <th className="border border-black p-2 w-24">Day</th>
@@ -493,8 +493,8 @@ const InteractiveTimetable = ({ classId, selectedDate, className }) => {
         <div className="mt-12">
           <h3 className="text-sm font-black uppercase text-center border-b-2 border-black pb-2 mb-6 underline tracking-widest">Subject - Allocation Record</h3>
           
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse border border-black text-[10px] uppercase text-center font-bold">
+          <div className="overflow-x-auto scrollbar-hide -mx-2 px-2">
+            <table className="w-full border-collapse border border-black text-[10px] uppercase text-center font-bold min-w-[600px]">
               <thead>
                 <tr className="bg-gray-50">
                   <th className="border border-black p-2 w-10">S.No</th>

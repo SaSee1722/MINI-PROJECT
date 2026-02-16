@@ -1368,13 +1368,13 @@ const AdminDashboardNew = () => {
         </div>
 
         <div className="bg-[#020617]/40 backdrop-blur-3xl rounded-3xl sm:rounded-[4rem] border border-white/5 mb-12 sm:mb-16 shadow-2xl overflow-hidden group/container hover:border-emerald-500/10 transition-colors duration-700">
-          <div className="border-b border-white/5 px-4 sm:px-8 py-4 bg-white/[0.01]">
-            <nav className="flex overflow-x-auto gap-2 sm:gap-4 scrollbar-hide items-center sm:justify-center py-2">
+          <div className="border-b border-white/5 px-2 sm:px-8 py-4 bg-white/[0.01]">
+            <nav className="flex overflow-x-auto gap-1 sm:gap-4 scrollbar-hide items-center justify-start sm:justify-center py-2 px-2">
               {tabs.map((tab) => (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`group relative whitespace-nowrap px-6 sm:px-8 py-3 sm:py-4 transition-all duration-700 rounded-xl sm:rounded-[1.5rem] text-[10px] font-black tracking-[0.2em] uppercase overflow-hidden ${
+                  className={`group relative whitespace-nowrap px-4 sm:px-8 py-3 sm:py-4 transition-all duration-700 rounded-xl sm:rounded-[1.5rem] text-[10px] font-black tracking-[0.1em] sm:tracking-[0.2em] uppercase overflow-hidden flex-shrink-0 ${
                     activeTab === tab.id 
                     ? 'text-black bg-white shadow-2xl shadow-emerald-500/20' 
                     : 'text-gray-500 hover:text-white hover:bg-white/5'
@@ -2825,11 +2825,11 @@ const AdminDashboardNew = () => {
             )}
             {activeTab === 'reports' && (
               <div className="space-y-10 animate-smoothFadeIn">
-                 <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-                   <div className="space-y-2">
-                     <h2 className="text-4xl font-black text-white tracking-tighter">Intelligence Export</h2>
-                     <p className="text-gray-500 font-bold uppercase tracking-[0.2em] text-[10px]">Generating documented archives of institutional activity</p>
-                   </div>
+                  <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+                    <div className="space-y-2">
+                      <h2 className="text-3xl sm:text-4xl font-black text-white tracking-tighter">Intelligence Export</h2>
+                      <p className="text-gray-500 font-bold uppercase tracking-[0.2em] text-[9px] sm:text-[10px]">Generating documented archives of institutional activity</p>
+                    </div>
                    
                    <div className="flex bg-white/5 p-1.5 rounded-2xl border border-white/5">
                       <button 
