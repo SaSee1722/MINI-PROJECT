@@ -49,7 +49,8 @@ const AdminTimetableView = ({ classId, selectedDate, className }) => {
   const isPeriodMarked = (dayIndex, periodNum) => {
     const entry = getTimetableEntry(dayIndex, periodNum)
     if (!entry) return false
-    return periodAttendance.some(pa => pa.timetable_id === entry.id && pa.is_marked === true)
+    const dateStr = getDateForDayUTC(dayIndex)
+    return periodAttendance.some(pa => pa.timetable_id === entry.id && pa.date === dateStr && pa.is_marked === true)
   }
 
   // Get attendance stats for a period
@@ -57,8 +58,9 @@ const AdminTimetableView = ({ classId, selectedDate, className }) => {
     const entry = getTimetableEntry(dayIndex, periodNum)
     if (!entry) return null
     
+    const dateStr = getDateForDayUTC(dayIndex)
     const attendanceRecord = periodAttendance.find(pa => 
-      pa.timetable_id === entry.id && pa.is_marked === true
+      pa.timetable_id === entry.id && pa.date === dateStr && pa.is_marked === true
     )
     
     if (!attendanceRecord) return null
@@ -81,8 +83,9 @@ const AdminTimetableView = ({ classId, selectedDate, className }) => {
     
     if (isMarked) {
       // Show attendance report
+      const dateStr = getDateForDayUTC(dayIndex)
       const periodAttendanceRecord = periodAttendance.find(pa => 
-        pa.timetable_id === entry.id && pa.is_marked === true
+        pa.timetable_id === entry.id && pa.date === dateStr && pa.is_marked === true
       )
       
       if (periodAttendanceRecord) {
@@ -189,7 +192,6 @@ const AdminTimetableView = ({ classId, selectedDate, className }) => {
         subject_code: newPeriodData.subjectCode,
         subject_name: newPeriodData.subjectName,
       faculty_name: newPeriodData.facultyName,
-      faculty_code: newPeriodData.facultyCode,
       room_number: newPeriodData.roomNumber,
       is_lab: newPeriodData.isLab
       })
@@ -202,7 +204,6 @@ const AdminTimetableView = ({ classId, selectedDate, className }) => {
           subjectCode: '',
           subjectName: '',
           facultyName: '',
-          facultyCode: '',
           isLab: false
         })
         showSuccess('Period added successfully!')
@@ -248,6 +249,17 @@ const AdminTimetableView = ({ classId, selectedDate, className }) => {
       day: '2-digit', 
       month: '2-digit' 
     })
+  }
+
+  // Get date in YYYY-MM-DD for database comparison
+  const getDateForDayUTC = (dayIndex) => {
+    const today = new Date(selectedDate)
+    const currentDay = today.getDay()
+    const adjustedCurrentDay = currentDay === 0 ? 7 : currentDay
+    const diff = (dayIndex + 1) - adjustedCurrentDay
+    const targetDate = new Date(today)
+    targetDate.setDate(today.getDate() + diff)
+    return targetDate.toISOString().split('T')[0]
   }
 
   if (loading) {
@@ -326,7 +338,10 @@ const AdminTimetableView = ({ classId, selectedDate, className }) => {
             <tbody>
               {days.map((day, dayIndex) => (
                 <tr key={day} className="hover:bg-gray-50">
-                  <td className="border border-black p-2 font-black text-left">{day}</td>
+                  <td className="border border-black p-2 font-black text-left">
+                    {day}
+                    <div className="text-[10px] text-gray-400 mt-1">{getDateForDay(dayIndex)}</div>
+                  </td>
                   
                   {/* Period 1 */}
                   <td 
@@ -339,7 +354,7 @@ const AdminTimetableView = ({ classId, selectedDate, className }) => {
                   >
                     {getTimetableEntry(dayIndex, 1) ? (
                       <div className="flex flex-col h-full justify-center">
-                         <div className="font-bold">{getTimetableEntry(dayIndex, 1).subject_name}</div>
+                         <div className={`font-bold ${getTimetableEntry(dayIndex, 1).is_lab ? 'text-indigo-600' : ''}`}>{getTimetableEntry(dayIndex, 1).subject_name}</div>
                       </div>
                     ) : <span className="text-gray-300 text-lg">+</span>}
                   </td>
@@ -355,7 +370,7 @@ const AdminTimetableView = ({ classId, selectedDate, className }) => {
                   >
                     {getTimetableEntry(dayIndex, 2) ? (
                       <div className="flex flex-col h-full justify-center">
-                         <div className="font-bold">{getTimetableEntry(dayIndex, 2).subject_name}</div>
+                         <div className={`font-bold ${getTimetableEntry(dayIndex, 2).is_lab ? 'text-indigo-600' : ''}`}>{getTimetableEntry(dayIndex, 2).subject_name}</div>
                       </div>
                     ) : <span className="text-gray-300 text-lg">+</span>}
                   </td>
@@ -374,7 +389,7 @@ const AdminTimetableView = ({ classId, selectedDate, className }) => {
                   >
                     {getTimetableEntry(dayIndex, 3) ? (
                       <div className="flex flex-col h-full justify-center">
-                         <div className="font-bold">{getTimetableEntry(dayIndex, 3).subject_name}</div>
+                         <div className={`font-bold ${getTimetableEntry(dayIndex, 3).is_lab ? 'text-indigo-600' : ''}`}>{getTimetableEntry(dayIndex, 3).subject_name}</div>
                       </div>
                     ) : <span className="text-gray-300 text-lg">+</span>}
                   </td>
@@ -390,7 +405,7 @@ const AdminTimetableView = ({ classId, selectedDate, className }) => {
                   >
                     {getTimetableEntry(dayIndex, 4) ? (
                       <div className="flex flex-col h-full justify-center">
-                         <div className="font-bold">{getTimetableEntry(dayIndex, 4).subject_name}</div>
+                         <div className={`font-bold ${getTimetableEntry(dayIndex, 4).is_lab ? 'text-indigo-600' : ''}`}>{getTimetableEntry(dayIndex, 4).subject_name}</div>
                       </div>
                     ) : <span className="text-gray-300 text-lg">+</span>}
                   </td>
@@ -409,7 +424,7 @@ const AdminTimetableView = ({ classId, selectedDate, className }) => {
                   >
                     {getTimetableEntry(dayIndex, 5) ? (
                       <div className="flex flex-col h-full justify-center">
-                         <div className="font-bold">{getTimetableEntry(dayIndex, 5).subject_name}</div>
+                         <div className={`font-bold ${getTimetableEntry(dayIndex, 5).is_lab ? 'text-indigo-600' : ''}`}>{getTimetableEntry(dayIndex, 5).subject_name}</div>
                       </div>
                     ) : <span className="text-gray-300 text-lg">+</span>}
                   </td>
@@ -425,7 +440,7 @@ const AdminTimetableView = ({ classId, selectedDate, className }) => {
                   >
                     {getTimetableEntry(dayIndex, 6) ? (
                       <div className="flex flex-col h-full justify-center">
-                         <div className="font-bold">{getTimetableEntry(dayIndex, 6).subject_name}</div>
+                         <div className={`font-bold ${getTimetableEntry(dayIndex, 6).is_lab ? 'text-indigo-600' : ''}`}>{getTimetableEntry(dayIndex, 6).subject_name}</div>
                       </div>
                     ) : <span className="text-gray-300 text-lg">+</span>}
                   </td>
@@ -444,7 +459,7 @@ const AdminTimetableView = ({ classId, selectedDate, className }) => {
                   >
                     {getTimetableEntry(dayIndex, 7) ? (
                       <div className="flex flex-col h-full justify-center">
-                         <div className="font-bold">{getTimetableEntry(dayIndex, 7).subject_name}</div>
+                         <div className={`font-bold ${getTimetableEntry(dayIndex, 7).is_lab ? 'text-indigo-600' : ''}`}>{getTimetableEntry(dayIndex, 7).subject_name}</div>
                       </div>
                     ) : <span className="text-gray-300 text-lg">+</span>}
                   </td>
@@ -460,7 +475,7 @@ const AdminTimetableView = ({ classId, selectedDate, className }) => {
                   >
                     {getTimetableEntry(dayIndex, 8) ? (
                       <div className="flex flex-col h-full justify-center">
-                         <div className="font-bold">{getTimetableEntry(dayIndex, 8).subject_name}</div>
+                         <div className={`font-bold ${getTimetableEntry(dayIndex, 8).is_lab ? 'text-indigo-600' : ''}`}>{getTimetableEntry(dayIndex, 8).subject_name}</div>
                       </div>
                     ) : <span className="text-gray-300 text-lg">+</span>}
                   </td>
@@ -565,49 +580,49 @@ const AdminTimetableView = ({ classId, selectedDate, className }) => {
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
           <div className="bg-white rounded-[2rem] border border-black shadow-2xl max-w-md w-full overflow-hidden">
             <div className="bg-gray-50 p-6 border-b border-black">
-              <h3 className="text-xl font-black uppercase flex items-center gap-3">
+              <h3 className="text-xl font-black uppercase flex items-center gap-3 text-gray-900">
                 <Edit2 size={24} />
                 Edit Module Metadata
               </h3>
             </div>
             <form onSubmit={handleUpdateSubject} className="p-8 space-y-6">
               <div className="space-y-2">
-                <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-2">Subject Code</label>
+                <label className="text-[10px] font-black text-black uppercase tracking-widest ml-2">Subject Code</label>
                 <input 
                   type="text" 
                   value={editingSubject.subjectCode}
                   onChange={e => setEditingSubject({...editingSubject, subjectCode: e.target.value})}
-                  className="w-full px-5 py-4 bg-gray-50 border-2 border-black rounded-2xl font-bold focus:bg-white outline-none"
+                  className="w-full px-5 py-4 bg-gray-50 border-2 border-black rounded-2xl font-bold focus:bg-white outline-none text-black placeholder:text-gray-400"
                   required
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-2">Subject Name</label>
+                <label className="text-[10px] font-black text-black uppercase tracking-widest ml-2">Subject Name</label>
                 <input 
                   type="text" 
                   value={editingSubject.subjectName}
                   onChange={e => setEditingSubject({...editingSubject, subjectName: e.target.value})}
-                  className="w-full px-5 py-4 bg-gray-50 border-2 border-black rounded-2xl font-bold focus:bg-white outline-none"
+                  className="w-full px-5 py-4 bg-gray-50 border-2 border-black rounded-2xl font-bold focus:bg-white outline-none text-black placeholder:text-gray-400"
                   required
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-2">Faculty Name</label>
+                <label className="text-[10px] font-black text-black uppercase tracking-widest ml-2">Faculty Name</label>
                 <input 
                   type="text" 
                   value={editingSubject.facultyName}
                   onChange={e => setEditingSubject({...editingSubject, facultyName: e.target.value})}
-                  className="w-full px-5 py-4 bg-gray-50 border-2 border-black rounded-2xl font-bold focus:bg-white outline-none"
+                  className="w-full px-5 py-4 bg-gray-50 border-2 border-black rounded-2xl font-bold focus:bg-white outline-none text-black placeholder:text-gray-400"
                   required
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-2">Room Number</label>
+                <label className="text-[10px] font-black text-black uppercase tracking-widest ml-2">Room Number</label>
                 <input 
                   type="text" 
                   value={editingSubject.roomNumber}
                   onChange={e => setEditingSubject({...editingSubject, roomNumber: e.target.value})}
-                  className="w-full px-5 py-4 bg-gray-50 border-2 border-black rounded-2xl font-bold focus:bg-white outline-none"
+                  className="w-full px-5 py-4 bg-gray-50 border-2 border-black rounded-2xl font-bold focus:bg-white outline-none text-black placeholder:text-gray-400"
                   placeholder="e.g., R302"
                 />
               </div>
@@ -788,7 +803,7 @@ const AdminTimetableView = ({ classId, selectedDate, className }) => {
                   value={newPeriodData.subjectCode}
                   onChange={(e) => setNewPeriodData({ ...newPeriodData, subjectCode: e.target.value })}
                   style={{ backgroundColor: '#ffffff', color: '#1f2937', borderColor: '#d1d5db' }}
-                  className="w-full px-4 py-2.5 border-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
+                  className="w-full px-4 py-2.5 border-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium text-black"
                   required
                 />
               </div>
@@ -801,8 +816,8 @@ const AdminTimetableView = ({ classId, selectedDate, className }) => {
                   placeholder="e.g., Data Structures"
                   value={newPeriodData.subjectName}
                   onChange={(e) => setNewPeriodData({ ...newPeriodData, subjectName: e.target.value })}
-                  style={{ backgroundColor: '#ffffff', color: '#1f2937', borderColor: '#d1d5db' }}
-                  className="w-full px-4 py-2.5 border-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
+                  style={{ backgroundColor: '#ffffff', color: '#000000', borderColor: '#d1d5db' }}
+                  className="w-full px-4 py-2.5 border-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium text-black"
                   required
                 />
               </div>
@@ -815,24 +830,12 @@ const AdminTimetableView = ({ classId, selectedDate, className }) => {
                   placeholder="e.g., Dr. Smith"
                   value={newPeriodData.facultyName}
                   onChange={(e) => setNewPeriodData({ ...newPeriodData, facultyName: e.target.value })}
-                  style={{ backgroundColor: '#ffffff', color: '#1f2937', borderColor: '#d1d5db' }}
-                  className="w-full px-4 py-2.5 border-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
+                  style={{ backgroundColor: '#ffffff', color: '#000000', borderColor: '#d1d5db' }}
+                  className="w-full px-4 py-2.5 border-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium text-black"
                   required
                 />
               </div>
 
-              {/* Faculty Code */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-800 mb-2">Faculty Code</label>
-                <input
-                  type="text"
-                  placeholder="e.g., DS"
-                  value={newPeriodData.facultyCode}
-                  onChange={(e) => setNewPeriodData({ ...newPeriodData, facultyCode: e.target.value })}
-                  style={{ backgroundColor: '#ffffff', color: '#1f2937', borderColor: '#d1d5db' }}
-                  className="w-full px-4 py-2.5 border-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
-                />
-              </div>
 
               {/* Room Number */}
               <div>
@@ -842,8 +845,8 @@ const AdminTimetableView = ({ classId, selectedDate, className }) => {
                   placeholder="e.g., R302"
                   value={newPeriodData.roomNumber}
                   onChange={(e) => setNewPeriodData({ ...newPeriodData, roomNumber: e.target.value })}
-                  style={{ backgroundColor: '#ffffff', color: '#1f2937', borderColor: '#d1d5db' }}
-                  className="w-full px-4 py-2.5 border-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
+                  style={{ backgroundColor: '#ffffff', color: '#000000', borderColor: '#d1d5db' }}
+                  className="w-full px-4 py-2.5 border-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium text-black"
                 />
               </div>
 

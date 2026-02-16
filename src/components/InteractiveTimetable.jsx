@@ -93,6 +93,17 @@ const InteractiveTimetable = ({ classId, selectedDate, className }) => {
     return targetDate.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit' })
   }
 
+  // Get date in YYYY-MM-DD for database comparison
+  const getDateForDayUTC = (dayIndex) => {
+    const today = new Date(selectedDate)
+    const currentDay = today.getDay()
+    const adjustedCurrentDay = currentDay === 0 ? 7 : currentDay
+    const diff = (dayIndex + 1) - adjustedCurrentDay
+    const targetDate = new Date(today)
+    targetDate.setDate(today.getDate() + diff)
+    return targetDate.toISOString().split('T')[0]
+  }
+
   // Get timetable entry for specific day and period
   const getTimetableEntry = (dayIndex, periodNum) => {
     return timetable.find(t => t.day_of_week === dayIndex + 1 && t.period_number === periodNum)
@@ -103,8 +114,10 @@ const InteractiveTimetable = ({ classId, selectedDate, className }) => {
     const entry = getTimetableEntry(dayIndex, periodNum)
     if (!entry) return false
     
+    const dateStr = getDateForDayUTC(dayIndex)
     return periodAttendance.some(pa => 
       pa.timetable_id === entry.id && 
+      pa.date === dateStr &&
       pa.is_marked === true
     )
   }
@@ -145,8 +158,9 @@ const InteractiveTimetable = ({ classId, selectedDate, className }) => {
     
     if (isMarked) {
       // Show view attendance modal
+      const dateStr = getDateForDayUTC(dayIndex)
       const periodAttendanceRecord = periodAttendance.find(pa => 
-        pa.timetable_id === entry.id && pa.is_marked === true
+        pa.timetable_id === entry.id && pa.date === dateStr && pa.is_marked === true
       )
       
       if (periodAttendanceRecord) {
@@ -256,7 +270,6 @@ const InteractiveTimetable = ({ classId, selectedDate, className }) => {
       subject_code: newPeriodData.subjectCode,
       subject_name: newPeriodData.subjectName,
       faculty_name: newPeriodData.facultyName,
-      faculty_code: newPeriodData.facultyCode,
       room_number: newPeriodData.roomNumber,
       is_lab: newPeriodData.isLab
     })
@@ -273,7 +286,6 @@ const InteractiveTimetable = ({ classId, selectedDate, className }) => {
         subjectCode: '',
         subjectName: '',
         facultyName: '',
-        facultyCode: '',
         roomNumber: '',
         isLab: false
       })
@@ -368,7 +380,10 @@ const InteractiveTimetable = ({ classId, selectedDate, className }) => {
             <tbody>
               {days.map((day, dayIndex) => (
                 <tr key={day} className="hover:bg-gray-50">
-                  <td className="border border-black p-2 font-black text-left">{day}</td>
+                  <td className="border border-black p-2 font-black text-left">
+                    {day}
+                    <div className="text-[10px] text-gray-400 mt-1">{getDateForDay(dayIndex)}</div>
+                  </td>
                   
                   {/* Period 1 */}
                   <td 
@@ -381,7 +396,7 @@ const InteractiveTimetable = ({ classId, selectedDate, className }) => {
                   >
                     {getTimetableEntry(dayIndex, 1) ? (
                       <div className="flex flex-col h-full justify-center">
-                         <div className="font-bold">{getTimetableEntry(dayIndex, 1).subject_name}</div>
+                         <div className={`font-bold ${getTimetableEntry(dayIndex, 1).is_lab ? 'text-indigo-600' : ''}`}>{getTimetableEntry(dayIndex, 1).subject_name}</div>
                       </div>
                     ) : userProfile?.role === 'admin' ? <span className="text-gray-300 text-lg">+</span> : ''}
                   </td>
@@ -397,7 +412,7 @@ const InteractiveTimetable = ({ classId, selectedDate, className }) => {
                   >
                     {getTimetableEntry(dayIndex, 2) ? (
                       <div className="flex flex-col h-full justify-center">
-                         <div className="font-bold">{getTimetableEntry(dayIndex, 2).subject_name}</div>
+                         <div className={`font-bold ${getTimetableEntry(dayIndex, 2).is_lab ? 'text-indigo-600' : ''}`}>{getTimetableEntry(dayIndex, 2).subject_name}</div>
                       </div>
                     ) : userProfile?.role === 'admin' ? <span className="text-gray-300 text-lg">+</span> : ''}
                   </td>
@@ -416,7 +431,7 @@ const InteractiveTimetable = ({ classId, selectedDate, className }) => {
                   >
                     {getTimetableEntry(dayIndex, 3) ? (
                       <div className="flex flex-col h-full justify-center">
-                         <div className="font-bold">{getTimetableEntry(dayIndex, 3).subject_name}</div>
+                         <div className={`font-bold ${getTimetableEntry(dayIndex, 3).is_lab ? 'text-indigo-600' : ''}`}>{getTimetableEntry(dayIndex, 3).subject_name}</div>
                       </div>
                     ) : userProfile?.role === 'admin' ? <span className="text-gray-300 text-lg">+</span> : ''}
                   </td>
@@ -432,7 +447,7 @@ const InteractiveTimetable = ({ classId, selectedDate, className }) => {
                   >
                     {getTimetableEntry(dayIndex, 4) ? (
                       <div className="flex flex-col h-full justify-center">
-                         <div className="font-bold">{getTimetableEntry(dayIndex, 4).subject_name}</div>
+                         <div className={`font-bold ${getTimetableEntry(dayIndex, 4).is_lab ? 'text-indigo-600' : ''}`}>{getTimetableEntry(dayIndex, 4).subject_name}</div>
                       </div>
                     ) : userProfile?.role === 'admin' ? <span className="text-gray-300 text-lg">+</span> : ''}
                   </td>
@@ -451,7 +466,7 @@ const InteractiveTimetable = ({ classId, selectedDate, className }) => {
                   >
                     {getTimetableEntry(dayIndex, 5) ? (
                       <div className="flex flex-col h-full justify-center">
-                         <div className="font-bold">{getTimetableEntry(dayIndex, 5).subject_name}</div>
+                         <div className={`font-bold ${getTimetableEntry(dayIndex, 5).is_lab ? 'text-indigo-600' : ''}`}>{getTimetableEntry(dayIndex, 5).subject_name}</div>
                       </div>
                     ) : userProfile?.role === 'admin' ? <span className="text-gray-300 text-lg">+</span> : ''}
                   </td>
@@ -467,7 +482,7 @@ const InteractiveTimetable = ({ classId, selectedDate, className }) => {
                   >
                     {getTimetableEntry(dayIndex, 6) ? (
                       <div className="flex flex-col h-full justify-center">
-                         <div className="font-bold">{getTimetableEntry(dayIndex, 6).subject_name}</div>
+                         <div className={`font-bold ${getTimetableEntry(dayIndex, 6).is_lab ? 'text-indigo-600' : ''}`}>{getTimetableEntry(dayIndex, 6).subject_name}</div>
                       </div>
                     ) : userProfile?.role === 'admin' ? <span className="text-gray-300 text-lg">+</span> : ''}
                   </td>
@@ -486,7 +501,7 @@ const InteractiveTimetable = ({ classId, selectedDate, className }) => {
                   >
                     {getTimetableEntry(dayIndex, 7) ? (
                       <div className="flex flex-col h-full justify-center">
-                         <div className="font-bold">{getTimetableEntry(dayIndex, 7).subject_name}</div>
+                         <div className={`font-bold ${getTimetableEntry(dayIndex, 7).is_lab ? 'text-indigo-600' : ''}`}>{getTimetableEntry(dayIndex, 7).subject_name}</div>
                       </div>
                     ) : userProfile?.role === 'admin' ? <span className="text-gray-300 text-lg">+</span> : ''}
                   </td>
@@ -502,7 +517,7 @@ const InteractiveTimetable = ({ classId, selectedDate, className }) => {
                   >
                     {getTimetableEntry(dayIndex, 8) ? (
                       <div className="flex flex-col h-full justify-center">
-                         <div className="font-bold">{getTimetableEntry(dayIndex, 8).subject_name}</div>
+                         <div className={`font-bold ${getTimetableEntry(dayIndex, 8).is_lab ? 'text-indigo-600' : ''}`}>{getTimetableEntry(dayIndex, 8).subject_name}</div>
                       </div>
                     ) : userProfile?.role === 'admin' ? <span className="text-gray-300 text-lg">+</span> : ''}
                   </td>
@@ -630,17 +645,6 @@ const InteractiveTimetable = ({ classId, selectedDate, className }) => {
                 />
               </div>
 
-              {/* Faculty Code */}
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] ml-2">Faculty Code</label>
-                <input
-                  type="text"
-                  placeholder="e.g., DS"
-                  value={newPeriodData.facultyCode}
-                  onChange={(e) => setNewPeriodData({ ...newPeriodData, facultyCode: e.target.value })}
-                  className="w-full px-4 py-3 bg-black border border-white/10 rounded-xl text-white font-bold text-sm focus:border-white/30 outline-none"
-                />
-              </div>
 
               {/* Room Number */}
               <div className="space-y-2">

@@ -13,6 +13,18 @@ export const usePeriodAttendance = (classId = null, date = null) => {
       if (!selectedClassId || !selectedDate) return
 
       setLoading(true)
+      
+      // Calculate week range (Monday to Saturday)
+      const curr = new Date(selectedDate)
+      const day = curr.getDay()
+      const diff = curr.getDate() - day + (day === 0 ? -6 : 1)
+      const mondayDate = new Date(curr.setDate(diff))
+      const saturdayDate = new Date(mondayDate)
+      saturdayDate.setDate(mondayDate.getDate() + 5)
+      
+      const monday = mondayDate.toISOString().split('T')[0]
+      const saturday = saturdayDate.toISOString().split('T')[0]
+
       const { data, error } = await supabase
         .from('period_attendance')
         .select(`
@@ -26,7 +38,8 @@ export const usePeriodAttendance = (classId = null, date = null) => {
           )
         `)
         .eq('class_id', selectedClassId)
-        .eq('date', selectedDate)
+        .gte('date', monday)
+        .lte('date', saturday)
 
       if (error) throw error
       setPeriodAttendance(data || [])
