@@ -1593,6 +1593,11 @@ const AdminDashboardNew = () => {
                 <div className={`grid gap-10 ${showOverviewCharts ? 'grid-cols-1 lg:grid-cols-3' : 'grid-cols-1'}`}>
                   <div className={showOverviewCharts ? 'lg:col-span-2 space-y-10' : 'hidden'}>
 
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                      <AttendanceTrendChart attendanceData={attendance} totalStudents={students.length} />
+                      <SessionAttendanceGraph sessionData={sessionAttendanceCount} />
+                    </div>
+
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8 font-black">
 
                       <div className="bg-white/[0.01] border border-white/5 rounded-[3rem] p-10 relative overflow-hidden group">
@@ -1620,6 +1625,19 @@ const AdminDashboardNew = () => {
                                Audit Full Matrix
                             </button>
                          </div>
+                      </div>
+
+                      <div className="bg-gradient-to-br from-blue-600 to-purple-700 rounded-[3rem] p-10 relative overflow-hidden group">
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-1000"></div>
+                        <div className="relative z-10">
+                           <Shield size={40} className="text-white mb-6" />
+                           <h3 className="text-2xl font-black text-white tracking-tighter mb-4">Institutional Shield</h3>
+                           <p className="text-sm text-blue-100 leading-relaxed font-medium mb-8">Your session is secured with end-to-end data encryption. Maintain regular synchronization for optimal data integrity.</p>
+                           <div className="flex items-center gap-2 text-[10px] font-black text-white uppercase tracking-widest">
+                              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                              System Integrity Optimal
+                           </div>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -1649,22 +1667,8 @@ const AdminDashboardNew = () => {
                            Access Intelligence
                         </button>
                      </div>
-
-                     <div className="bg-gradient-to-br from-blue-600 to-purple-700 rounded-[3rem] p-10 relative overflow-hidden group">
-                        <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-1000"></div>
-                        <div className="relative z-10">
-                           <Shield size={40} className="text-white mb-6" />
-                           <h3 className="text-2xl font-black text-white tracking-tighter mb-4">Institutional Shield</h3>
-                           <p className="text-sm text-blue-100 leading-relaxed font-medium mb-8">Your session is secured with end-to-end data encryption. Maintain regular synchronization for optimal data integrity.</p>
-                           <div className="flex items-center gap-2 text-[10px] font-black text-white uppercase tracking-widest">
-                              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                              System Integrity Optimal
-                           </div>
-                        </div>
-                     </div>
                   </div>
                 </div>
-
               </div>
             )}
 
