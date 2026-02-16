@@ -66,6 +66,8 @@ const StaffDashboardNew = () => {
   const [reportSubjectCode, setReportSubjectCode] = useState('')
   const [foundReports, setFoundReports] = useState([])
   const [searchingReports, setSearchingReports] = useState(false)
+  const [advisorReportData, setAdvisorReportData] = useState(null)
+  const [loadingAdvisorReport, setLoadingAdvisorReport] = useState(false)
 
   const { dailyAttendance, bulkMarkDailyAttendance, fetchRecentHistory } = useDailyAttendance(
     userProfile?.advisor_class_id, 
@@ -382,6 +384,85 @@ const StaffDashboardNew = () => {
     }
   }
 
+  const generateAdvisorReport = async () => {
+    if (!userProfile?.advisor_class_id) {
+      setToast({ message: 'Class Advisor node not initialized', type: 'warning' })
+      return
+    }
+
+    setLoadingAdvisorReport(true)
+    try {
+      const classId = userProfile.advisor_class_id
+      const classObj = classes.find(c => c.id === classId)
+      
+      // Fetch DEFINITIVE daily records for this date
+      const { data: records, error } = await supabase
+        .from('daily_student_attendance')
+        .select(`
+          status,
+          approval_status,
+          student_id,
+          students (
+            name,
+            roll_number,
+            status
+          )
+        `)
+        .eq('class_id', classId)
+        .eq('date', attendanceDate)
+
+      if (error) throw error
+
+      const classStudents = students.filter(s => s.class_id === classId)
+      
+      const report = {
+        date: attendanceDate,
+        className: classObj?.name || 'Class',
+        total: classStudents.length,
+        present: 0,
+        absent: 0,
+        od: 0,
+        internCount: classStudents.filter(s => s.status === 'intern').length,
+        unapproved: [],
+        approved: [],
+        onDuty: [],
+        interns: classStudents.filter(s => s.status === 'intern').map(s => ({ name: s.name, roll: s.roll_number }))
+      }
+
+      records?.forEach(record => {
+        if (record.status === 'present') {
+          report.present++
+        } else if (record.status === 'absent') {
+          report.absent++
+          if (record.approval_status === 'approved') {
+            report.approved.push({ 
+              name: record.students?.name, 
+              roll: record.students?.roll_number 
+            })
+          } else {
+            report.unapproved.push({ 
+              name: record.students?.name, 
+              roll: record.students?.roll_number 
+            })
+          }
+        } else if (record.status === 'on_duty') {
+          report.od++
+          report.onDuty.push({ 
+            name: record.students?.name, 
+            roll: record.students?.roll_number 
+          })
+        }
+      })
+
+      setAdvisorReportData(report)
+    } catch (err) {
+      console.error('Advisor Report Error:', err)
+      setToast({ message: 'Failed to generate class report', type: 'error' })
+    } finally {
+      setLoadingAdvisorReport(false)
+    }
+  }
+
 
   const generateShortReport = async () => {
     if (!userProfile?.stream_id) {
@@ -481,7 +562,7 @@ const StaffDashboardNew = () => {
 
   const tabs = [
     { id: 'timetable', name: 'Timetable' },
-    ...(userProfile?.is_class_advisor ? [{ id: 'dayAttendance', name: 'Day Attendance' }] : []),
+    ...(userProfile?.is_class_advisor ? [{ id: 'dayAttendance', name: 'Day Attendance' }, { id: 'advisorReport', name: 'Class Report' }] : []),
     ...(userProfile?.is_hod ? [{ id: 'shortreport', name: 'Short Report' }] : []),
     { id: 'leaveRequest', name: 'Leave Request', badge: userProfile?.is_hod ? hodRequests.length : 0 },
     { id: 'reports', name: 'Reports' }
@@ -1108,6 +1189,163 @@ const StaffDashboardNew = () => {
                 {!shortReportData && !loadingReport && (
                   <div className="bg-white/[0.03] border border-white/10 rounded-[2.5rem] p-12 text-center">
                     <p className="text-gray-500 font-bold uppercase tracking-widest text-sm">Select a date and classes to initialize report generation</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {activeTab === 'advisorReport' && (
+              <div className="space-y-10">
+                <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+                  <div className="space-y-2">
+                    <h2 className="text-4xl font-black text-white tracking-tighter">Advisor Intelligence Feed</h2>
+                    <p className="text-gray-500 font-bold uppercase tracking-[0.2em] text-[10px]">
+                      Daily summary for {classes.find(c => c.id === userProfile?.advisor_class_id)?.name}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="bg-white/[0.03] border border-white/10 rounded-[2.5rem] p-8 sm:p-10 space-y-8">
+                  <div className="grid md:grid-cols-3 gap-8">
+                    <div className="space-y-4">
+                      <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] ml-2">Target Date</label>
+                      <input
+                        type="date"
+                        value={attendanceDate}
+                        onChange={e => setAttendanceDate(e.target.value)}
+                        className="w-full px-6 py-4 bg-white/[0.05] border border-white/10 rounded-2xl text-white font-bold tracking-tight text-sm focus:border-emerald-500/50 outline-none transition-all [color-scheme:dark]"
+                      />
+                    </div>
+                    <div className="flex items-end">
+                      <button
+                        onClick={generateAdvisorReport}
+                        disabled={loadingAdvisorReport}
+                        className="w-full py-4 bg-white text-black rounded-2xl font-black text-xs uppercase tracking-[0.2em] hover:scale-[1.02] active:scale-95 transition-all shadow-xl disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                      >
+                        {loadingAdvisorReport ? 'Generating Feed...' : 'Generate Class Feed'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {advisorReportData && (
+                  <div className="bg-white/[0.03] border border-white/10 rounded-[2.5rem] p-8 sm:p-10 animate-smoothFadeIn">
+                    <div className="mt-4 space-y-4">
+                      <div className="flex items-center gap-2 ml-2">
+                         <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
+                         <h4 className="text-[10px] font-black text-emerald-500/80 uppercase tracking-[0.2em]">Synchronized Institutional Feed</h4>
+                      </div>
+                      <div className="bg-black/60 border border-emerald-500/20 rounded-[2rem] p-8 relative group overflow-hidden">
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-3xl"></div>
+                        <pre className="text-emerald-400/90 font-mono text-sm leading-relaxed whitespace-pre-wrap select-all">
+                          {(() => {
+                            const d = new Date(advisorReportData.date)
+                            const dateStr = `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getFullYear())}`
+                            
+                            let text = `📕Date: ${dateStr}\n\n`
+                            text += `Year:${advisorReportData.className}\n`
+                            text += `📍Total: ${String(advisorReportData.total).padStart(2, '0')}\n`
+                            text += `📍Present: ${String(advisorReportData.present).padStart(2, '0')}\n`
+                            text += `📍Absent: ${String(advisorReportData.absent).padStart(2, '0')}\n`
+                            text += `📍OD: ${String(advisorReportData.od).padStart(2, '0')}\n`
+                            text += `📍Intern: ${String(advisorReportData.internCount).padStart(2, '0')}\n\n`
+                            
+                            text += `✅ Absentees Name:\n\n`
+                            text += `📌 Unapproved leave- \n\n`
+                            if (advisorReportData.unapproved.length > 0) {
+                              advisorReportData.unapproved.forEach(sid => {
+                                text += `      ${sid.name} ${sid.roll.slice(-2)}\n`
+                              })
+                            } else {
+                              text += `      None\n`
+                            }
+                            text += `\n\n`
+                            
+                            text += `📌 Approved leave -\n`
+                            if (advisorReportData.approved.length > 0) {
+                              advisorReportData.approved.forEach(sid => {
+                                text += `     ${sid.name} ${sid.roll.slice(-2)}\n`
+                              })
+                            } else {
+                              text += `     None\n`
+                            }
+                            text += `\n\n`
+                            
+                            text += `📌On duty- ${advisorReportData.onDuty.length > 0 ? advisorReportData.onDuty.map(s => s.name).join(', ') : 'Nil'}\n\n`
+                            
+                            text += `📌 Intern-   \n`
+                            if (advisorReportData.interns.length > 0) {
+                              advisorReportData.interns.forEach((sid, idx) => {
+                                text += `${idx + 1}. ${sid.name}- ${sid.roll.slice(-3)}\n`
+                              })
+                            } else {
+                              text += `Nil\n`
+                            }
+                            
+                            text += `\nClass Advisor: \n"${userProfile?.name}"`
+                            return text
+                          })()}
+                        </pre>
+                        
+                        <div className="mt-8 flex justify-end relative z-10">
+                          <button
+                            onClick={() => {
+                              const d = new Date(advisorReportData.date)
+                              const dateStr = `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getFullYear())}`
+                              
+                              let text = `📕Date: ${dateStr}\n\n`
+                              text += `Year:${advisorReportData.className}\n`
+                              text += `📍Total: ${String(advisorReportData.total).padStart(2, '0')}\n`
+                              text += `📍Present: ${String(advisorReportData.present).padStart(2, '0')}\n`
+                              text += `📍Absent: ${String(advisorReportData.absent).padStart(2, '0')}\n`
+                              text += `📍OD: ${String(advisorReportData.od).padStart(2, '0')}\n`
+                              text += `📍Intern: ${String(advisorReportData.internCount).padStart(2, '0')}\n\n`
+                              
+                              text += `✅ Absentees Name:\n\n`
+                              text += `📌 Unapproved leave- \n\n`
+                              if (advisorReportData.unapproved.length > 0) {
+                                advisorReportData.unapproved.forEach(sid => {
+                                  text += `      ${sid.name} ${sid.roll.slice(-2)}\n`
+                                })
+                              } else {
+                                text += `      None\n`
+                              }
+                              text += `\n\n`
+                              
+                              text += `📌 Approved leave -\n`
+                              if (advisorReportData.approved.length > 0) {
+                                advisorReportData.approved.forEach(sid => {
+                                  text += `     ${sid.name} ${sid.roll.slice(-2)}\n`
+                                })
+                              } else {
+                                text += `     None\n`
+                              }
+                              text += `\n\n`
+                              
+                              text += `📌On duty- ${advisorReportData.onDuty.length > 0 ? advisorReportData.onDuty.map(s => s.name).join(', ') : 'Nil'}\n\n`
+                              
+                              text += `📌 Intern-   \n`
+                              if (advisorReportData.interns.length > 0) {
+                                advisorReportData.interns.forEach((sid, idx) => {
+                                  text += `${idx + 1}. ${sid.name}- ${sid.roll.slice(-3)}\n`
+                                })
+                              } else {
+                                text += `Nil\n`
+                              }
+                              
+                              text += `\nClass Advisor: \n"${userProfile?.name}"`
+
+                              navigator.clipboard.writeText(text)
+                              setToast({ message: 'Class protocol cached to clipboard!', type: 'success' })
+                            }}
+                            className="bg-emerald-500 hover:bg-emerald-400 text-white px-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] shadow-2xl shadow-emerald-500/20 transition-all flex items-center gap-3"
+                          >
+                            <FileText size={16} />
+                            Cache Class Feed
+                          </button>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>
