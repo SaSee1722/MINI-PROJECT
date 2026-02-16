@@ -35,6 +35,30 @@ const InteractiveTimetable = ({ classId, selectedDate, className }) => {
     isLab: false
   })
 
+  const [classAdvisor, setClassAdvisor] = useState(null)
+
+  useEffect(() => {
+    const fetchClassAdvisor = async () => {
+      if (!classId) return
+      try {
+        const { data, error } = await supabase
+          .from('users')
+          .select('name')
+          .eq('is_class_advisor', true)
+          .eq('advisor_class_id', classId)
+          .maybeSingle()
+        
+        if (error) throw error
+        setClassAdvisor(data?.name || 'Not Assigned')
+      } catch (err) {
+        console.error('Error fetching class advisor:', err)
+        setClassAdvisor('Error loading')
+      }
+    }
+    
+    fetchClassAdvisor()
+  }, [classId])
+
   const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
   const periods = [1, 2, 3, 4, 5, 6, 7, 8]
 
@@ -546,8 +570,8 @@ const InteractiveTimetable = ({ classId, selectedDate, className }) => {
         <div className="mt-12 space-y-8">
             <div className="border border-black p-2 text-xs font-bold flex gap-4">
                 <span>Class Advisor Name:</span>
-                <span className="uppercase text-gray-700">{userProfile?.role === 'staff' && userProfile?.is_class_advisor ? userProfile.name : 'Not Assigned'}</span>
-            </div>
+                <span className="uppercase text-gray-700">{classAdvisor || 'Loading...'}</span>
+              </div>
             
 
         </div>
