@@ -1117,7 +1117,10 @@ const AdminDashboardNew = () => {
         try {
           const { data, error } = await supabase
             .from('daily_student_attendance')
-            .select('*')
+            .select(`
+              *,
+              students (roll_number)
+            `)
             .eq('class_id', cls.id)
             .eq('date', shortReportDate)
 
@@ -1130,7 +1133,6 @@ const AdminDashboardNew = () => {
           console.log(`✅ Found ${attendanceRecords.length} attendance records`)
         } catch (err) {
           console.error('❌ Failed to fetch attendance for class:', cls.name, err)
-          // Continue with empty attendance records
         }
 
         let presentCount = 0
@@ -1138,11 +1140,16 @@ const AdminDashboardNew = () => {
         let unapprovedAbsentCount = 0
         let onDutyCount = 0
 
+        // Get approved leave requests
+        const approvedLeaves = leaveRequests?.filter(r => r.status === 'approved') || []
+
         attendanceRecords?.forEach(record => {
           if (record.status === 'present') {
             presentCount++
           } else if (record.status === 'absent') {
-            if (record.approval_status === 'approved') {
+            const roll = record.students?.roll_number
+            const isApproved = approvedLeaves.some(l => l.register_number === roll)
+            if (isApproved) {
               approvedAbsentCount++
             } else {
               unapprovedAbsentCount++
