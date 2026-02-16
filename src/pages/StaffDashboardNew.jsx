@@ -400,9 +400,9 @@ const StaffDashboardNew = () => {
         .from('daily_student_attendance')
         .select(`
           status,
-          approval_status,
           student_id,
           students (
+            id,
             name,
             roll_number,
             status
@@ -429,20 +429,27 @@ const StaffDashboardNew = () => {
         interns: classStudents.filter(s => s.status === 'intern').map(s => ({ name: s.name, roll: s.roll_number }))
       }
 
+      // Get approved leave requests for this date
+      // Note: We'll match by roll number since leave_requests uses register_number
+      const approvedLeaves = leaveRequests?.filter(r => r.status === 'approved') || []
+
       records?.forEach(record => {
         if (record.status === 'present') {
           report.present++
         } else if (record.status === 'absent') {
           report.absent++
-          if (record.approval_status === 'approved') {
+          const roll = record.students?.roll_number
+          const isApproved = approvedLeaves.some(l => l.register_number === roll)
+          
+          if (isApproved) {
             report.approved.push({ 
               name: record.students?.name, 
-              roll: record.students?.roll_number 
+              roll: roll 
             })
           } else {
             report.unapproved.push({ 
               name: record.students?.name, 
-              roll: record.students?.roll_number 
+              roll: roll 
             })
           }
         } else if (record.status === 'on_duty') {
@@ -500,8 +507,11 @@ const StaffDashboardNew = () => {
           .from('daily_student_attendance')
           .select(`
             status,
-            approval_status,
-            student_id
+            student_id,
+            students (
+              id,
+              roll_number
+            )
           `)
           .eq('class_id', cls.id)
           .eq('date', shortReportDate)
@@ -516,11 +526,16 @@ const StaffDashboardNew = () => {
         let unapprovedAbsentCount = 0
         let onDutyCount = 0
 
+        // Get approved leave requests
+        const approvedLeaves = leaveRequests?.filter(r => r.status === 'approved') || []
+
         attendanceRecords?.forEach(record => {
           if (record.status === 'present') {
             presentCount++
           } else if (record.status === 'absent') {
-            if (record.approval_status === 'approved') {
+            const roll = record.students?.roll_number
+            const isApproved = approvedLeaves.some(l => l.register_number === roll)
+            if (isApproved) {
               approvedAbsentCount++
             } else {
               unapprovedAbsentCount++
